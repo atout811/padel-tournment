@@ -325,10 +325,6 @@ const TournamentScreen = ({ tournament, setTournament, showAlert, setScreen }) =
             status: 'pending',
         };
 
-        console.log('Creating semifinals:');
-        console.log('Semifinal 1:', `${semifinal1.teamA.players.join(' & ')} vs ${semifinal1.teamB.players.join(' & ')}`);
-        console.log('Semifinal 2:', `${semifinal2.teamA.players.join(' & ')} vs ${semifinal2.teamB.players.join(' & ')}`);
-
         // Add semifinal matches to the tournament
         updatedTournament.matches.push(semifinal1, semifinal2);
         updatedTournament.currentRound = 2;
