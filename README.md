@@ -46,7 +46,7 @@ This project is configured for automatic deployment to GitHub Pages.
 
 ### Automatic Deployment
 
-The project will automatically deploy to GitHub Pages when you push to the `main` branch, thanks to the included GitHub Actions workflow.
+The project will automatically deploy to GitHub Pages when you push to the `master` branch, thanks to the included GitHub Actions workflow.
 
 ### Manual Deployment
 
@@ -69,7 +69,7 @@ After setting up the repository:
 
 1. Make sure your repository name matches the `base` path in `vite.config.js`
 2. If your repository has a different name, update the `base` configuration
-3. Push your code to the `main` branch
+3. Push your code to the `master` branch
 4. Enable GitHub Pages in your repository settings
 
 ## Technology Stack
