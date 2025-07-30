@@ -670,7 +670,7 @@ const TournamentScreen = ({ tournament, setTournament, showAlert, setScreen }) =
             <h2 className="text-xl font-bold mb-3">Leaderboard</h2>
             <div className="space-y-2">
                 {leaderboard.map((team, index) => {
-                    const isTop4 = index < 4 && tournament.currentRound === 1;
+                    const isTop4 = index < 4 && tournament.currentRound === 1 && tournament.format !== 'league';
                     const isChampion = index === 0 && isTournamentFinished;
                     return (
                         <div key={team.id} className={`flex items-center text-lg p-2 rounded ${
