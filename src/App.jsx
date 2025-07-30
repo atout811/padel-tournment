@@ -121,6 +121,7 @@ const LoadingScreen = () => (
 const PlayerSetupScreen = ({ showAlert, setTournament, setScreen }) => {
   const [players, setPlayers] = useState([]);
   const [playerName, setPlayerName] = useState('');
+  const [tournamentFormat, setTournamentFormat] = useState('cup'); // 'cup' or 'league'
 
   const handleAddPlayer = () => {
     if (playerName.trim() && !players.includes(playerName.trim())) {
@@ -162,29 +163,52 @@ const PlayerSetupScreen = ({ showAlert, setTournament, setScreen }) => {
     
     const substitute = null; // No longer needed since substitute is now a team
 
-    // Create Round 1 matches (round-robin)
-    const round1Matches = [];
-    for (let i = 0; i < teams.length; i++) {
-        for (let j = i + 1; j < teams.length; j++) {
-            round1Matches.push({
-                id: `round1_match_${i}_${j}`,
-                round: 1,
-                teamA: teams[i],
-                teamB: teams[j],
-                winnerId: null,
-                status: 'pending',
-            });
+    // Create matches based on tournament format
+    let matches = [];
+    let maxRounds = 2;
+
+    if (tournamentFormat === 'league') {
+        // League format: Every team plays every other team twice
+        let matchId = 0;
+        for (let round = 1; round <= 2; round++) {
+            for (let i = 0; i < teams.length; i++) {
+                for (let j = i + 1; j < teams.length; j++) {
+                    matches.push({
+                        id: `round${round}_match_${matchId++}`,
+                        round: round,
+                        teamA: teams[i],
+                        teamB: teams[j],
+                        winnerId: null,
+                        status: 'pending',
+                    });
+                }
+            }
+        }
+    } else {
+        // Cup format: Round-robin then elimination
+        for (let i = 0; i < teams.length; i++) {
+            for (let j = i + 1; j < teams.length; j++) {
+                matches.push({
+                    id: `round1_match_${i}_${j}`,
+                    round: 1,
+                    teamA: teams[i],
+                    teamB: teams[j],
+                    winnerId: null,
+                    status: 'pending',
+                });
+            }
         }
     }
 
     const newTournament = { 
         players, 
         teams, 
-        matches: round1Matches,
+        matches,
         substitute, 
         status: 'active', 
         currentRound: 1,
-        maxRounds: 2,
+        maxRounds,
+        format: tournamentFormat, // Store the tournament format
         createdAt: new Date().toISOString() 
     };
 
@@ -230,6 +254,44 @@ const PlayerSetupScreen = ({ showAlert, setTournament, setScreen }) => {
           </div>
         )) : <p className="text-gray-400 text-center">No players added yet.</p>}
       </div>
+      
+      {/* Tournament Format Selection */}
+      <div className="mb-6">
+        <h3 className="text-xl font-bold mb-3">Tournament Format</h3>
+        <div className="space-y-3">
+          <div className="flex items-center">
+            <input
+              type="radio"
+              id="cup"
+              name="tournamentFormat"
+              value="cup"
+              checked={tournamentFormat === 'cup'}
+              onChange={(e) => setTournamentFormat(e.target.value)}
+              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500"
+            />
+            <label htmlFor="cup" className="ml-3 flex-1">
+              <div className="text-lg font-medium">🏆 Cup Format</div>
+              <div className="text-gray-400 text-sm">Round-robin + elimination semifinals (current)</div>
+            </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              type="radio"
+              id="league"
+              name="tournamentFormat"
+              value="league"
+              checked={tournamentFormat === 'league'}
+              onChange={(e) => setTournamentFormat(e.target.value)}
+              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500"
+            />
+            <label htmlFor="league" className="ml-3 flex-1">
+              <div className="text-lg font-medium">🏟️ League Format</div>
+              <div className="text-gray-400 text-sm">Every team plays every other team twice</div>
+            </label>
+          </div>
+        </div>
+      </div>
+
       <button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors" onClick={handleCreateTournament}>
         Create Tournament
       </button>
@@ -269,9 +331,15 @@ const TournamentScreen = ({ tournament, setTournament, showAlert, setScreen }) =
         console.log('=== END DEBUG ===');
         
         if (completedCurrentRound.length === currentRoundMatches.length && updatedTournament.currentRound === 1) {
-            // Round 1 is completed, prepare for Round 2
-            console.log('🚀 TRIGGERING ROUND 2 ADVANCEMENT!');
-            setTimeout(() => advanceToRound2(updatedTournament), 1000);
+            if (updatedTournament.format === 'league') {
+                // League format: Simply advance to round 2 (second round-robin)
+                console.log('🚀 TRIGGERING LEAGUE ROUND 2 ADVANCEMENT!');
+                setTimeout(() => advanceToLeagueRound2(updatedTournament), 1000);
+            } else {
+                // Cup format: Round 1 is completed, prepare for Round 2 (semifinals)
+                console.log('🚀 TRIGGERING CUP ROUND 2 ADVANCEMENT!');
+                setTimeout(() => advanceToRound2(updatedTournament), 1000);
+            }
         }
 
         try {
@@ -341,6 +409,30 @@ const TournamentScreen = ({ tournament, setTournament, showAlert, setScreen }) =
             }
         } catch (error) {
             console.error("Error advancing to Round 2:", error);
+            showAlert("Error", "Could not advance to Round 2. Please try again.");
+        }
+    };
+
+    const advanceToLeagueRound2 = async (tournamentData) => {
+        console.log('🚀 ADVANCE TO LEAGUE ROUND 2 CALLED!');
+        const updatedTournament = JSON.parse(JSON.stringify(tournamentData));
+        
+        // In league format, all Round 2 matches should already exist
+        // We just need to update the current round
+        updatedTournament.currentRound = 2;
+        
+        try {
+            const success = saveTournamentData(updatedTournament);
+            if (success) {
+                console.log('✅ Successfully advanced to League Round 2!');
+                setTournament(updatedTournament);
+                showAlert("Round 2!", "Starting second round of league play!");
+            } else {
+                console.log('❌ Failed to save League Round 2 data');
+                showAlert("Error", "Could not advance to Round 2. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error advancing to League Round 2:", error);
             showAlert("Error", "Could not advance to Round 2. Please try again.");
         }
     };
@@ -443,21 +535,35 @@ const TournamentScreen = ({ tournament, setTournament, showAlert, setScreen }) =
     const upcomingMatches = pendingMatches.slice(1);
 
     // Check if tournament is completely finished
-    const isTournamentFinished = tournament.currentRound === 2 && 
-        tournament.matches.some(m => m.matchType === 'final' && m.status === 'completed');
+    const isTournamentFinished = tournament.format === 'league' ?
+        (tournament.currentRound === 2 && 
+         tournament.matches.filter(m => m.round === 2).every(m => m.status === 'completed')) :
+        (tournament.currentRound === 2 && 
+         tournament.matches.some(m => m.matchType === 'final' && m.status === 'completed'));
 
     const getRoundTitle = () => {
-        if (tournament.currentRound === 1) {
-            return "Round 1 - Group Stage";
-        } else if (tournament.currentRound === 2) {
-            const finalsExists = tournament.matches.some(m => m.matchType === 'final');
-            if (finalsExists) {
-                return "Round 2 - Finals";
-            } else {
-                return "Round 2 - Semifinals";
+        if (tournament.format === 'league') {
+            // League format
+            if (tournament.currentRound === 1) {
+                return "Round 1 - First League Round";
+            } else if (tournament.currentRound === 2) {
+                return "Round 2 - Second League Round";
             }
+            return `Round ${tournament.currentRound} - League`;
+        } else {
+            // Cup format
+            if (tournament.currentRound === 1) {
+                return "Round 1 - Group Stage";
+            } else if (tournament.currentRound === 2) {
+                const finalsExists = tournament.matches.some(m => m.matchType === 'final');
+                if (finalsExists) {
+                    return "Round 2 - Finals";
+                } else {
+                    return "Round 2 - Semifinals";
+                }
+            }
+            return `Round ${tournament.currentRound}`;
         }
-        return `Round ${tournament.currentRound}`;
     };
 
   return (
@@ -465,11 +571,24 @@ const TournamentScreen = ({ tournament, setTournament, showAlert, setScreen }) =
         {/* Round Info */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-lg text-center">
             <h2 className="text-2xl font-bold text-white">{getRoundTitle()}</h2>
-            {tournament.currentRound === 1 && (
-                <p className="text-blue-100 mt-1">All teams compete - Top 4 advance to Round 2</p>
-            )}
-            {tournament.currentRound === 2 && (
-                <p className="text-blue-100 mt-1">Championship Round</p>
+            {tournament.format === 'league' ? (
+                <>
+                    {tournament.currentRound === 1 && (
+                        <p className="text-blue-100 mt-1">Every team plays every other team once</p>
+                    )}
+                    {tournament.currentRound === 2 && (
+                        <p className="text-blue-100 mt-1">Every team plays every other team again</p>
+                    )}
+                </>
+            ) : (
+                <>
+                    {tournament.currentRound === 1 && (
+                        <p className="text-blue-100 mt-1">All teams compete - Top 4 advance to Round 2</p>
+                    )}
+                    {tournament.currentRound === 2 && (
+                        <p className="text-blue-100 mt-1">Championship Round</p>
+                    )}
+                </>
             )}
         </div>
 
