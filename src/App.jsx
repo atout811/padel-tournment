@@ -145,6 +145,45 @@ const PlayerSetupScreen = ({ showAlert, setTournament, setScreen }) => {
     setPlayers(players.filter(p => p !== nameToRemove));
   };
 
+  // Optimal match shuffling to prevent consecutive team appearances
+  const shuffleMatchesOptimally = (matches) => {
+    if (matches.length <= 1) return matches;
+    
+    const result = [];
+    const remaining = [...matches];
+    
+    // Start with a random match
+    const firstMatchIndex = Math.floor(Math.random() * remaining.length);
+    result.push(remaining.splice(firstMatchIndex, 1)[0]);
+    
+    while (remaining.length > 0) {
+      const lastMatch = result[result.length - 1];
+      const lastTeams = [lastMatch.teamA.id, lastMatch.teamB.id];
+      
+      // Find matches that don't involve the teams from the last match
+      let availableMatches = remaining.filter(match => 
+        !lastTeams.includes(match.teamA.id) && !lastTeams.includes(match.teamB.id)
+      );
+      
+      // If no non-conflicting matches available, just pick any remaining match
+      if (availableMatches.length === 0) {
+        availableMatches = remaining;
+      }
+      
+      // Pick a random match from available options
+      const selectedIndex = Math.floor(Math.random() * availableMatches.length);
+      const selectedMatch = availableMatches[selectedIndex];
+      
+      // Remove the selected match from remaining
+      const indexInRemaining = remaining.indexOf(selectedMatch);
+      remaining.splice(indexInRemaining, 1);
+      
+      result.push(selectedMatch);
+    }
+    
+    return result;
+  };
+
   const generateMatches = (teams, format) => {
     const matches = [];
     let matchId = 0;
@@ -152,9 +191,10 @@ const PlayerSetupScreen = ({ showAlert, setTournament, setScreen }) => {
     if (format === 'league') {
       // League format: Every team plays every other team twice
       for (let round = 1; round <= 2; round++) {
+        const roundMatches = [];
         for (let i = 0; i < teams.length; i++) {
           for (let j = i + 1; j < teams.length; j++) {
-            matches.push({
+            roundMatches.push({
               id: `round${round}_match_${matchId++}`,
               round: round,
               teamA: teams[i],
@@ -164,12 +204,16 @@ const PlayerSetupScreen = ({ showAlert, setTournament, setScreen }) => {
             });
           }
         }
+        // Shuffle matches within each round to distribute teams more evenly
+        const shuffledRoundMatches = shuffleMatchesOptimally(roundMatches);
+        matches.push(...shuffledRoundMatches);
       }
     } else {
       // Cup format: Round-robin then elimination
+      const roundMatches = [];
       for (let i = 0; i < teams.length; i++) {
         for (let j = i + 1; j < teams.length; j++) {
-          matches.push({
+          roundMatches.push({
             id: `round1_match_${i}_${j}`,
             round: 1,
             teamA: teams[i],
@@ -179,6 +223,9 @@ const PlayerSetupScreen = ({ showAlert, setTournament, setScreen }) => {
           });
         }
       }
+      // Shuffle matches optimally to prevent consecutive team matches
+      const shuffledMatches = shuffleMatchesOptimally(roundMatches);
+      matches.push(...shuffledMatches);
     }
     
     return matches;
@@ -550,11 +597,29 @@ const TournamentScreen = ({ tournament, setTournament, showAlert, setScreen }) =
     );
     
     const currentMatch = pendingMatches[0];
-    // Shuffle upcoming matches for randomness - brilliant suggestion!
-    const upcomingMatches = useMemo(() => 
-        [...pendingMatches.slice(1)].sort(() => Math.random() - 0.5), 
-        [pendingMatches]
-    );
+    // Optimally shuffle upcoming matches to prevent consecutive team appearances
+    const upcomingMatches = useMemo(() => {
+        const upcoming = pendingMatches.slice(1);
+        if (upcoming.length <= 1) return upcoming;
+        
+        // If there's a current match, avoid immediate conflicts with it
+        if (currentMatch) {
+            const currentTeams = [currentMatch.teamA.id, currentMatch.teamB.id];
+            const nonConflicting = upcoming.filter(match => 
+                !currentTeams.includes(match.teamA.id) && !currentTeams.includes(match.teamB.id)
+            );
+            const conflicting = upcoming.filter(match => 
+                currentTeams.includes(match.teamA.id) || currentTeams.includes(match.teamB.id)
+            );
+            
+            // Start with non-conflicting matches, then add conflicting ones
+            return [...nonConflicting.sort(() => Math.random() - 0.5), 
+                    ...conflicting.sort(() => Math.random() - 0.5)];
+        }
+        
+        // If no current match, just do a simple shuffle
+        return [...upcoming].sort(() => Math.random() - 0.5);
+    }, [pendingMatches, currentMatch]);
 
     // Check if tournament is completely finished
     const isTournamentFinished = tournament.format === 'league' ?
