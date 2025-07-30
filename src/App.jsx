@@ -136,57 +136,43 @@ const PlayerSetupScreen = ({ showAlert, setTournament, setScreen }) => {
     setPlayers(players.filter(p => p !== nameToRemove));
   };
 
-  const shuffleMatchesForFairness = (allMatches, teams) => {
-    // First, shuffle all matches randomly
-    const shuffled = [...allMatches].sort(() => Math.random() - 0.5);
+  const generateMatches = (teams, format) => {
+    const matches = [];
+    let matchId = 0;
     
-    // Try to reorder to minimize consecutive games for teams
-    const result = [];
-    const teamLastMatchIndex = new Map();
-    
-    // Initialize team tracking
-    teams.forEach(team => teamLastMatchIndex.set(team.id, -1));
-    
-    // Sort matches by trying to give teams breaks between games
-    for (let i = 0; i < shuffled.length; i++) {
-      let bestMatch = null;
-      let bestIndex = -1;
-      let bestScore = -1;
-      
-      // Find the match that gives the most fair distribution
-      for (let j = 0; j < shuffled.length; j++) {
-        if (shuffled[j] === null) continue;
-        
-        const match = shuffled[j];
-        const teamALastIndex = teamLastMatchIndex.get(match.teamA.id);
-        const teamBLastIndex = teamLastMatchIndex.get(match.teamB.id);
-        
-        // Calculate score based on how long since teams last played
-        const teamAGap = i - teamALastIndex;
-        const teamBGap = i - teamBLastIndex;
-        const score = Math.min(teamAGap, teamBGap);
-        
-        if (score > bestScore) {
-          bestScore = score;
-          bestMatch = match;
-          bestIndex = j;
+    if (format === 'league') {
+      // League format: Every team plays every other team twice
+      for (let round = 1; round <= 2; round++) {
+        for (let i = 0; i < teams.length; i++) {
+          for (let j = i + 1; j < teams.length; j++) {
+            matches.push({
+              id: `round${round}_match_${matchId++}`,
+              round: round,
+              teamA: teams[i],
+              teamB: teams[j],
+              winnerId: null,
+              status: 'pending',
+            });
+          }
         }
       }
-      
-      if (bestMatch) {
-        result.push(bestMatch);
-        teamLastMatchIndex.set(bestMatch.teamA.id, i);
-        teamLastMatchIndex.set(bestMatch.teamB.id, i);
-        shuffled[bestIndex] = null; // Mark as used
+    } else {
+      // Cup format: Round-robin then elimination
+      for (let i = 0; i < teams.length; i++) {
+        for (let j = i + 1; j < teams.length; j++) {
+          matches.push({
+            id: `round1_match_${i}_${j}`,
+            round: 1,
+            teamA: teams[i],
+            teamB: teams[j],
+            winnerId: null,
+            status: 'pending',
+          });
+        }
       }
     }
     
-    // Add any remaining matches (shouldn't happen, but safety check)
-    shuffled.forEach(match => {
-      if (match !== null) result.push(match);
-    });
-    
-    return result;
+    return matches;
   };
 
   const handleCreateTournament = async () => {
@@ -216,52 +202,9 @@ const PlayerSetupScreen = ({ showAlert, setTournament, setScreen }) => {
     
     const substitute = null; // No longer needed since substitute is now a team
 
-    // Create matches based on tournament format
-    let matches = [];
-    let maxRounds = 2;
-
-    if (tournamentFormat === 'league') {
-        // League format: Every team plays every other team twice
-        let allMatches = [];
-        let matchId = 0;
-        
-        // Generate all matches for both rounds
-        for (let round = 1; round <= 2; round++) {
-            for (let i = 0; i < teams.length; i++) {
-                for (let j = i + 1; j < teams.length; j++) {
-                    allMatches.push({
-                        id: `round${round}_match_${matchId++}`,
-                        round: round,
-                        teamA: teams[i],
-                        teamB: teams[j],
-                        winnerId: null,
-                        status: 'pending',
-                    });
-                }
-            }
-        }
-        
-        // Shuffle matches to distribute them more evenly
-        matches = shuffleMatchesForFairness(allMatches, teams);
-    } else {
-        // Cup format: Round-robin then elimination
-        let round1Matches = [];
-        for (let i = 0; i < teams.length; i++) {
-            for (let j = i + 1; j < teams.length; j++) {
-                round1Matches.push({
-                    id: `round1_match_${i}_${j}`,
-                    round: 1,
-                    teamA: teams[i],
-                    teamB: teams[j],
-                    winnerId: null,
-                    status: 'pending',
-                });
-            }
-        }
-        
-        // Apply fair shuffling to Cup format round-robin as well
-        matches = shuffleMatchesForFairness(round1Matches, teams);
-    }
+    // Create matches using simple generation
+    const matches = generateMatches(teams, tournamentFormat);
+    const maxRounds = 2;
 
     const newTournament = { 
         players, 
@@ -595,7 +538,11 @@ const TournamentScreen = ({ tournament, setTournament, showAlert, setScreen }) =
     );
     
     const currentMatch = pendingMatches[0];
-    const upcomingMatches = pendingMatches.slice(1);
+    // Shuffle upcoming matches for randomness - brilliant suggestion!
+    const upcomingMatches = useMemo(() => 
+        [...pendingMatches.slice(1)].sort(() => Math.random() - 0.5), 
+        [pendingMatches]
+    );
 
     // Check if tournament is completely finished
     const isTournamentFinished = tournament.format === 'league' ?
