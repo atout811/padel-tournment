@@ -107,8 +107,17 @@ export default function App() {
 // --- Screens and Components ---
 
 const Header = () => (
-  <header className="p-4 bg-black rounded-t-lg border-b border-gray-700 text-center">
-    <h1 className="text-2xl md:text-3xl font-bold">🏆 Padel Tournament Pro 🏆</h1>
+  <header className="p-6 bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 rounded-t-lg border-b-2 border-blue-500 text-center shadow-lg">
+    <div className="flex items-center justify-center space-x-3 mb-2">
+      <span className="text-3xl">🎾</span>
+      <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent">
+        Padel Tournament Pro
+      </h1>
+      <span className="text-3xl">🎾</span>
+    </div>
+    <p className="text-blue-200 text-sm md:text-base font-medium">
+      🏆 Organize • Compete • Champion 🏆
+    </p>
   </header>
 );
 
@@ -253,9 +262,12 @@ const PlayerSetupScreen = ({ showAlert, setTournament, setScreen }) => {
         </button>
       </div>
       <div className="space-y-2 mb-6">
-        {players.length > 0 ? players.map(item => (
+        {players.length > 0 ? players.map((item, index) => (
           <div key={item} className="flex justify-between items-center bg-gray-700 p-3 rounded-lg">
-            <span className="text-lg">{item}</span>
+            <span className="text-lg">
+              <span className="text-blue-400 font-semibold mr-2">#{index + 1}</span>
+              {item}
+            </span>
             <button onClick={() => handleRemovePlayer(item)}>❌</button>
           </div>
         )) : <p className="text-gray-400 text-center">No players added yet.</p>}
