@@ -922,9 +922,22 @@ const EditTeamsModal = ({ tournament, setTournament, onClose, showAlert }) => {
             return;
         }
 
+        // Update all matches to reference the new team objects
+        const updatedMatches = tournament.matches.map(match => {
+            const updatedTeamA = editableTeams.find(team => team.id === match.teamA.id);
+            const updatedTeamB = editableTeams.find(team => team.id === match.teamB.id);
+            
+            return {
+                ...match,
+                teamA: updatedTeamA || match.teamA,
+                teamB: updatedTeamB || match.teamB
+            };
+        });
+
         const updatedTournament = {
             ...tournament,
-            teams: editableTeams
+            teams: editableTeams,
+            matches: updatedMatches
         };
 
         try {
