@@ -682,7 +682,7 @@ const TournamentScreen = ({ tournament, setTournament, showAlert, setScreen }) =
                             </span>
                             <span className="flex-grow">{team.players.join(' & ')}</span>
                             <span className="font-bold text-green-400">{team.points} Points</span>
-                            {isTop4 && tournament.currentRound === 1 && (
+                            {isTop4 && tournament.currentRound === 1 && tournament.format !== 'league' && (
                                 <span className="ml-2 text-green-300 text-sm">✓ Qualified</span>
                             )}
                         </div>
