@@ -1,10 +1,23 @@
 export const STORAGE_KEY = 'padel-tournament-data';
 export const USER_ID_KEY = 'padel-tournament-user-id';
 
+const isUuid = (value) => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+const createUuid = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const rand = (Math.random() * 16) | 0;
+    const value = char === 'x' ? rand : (rand & 0x3) | 0x8;
+    return value.toString(16);
+  });
+};
+
 export const getOrCreateUserId = () => {
   let userId = localStorage.getItem(USER_ID_KEY);
-  if (!userId) {
-    userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  if (!isUuid(userId)) {
+    userId = createUuid();
     localStorage.setItem(USER_ID_KEY, userId);
   }
   return userId;
@@ -39,5 +52,3 @@ export const deleteTournamentData = () => {
     return false;
   }
 };
-
-

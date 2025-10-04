@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { saveTournamentData } from '../../utils/storage';
+import { updateTournamentRecord } from '../../utils/tournamentService';
 
 export default function EditTeamsModal({ tournament, setTournament, onClose, showAlert }) {
   const [editableTeams, setEditableTeams] = useState(tournament.teams.map((team) => ({ ...team, players: [...team.players] })));
   const [availablePlayers] = useState(tournament.players);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handlePlayerChange = (teamIndex, playerIndex, newPlayer) => {
     if (!newPlayer) return;
@@ -43,17 +44,16 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
     });
     const updatedTournament = { ...tournament, teams: editableTeams, matches: updatedMatches };
     try {
-      const success = saveTournamentData(updatedTournament);
-      if (success) {
-        setTournament(updatedTournament);
-        onClose();
-        showAlert('Success', 'Teams updated successfully!');
-      } else {
-        showAlert('Error', 'Could not save team changes. Please try again.');
-      }
+      setIsSaving(true);
+      const savedTournament = await updateTournamentRecord(updatedTournament);
+      setTournament(savedTournament);
+      onClose();
+      showAlert('Success', 'Teams updated successfully!');
     } catch (error) {
       console.error('Error saving team changes:', error);
       showAlert('Error', 'Could not save team changes. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -82,7 +82,7 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
         </div>
         <div className="flex gap-4">
           <button onClick={onClose} className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">Cancel</button>
-          <button onClick={saveTeamChanges} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">Save Changes</button>
+          <button onClick={saveTeamChanges} disabled={isSaving} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed">{isSaving ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>

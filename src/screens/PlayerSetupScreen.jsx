@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { saveTournamentData } from '../utils/storage';
+import { createTournamentRecord } from '../utils/tournamentService';
 import { distributeMatchesFairly, generateLeagueMatches } from '../utils/scheduling';
 
 export default function PlayerSetupScreen({ showAlert, setTournament, setScreen }) {
   const [players, setPlayers] = useState([]);
   const [playerName, setPlayerName] = useState('');
   const [tournamentFormat, setTournamentFormat] = useState('cup');
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleAddPlayer = () => {
     if (playerName.trim() && !players.includes(playerName.trim())) {
@@ -24,11 +25,10 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
     const matches = [];
     if (format === 'league') {
       return generateLeagueMatches(teams);
-    } else {
-      for (let i = 0; i < teams.length; i++) {
-        for (let j = i + 1; j < teams.length; j++) {
-          matches.push({ id: `round1_match_${i}_${j}`, round: 1, teamA: teams[i], teamB: teams[j], winnerId: null, status: 'pending' });
-        }
+    }
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        matches.push({ id: `round1_match_${i}_${j}`, round: 1, teamA: teams[i], teamB: teams[j], winnerId: null, status: 'pending' });
       }
     }
     return distributeMatchesFairly(matches);
@@ -39,6 +39,8 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
       showAlert('Not Enough Players', 'You need at least 4 players to start a tournament.');
       return;
     }
+
+    setIsSaving(true);
 
     const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
     const teams = [];
@@ -66,16 +68,14 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
     };
 
     try {
-      const success = saveTournamentData(newTournament);
-      if (success) {
-        setTournament(newTournament);
-        setScreen('tournament');
-      } else {
-        showAlert('Error', 'Could not save the tournament. Please try again.');
-      }
+      const createdTournament = await createTournamentRecord(newTournament);
+      setTournament(createdTournament);
+      setScreen('tournament');
     } catch (error) {
       console.error('Error creating tournament:', error);
       showAlert('Error', 'Could not save the tournament. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -84,7 +84,9 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
       <h2 className="text-2xl font-bold mb-4">Add Players</h2>
       <div className="flex gap-2 mb-4">
         <input type="text" className="flex-grow bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter player name" value={playerName} onChange={(e) => setPlayerName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { handleAddPlayer(); } }} />
-        <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors" onClick={handleAddPlayer}>Add</button>
+        <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors" onClick={handleAddPlayer} disabled={isSaving}>
+          Add
+        </button>
       </div>
       <div className="space-y-2 mb-6">
         {players.length > 0 ? (
@@ -94,7 +96,9 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
                 <span className="text-blue-400 font-semibold mr-2">#{index + 1}</span>
                 {item}
               </span>
-              <button onClick={() => handleRemovePlayer(item)}>❌</button>
+              <button onClick={() => handleRemovePlayer(item)} disabled={isSaving} className="text-red-400 hover:text-red-300 text-xl font-bold">
+                ×
+              </button>
             </div>
           ))
         ) : (
@@ -105,25 +109,25 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
         <h3 className="text-xl font-bold mb-3">Tournament Format</h3>
         <div className="space-y-3">
           <div className="flex items-center">
-            <input type="radio" id="cup" name="tournamentFormat" value="cup" checked={tournamentFormat === 'cup'} onChange={(e) => setTournamentFormat(e.target.value)} className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500" />
+            <input type="radio" id="cup" name="tournamentFormat" value="cup" checked={tournamentFormat === 'cup'} onChange={(e) => setTournamentFormat(e.target.value)} className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500" disabled={isSaving} />
             <label htmlFor="cup" className="ml-3 flex-1">
-              <div className="text-lg font-medium">🏆 Cup Format</div>
+              <div className="text-lg font-medium"> Cup Format</div>
               <div className="text-gray-400 text-sm">Round-robin + elimination semifinals (current)</div>
             </label>
           </div>
           <div className="flex items-center">
-            <input type="radio" id="league" name="tournamentFormat" value="league" checked={tournamentFormat === 'league'} onChange={(e) => setTournamentFormat(e.target.value)} className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500" />
+            <input type="radio" id="league" name="tournamentFormat" value="league" checked={tournamentFormat === 'league'} onChange={(e) => setTournamentFormat(e.target.value)} className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 focus:ring-blue-500" disabled={isSaving} />
             <label htmlFor="league" className="ml-3 flex-1">
-              <div className="text-lg font-medium">🏟️ League Format</div>
+              <div className="text-lg font-medium">League Format</div>
               <div className="text-gray-400 text-sm">Every team plays every other team twice</div>
             </label>
           </div>
         </div>
       </div>
 
-      <button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors" onClick={handleCreateTournament}>Create Tournament</button>
+      <button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed" onClick={handleCreateTournament} disabled={isSaving}>
+        {isSaving ? 'Creating...' : 'Create Tournament'}
+      </button>
     </div>
   );
 }
-
-

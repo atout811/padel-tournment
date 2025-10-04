@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { deleteTournamentData, saveTournamentData } from '../utils/storage';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { removeTournamentRecord, updateTournamentRecord } from '../utils/tournamentService';
 import { distributeMatchesFairly } from '../utils/scheduling';
 import CurrentMatchCard from '../components/CurrentMatchCard';
 import MatchCard from '../components/MatchCard';
@@ -7,10 +7,40 @@ import { ConfirmationModal } from '../components/Alert';
 import EditTeamsModal from '../screens/modals/EditTeamsModal';
 import GameHistoryModal from '../screens/modals/GameHistoryModal';
 
-export default function TournamentScreen({ tournament, setTournament, showAlert, setScreen }) {
+export default function TournamentScreen({ tournament, setTournament, showAlert, setScreen, shareLink }) {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showEditTeams, setShowEditTeams] = useState(false);
   const [showGameHistory, setShowGameHistory] = useState(false);
+  const [isCopyingLink, setIsCopyingLink] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState('');
+
+  const handleCopyShareLink = async () => {
+    if (!shareLink) {
+      return;
+    }
+    if (!navigator?.clipboard?.writeText) {
+      showAlert('Copy Unavailable', 'Your browser does not support automatic copying. Please copy the link manually.');
+      return;
+    }
+    try {
+      setIsCopyingLink(true);
+      await navigator.clipboard.writeText(shareLink);
+      setCopyFeedback('Link copied!');
+      setTimeout(() => setCopyFeedback(''), 2000);
+    } catch (error) {
+      console.error('Failed to copy share link:', error);
+      setCopyFeedback('');
+      showAlert('Copy Failed', 'Unable to copy the share link automatically. Please copy it manually.');
+    } finally {
+      setIsCopyingLink(false);
+    }
+  };
+
+  useEffect(() => {
+    setCopyFeedback('');
+    setIsCopyingLink(false);
+  }, [shareLink]);
+
 
   const handleDeclareWinner = async (match, winnerId) => {
     const updatedTournament = JSON.parse(JSON.stringify(tournament));
@@ -26,7 +56,6 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       updatedTournament.teams[teamIndex].points += 3;
     }
 
-    // Clear currentMatchId if we just completed it
     if (updatedTournament.currentMatchId === match.id) {
       const nextPendingInRound = updatedTournament.matches.find(
         (m) => m.round === updatedTournament.currentRound && m.status === 'pending' && m.id !== match.id
@@ -37,20 +66,16 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     const currentRoundMatches = updatedTournament.matches.filter((m) => m.round === updatedTournament.currentRound);
     const completedCurrentRound = currentRoundMatches.filter((m) => m.status === 'completed');
 
-    if (completedCurrentRound.length === currentRoundMatches.length && updatedTournament.currentRound === 1) {
-      if (updatedTournament.format === 'league') {
-        setTimeout(() => advanceToLeagueRound2(updatedTournament), 1000);
-      } else {
-        setTimeout(() => advanceToRound2(updatedTournament), 1000);
-      }
-    }
-
     try {
-      const success = saveTournamentData(updatedTournament);
-      if (success) {
-        setTournament(updatedTournament);
-      } else {
-        showAlert('Error', 'Could not save the score. Please try again.');
+      const savedTournament = await updateTournamentRecord(updatedTournament);
+      setTournament(savedTournament);
+
+      if (completedCurrentRound.length === currentRoundMatches.length && savedTournament.currentRound === 1) {
+        if (savedTournament.format === 'league') {
+          setTimeout(() => advanceToLeagueRound2(savedTournament), 1000);
+        } else {
+          setTimeout(() => advanceToRound2(savedTournament), 1000);
+        }
       }
     } catch (error) {
       console.error('Error saving score:', error);
@@ -58,13 +83,14 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     }
   };
 
-  const setAsCurrentMatch = (match) => {
+  const setAsCurrentMatch = async (match) => {
     const updatedTournament = JSON.parse(JSON.stringify(tournament));
     updatedTournament.currentMatchId = match.id;
-    const success = saveTournamentData(updatedTournament);
-    if (success) {
-      setTournament(updatedTournament);
-    } else {
+    try {
+      const savedTournament = await updateTournamentRecord(updatedTournament);
+      setTournament(savedTournament);
+    } catch (error) {
+      console.error('Error updating current match:', error);
       showAlert('Error', 'Could not set the current match. Please try again.');
     }
   };
@@ -85,13 +111,9 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     updatedTournament.currentMatchId = semifinal1.id;
 
     try {
-      const success = saveTournamentData(updatedTournament);
-      if (success) {
-        setTournament(updatedTournament);
-        showAlert('Round 2!', 'Top 4 teams advance to semifinals!');
-      } else {
-        showAlert('Error', 'Could not advance to Round 2. Please try again.');
-      }
+      const savedTournament = await updateTournamentRecord(updatedTournament);
+      setTournament(savedTournament);
+      showAlert('Round 2!', 'Top 4 teams advance to semifinals!');
     } catch (error) {
       console.error('Error advancing to Round 2:', error);
       showAlert('Error', 'Could not advance to Round 2. Please try again.');
@@ -104,42 +126,37 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     const firstPendingRound2 = updatedTournament.matches.find((m) => m.round === 2 && m.status === 'pending');
     updatedTournament.currentMatchId = firstPendingRound2 ? firstPendingRound2.id : null;
     try {
-      const success = saveTournamentData(updatedTournament);
-      if (success) {
-        setTournament(updatedTournament);
-        showAlert('Round 2!', 'Starting second round of league play!');
-      } else {
-        showAlert('Error', 'Could not advance to Round 2. Please try again.');
-      }
+      const savedTournament = await updateTournamentRecord(updatedTournament);
+      setTournament(savedTournament);
+      showAlert('Round 2!', 'Starting second round of league play!');
     } catch (error) {
       console.error('Error advancing to League Round 2:', error);
       showAlert('Error', 'Could not advance to Round 2. Please try again.');
     }
   };
 
-  const createFinals = async (tournamentData) => {
-    const updatedTournament = JSON.parse(JSON.stringify(tournamentData));
-    const semifinalMatches = updatedTournament.matches.filter((m) => m.round === 2 && m.matchType === 'semifinal' && m.status === 'completed');
-    if (semifinalMatches.length !== 2) return;
-    const semifinal1Winner = updatedTournament.teams.find((t) => t.id === semifinalMatches[0].winnerId);
-    const semifinal2Winner = updatedTournament.teams.find((t) => t.id === semifinalMatches[1].winnerId);
-    if (!semifinal1Winner || !semifinal2Winner) return;
-    const finals = { id: 'round2_finals', round: 2, matchType: 'final', teamA: semifinal1Winner, teamB: semifinal2Winner, winnerId: null, status: 'pending' };
-    updatedTournament.matches.push(finals);
-    updatedTournament.currentMatchId = finals.id;
-    try {
-      const success = saveTournamentData(updatedTournament);
-      if (success) {
-        setTournament(updatedTournament);
+  const createFinals = useCallback(
+    async (tournamentData) => {
+      const updatedTournament = JSON.parse(JSON.stringify(tournamentData));
+      const semifinalMatches = updatedTournament.matches.filter((m) => m.round === 2 && m.matchType === 'semifinal' && m.status === 'completed');
+      if (semifinalMatches.length !== 2) return;
+      const semifinal1Winner = updatedTournament.teams.find((t) => t.id === semifinalMatches[0].winnerId);
+      const semifinal2Winner = updatedTournament.teams.find((t) => t.id === semifinalMatches[1].winnerId);
+      if (!semifinal1Winner || !semifinal2Winner) return;
+      const finals = { id: 'round2_finals', round: 2, matchType: 'final', teamA: semifinal1Winner, teamB: semifinal2Winner, winnerId: null, status: 'pending' };
+      updatedTournament.matches.push(finals);
+      updatedTournament.currentMatchId = finals.id;
+      try {
+        const savedTournament = await updateTournamentRecord(updatedTournament);
+        setTournament(savedTournament);
         showAlert('Finals!', 'Championship match is ready!');
-      } else {
+      } catch (error) {
+        console.error('Error creating finals:', error);
         showAlert('Error', 'Could not create finals. Please try again.');
       }
-    } catch (error) {
-      console.error('Error creating finals:', error);
-      showAlert('Error', 'Could not create finals. Please try again.');
-    }
-  };
+    },
+    [setTournament, showAlert]
+  );
 
   useEffect(() => {
     if (tournament.currentRound === 2) {
@@ -150,18 +167,14 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         setTimeout(() => createFinals(tournament), 1000);
       }
     }
-  }, [tournament]);
+  }, [tournament, createFinals]);
 
   const confirmEndTournament = async () => {
     setShowEndConfirm(false);
     try {
-      const success = deleteTournamentData();
-      if (success) {
-        setTournament(null);
-        setScreen('setup');
-      } else {
-        showAlert('Error', 'Could not delete tournament.');
-      }
+      await removeTournamentRecord(tournament.id);
+      setTournament(null);
+      setScreen('setup');
     } catch (error) {
       console.error('Error deleting tournament:', error);
       showAlert('Error', 'Could not delete tournament.');
@@ -220,6 +233,27 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
           </>
         )}
       </div>
+
+      {shareLink && (
+        <div className="bg-gray-900 p-4 rounded-lg flex flex-col md:flex-row md:items-center gap-3">
+          <div className="flex-1">
+            <h2 className="text-xl font-bold">Share Tournament</h2>
+            <p className="text-sm text-gray-300">Share this link so everyone sees live updates.</p>
+            <p className="text-xs text-gray-500 break-all mt-2">{shareLink}</p>
+          </div>
+          <div className="flex flex-col items-stretch gap-2 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={handleCopyShareLink}
+              disabled={isCopyingLink}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-lg transition-colors"
+            >
+              {isCopyingLink ? 'Copying...' : 'Copy Link'}
+            </button>
+            {copyFeedback && <span className="text-xs text-green-400 text-center">{copyFeedback}</span>}
+          </div>
+        </div>
+      )}
 
       <div className="bg-gray-900 p-4 rounded-lg">
         <h2 className="text-xl font-bold mb-3">Leaderboard</h2>

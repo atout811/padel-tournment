@@ -1,17 +1,25 @@
-import React from 'react';
-import { saveTournamentData } from '../../utils/storage';
+import React, { useState } from 'react';
+import { updateTournamentRecord } from '../../utils/tournamentService';
 
 export default function GameHistoryModal({ tournament, setTournament, onClose, showAlert }) {
   const completedMatches = tournament.matches.filter((m) => m.status === 'completed');
+  const [updatingMatchId, setUpdatingMatchId] = useState(null);
 
   const handleWinnerChange = async (match, newWinnerId) => {
     const updatedTournament = JSON.parse(JSON.stringify(tournament));
     const matchIndex = updatedTournament.matches.findIndex((m) => m.id === match.id);
     if (matchIndex === -1) return;
-    const oldWinnerId = updatedTournament.matches[matchIndex].winnerId;
+
+    const currentWinnerId = updatedTournament.matches[matchIndex].winnerId || null;
+    if (currentWinnerId === (newWinnerId || null)) {
+      return;
+    }
+
+    setUpdatingMatchId(match.id);
+
+    const oldWinnerId = currentWinnerId;
     updatedTournament.matches[matchIndex].winnerId = newWinnerId || null;
     if (!newWinnerId) {
-      // If resetting winner, also reset status to pending so it can be replayed
       updatedTournament.matches[matchIndex].status = 'pending';
     }
     if (oldWinnerId) {
@@ -28,16 +36,14 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
       }
     }
     try {
-      const success = saveTournamentData(updatedTournament);
-      if (success) {
-        setTournament(updatedTournament);
-        showAlert('Success', 'Match result updated successfully!');
-      } else {
-        showAlert('Error', 'Could not update match result. Please try again.');
-      }
+      const savedTournament = await updateTournamentRecord(updatedTournament);
+      setTournament(savedTournament);
+      showAlert('Success', 'Match result updated successfully!');
     } catch (error) {
       console.error('Error updating match result:', error);
       showAlert('Error', 'Could not update match result. Please try again.');
+    } finally {
+      setUpdatingMatchId(null);
     }
   };
 
@@ -61,7 +67,12 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
                   </div>
                   <div className="border-t border-gray-600 pt-3">
                     <label className="block text-sm font-medium mb-2">Change Winner:</label>
-                    <select value={match.winnerId || ''} onChange={(e) => handleWinnerChange(match, e.target.value)} className="w-full bg-gray-600 text-white p-2 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select
+                      value={match.winnerId || ''}
+                      onChange={(e) => handleWinnerChange(match, e.target.value)}
+                      disabled={updatingMatchId === match.id}
+                      className="w-full bg-gray-600 text-white p-2 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
                       <option value="">No Winner</option>
                       <option value={match.teamA.id}>{match.teamA.players.join(' & ')}</option>
                       <option value={match.teamB.id}>{match.teamB.players.join(' & ')}</option>
