@@ -164,34 +164,52 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
         {hasOddPlayer && <p className="text-sm text-amber-300">Odd player count: the last player will be paired with a substitute slot.</p>}
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <ChoiceCard
-          title="Cup"
-          description="Everyone plays, top 4 go to semifinals and final."
-          selected={tournamentFormat === 'cup'}
-          onClick={() => setTournamentFormat('cup')}
-        />
-        <ChoiceCard
-          title="League"
-          description="Every team plays every other team twice."
-          selected={tournamentFormat === 'league'}
-          onClick={() => setTournamentFormat('league')}
-        />
+      <section className="rounded-lg border border-slate-700 bg-slate-950 p-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-400">Tournament Type</h3>
+            <p className="text-sm text-slate-500">Choose how teams progress.</p>
+          </div>
+          <span className="rounded bg-slate-800 px-2 py-1 text-xs font-bold text-slate-400">1 of 2</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ChoiceCard
+            title="Cup"
+            description="Top 4 go to semifinals and final."
+            selected={tournamentFormat === 'cup'}
+            onClick={() => setTournamentFormat('cup')}
+          />
+          <ChoiceCard
+            title="League"
+            description="Every team plays every other team twice."
+            selected={tournamentFormat === 'league'}
+            onClick={() => setTournamentFormat('league')}
+          />
+        </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <ChoiceCard
-          title="Standard"
-          description="Best of 3 casual sets, advantage at deuce."
-          selected={scoringPreset === 'standard'}
-          onClick={() => applyPreset('standard')}
-        />
-        <ChoiceCard
-          title="Fast"
-          description="One casual set, golden point at deuce."
-          selected={scoringPreset === 'fast'}
-          onClick={() => applyPreset('fast')}
-        />
+      <section className="rounded-lg border border-slate-700 bg-slate-950 p-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-400">Match Style</h3>
+            <p className="text-sm text-slate-500">Pick the rhythm for each matchup.</p>
+          </div>
+          <span className="rounded bg-slate-800 px-2 py-1 text-xs font-bold text-slate-400">1 of 2</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ChoiceCard
+            title="Classic"
+            description="Best of 3 casual sets with advantage."
+            selected={scoringPreset === 'standard'}
+            onClick={() => applyPreset('standard')}
+          />
+          <ChoiceCard
+            title="Quick"
+            description="One casual set with golden point."
+            selected={scoringPreset === 'fast'}
+            onClick={() => applyPreset('fast')}
+          />
+        </div>
       </section>
 
       <section className="rounded-lg border border-slate-700 bg-slate-800 p-4">
@@ -280,12 +298,20 @@ function ChoiceCard({ title, description, selected, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-24 rounded-lg border p-4 text-left transition-colors ${
-        selected ? 'border-emerald-400 bg-emerald-500/10' : 'border-slate-700 bg-slate-800 hover:border-slate-500'
+      className={`relative min-h-24 overflow-hidden rounded-lg border p-4 text-left transition-colors ${
+        selected ? 'border-emerald-300 bg-emerald-500/15 shadow-[0_0_0_1px_rgba(110,231,183,0.35)]' : 'border-slate-700 bg-slate-800 hover:border-slate-500'
       }`}
     >
+      {selected && <span className="absolute inset-y-0 left-0 w-1.5 bg-emerald-400" />}
+      <span
+        className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full border text-sm font-black ${
+          selected ? 'border-emerald-300 bg-emerald-400 text-slate-950' : 'border-slate-600 bg-slate-900 text-slate-600'
+        }`}
+      >
+        {selected ? '✓' : ''}
+      </span>
       <span className="block text-lg font-bold text-white">{title}</span>
-      <span className="mt-1 block text-sm text-slate-400">{description}</span>
+      <span className={`mt-1 block pr-8 text-sm ${selected ? 'text-emerald-100' : 'text-slate-400'}`}>{description}</span>
     </button>
   );
 }
