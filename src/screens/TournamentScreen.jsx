@@ -389,7 +389,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       {isTournamentFinished && <FinishedSummary champion={champion} leaderboard={leaderboard} completedMatches={completedMatches} />}
 
       {activeMatches.length > 0 ? (
-        <section className="sticky top-0 z-20 -mx-3 border-y border-emerald-400/40 bg-slate-950 p-3 shadow-2xl sm:static sm:mx-0 sm:rounded-lg sm:border sm:p-4">
+        <section className="-mx-3 border-y border-emerald-400/40 bg-slate-950 p-3 shadow-2xl sm:mx-0 sm:rounded-lg sm:border sm:p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-emerald-300">Active Courts</p>

@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  advancePadelPoint,
+  awardPadelSet,
   createInitialPadelScore,
   formatSetScore,
-  getCurrentSet,
-  getPointLabel,
   getSetsWon,
-  getSetStatusLabel,
   normalizeScoringSettings,
 } from '../utils/padelScoring';
 
@@ -39,12 +36,11 @@ export default function CurrentMatchCard({ match, onDeclareWinner, onScoreChange
     }
   }, [match.id, match.score, settings]);
 
-  const currentSet = getCurrentSet(score);
   const setsWon = getSetsWon(score, match.teamA.id, match.teamB.id);
-  const setStatus = getSetStatusLabel(score);
+  const completedSets = score.sets.filter((set) => set.winnerId);
 
-  const handlePoint = (side) => {
-    const nextScore = advancePadelPoint(score, side, match.teamA.id, match.teamB.id, settings);
+  const handleAwardSet = (side) => {
+    const nextScore = awardPadelSet(score, side, match.teamA.id, match.teamB.id, settings);
     setHistory((historyItems) => [...historyItems, score]);
     setScore(nextScore);
     if (!nextScore.isComplete) {
@@ -82,51 +78,46 @@ export default function CurrentMatchCard({ match, onDeclareWinner, onScoreChange
   return (
     <div className="space-y-4 rounded-lg bg-slate-900">
       <div className="rounded-lg border border-slate-700 bg-slate-950 p-3 text-center">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{setStatus}</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Set Entry</p>
         <p className="mt-1 text-sm font-semibold text-slate-300">
-          Points win sets. First to {settings.setsToWin} set{settings.setsToWin > 1 ? 's' : ''} wins.
+          Tap the team that wins a set. First to {settings.setsToWin} set{settings.setsToWin > 1 ? 's' : ''} wins the match.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
-        <TeamScorePanel
+        <TeamSetPanel
           label="Team A"
           name={getTeamName(match.teamA)}
           setsWon={setsWon.teamA}
-          pointLabel={getPointLabel(currentSet?.teamAPoints || 0, currentSet?.teamBPoints || 0, settings.deuceMode)}
+          targetSets={settings.setsToWin}
           isWinner={score.winnerId === match.teamA.id}
-          onPoint={() => handlePoint('teamA')}
-          disabled={score.isComplete}
+          onAwardSet={() => handleAwardSet('teamA')}
+          disabled={score.isComplete || isSaving}
         />
         <div className="hidden items-center justify-center px-2 text-sm font-black text-slate-500 sm:flex">VS</div>
-        <TeamScorePanel
+        <TeamSetPanel
           label="Team B"
           name={getTeamName(match.teamB)}
           setsWon={setsWon.teamB}
-          pointLabel={getPointLabel(currentSet?.teamBPoints || 0, currentSet?.teamAPoints || 0, settings.deuceMode)}
+          targetSets={settings.setsToWin}
           isWinner={score.winnerId === match.teamB.id}
-          onPoint={() => handlePoint('teamB')}
-          disabled={score.isComplete}
+          onAwardSet={() => handleAwardSet('teamB')}
+          disabled={score.isComplete || isSaving}
         />
       </div>
 
-      <div className="rounded-lg border border-slate-700 bg-slate-950 p-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-semibold text-slate-300">
-            Set {score.currentSetIndex + 1} of {settings.maxSets}
-          </p>
+      {completedSets.length > 0 && (
+        <div className="rounded-lg border border-slate-700 bg-slate-950 p-3">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Sets</p>
           <div className="flex flex-wrap gap-2">
-            {score.sets.map((set, index) => (
-              <span
-                key={index}
-                className={`rounded px-2 py-1 text-xs font-bold ${index === score.currentSetIndex ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-300'}`}
-              >
+            {completedSets.map((set, index) => (
+              <span key={index} className="rounded bg-slate-800 px-2 py-1 text-xs font-bold text-slate-300">
                 S{index + 1}: {formatSetScore(set)}
               </span>
             ))}
           </div>
         </div>
-      </div>
+      )}
 
       {score.isComplete ? (
         <div className="rounded-lg border border-amber-300/60 bg-amber-400/10 p-3 text-center">
@@ -145,40 +136,31 @@ export default function CurrentMatchCard({ match, onDeclareWinner, onScoreChange
         disabled={history.length === 0 || isSaving || score.isComplete}
         className="min-h-12 w-full rounded-lg border border-slate-600 px-4 py-3 font-bold text-slate-200 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Undo Point
+        Undo Set
       </button>
     </div>
   );
 }
 
-function TeamScorePanel({ label, name, setsWon, pointLabel, isWinner, onPoint, disabled }) {
+function TeamSetPanel({ label, name, setsWon, targetSets, isWinner, onAwardSet, disabled }) {
   return (
     <div className={`rounded-lg border p-3 ${isWinner ? 'border-amber-300 bg-amber-400/10' : 'border-slate-700 bg-slate-800'}`}>
       <div className="mb-3">
         <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
         <p className="break-words text-lg font-bold leading-tight text-white">{name}</p>
       </div>
-      <div className="grid grid-cols-2 gap-2 text-center">
-        <ScoreBox label="Points" value={pointLabel} isPrimary />
-        <ScoreBox label="Sets" value={setsWon} />
+      <div className="rounded-lg bg-slate-950 p-4 text-center">
+        <p className="text-5xl font-black tabular-nums text-white">{setsWon}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500">of {targetSets} sets</p>
       </div>
       <button
         type="button"
-        onClick={onPoint}
+        onClick={onAwardSet}
         disabled={disabled}
         className="mt-3 min-h-12 w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-bold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
       >
-        Add Point
+        + Set
       </button>
-    </div>
-  );
-}
-
-function ScoreBox({ label, value, isPrimary = false }) {
-  return (
-    <div className={`rounded-lg bg-slate-950 p-2 ${isPrimary ? 'ring-1 ring-emerald-500/40' : ''}`}>
-      <p className={`${isPrimary ? 'text-3xl' : 'text-2xl'} min-h-10 break-words font-black tabular-nums text-white`}>{value}</p>
-      <p className="text-xs font-semibold text-slate-500">{label}</p>
     </div>
   );
 }
