@@ -58,16 +58,16 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <h3 className="text-xl font-bold mb-4">Edit Teams</h3>
-        <div className="space-y-4 mb-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-3 sm:items-center sm:p-4">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-4 shadow-2xl sm:p-6">
+        <h3 className="mb-4 text-xl font-bold">Edit Teams</h3>
+        <div className="mb-6 space-y-4">
           {editableTeams.map((team, teamIndex) => (
-            <div key={team.id} className="bg-gray-700 p-4 rounded-lg">
-              <h4 className="font-bold mb-2">Team {teamIndex + 1}</h4>
+            <div key={team.id} className="rounded-lg border border-slate-700 bg-slate-800 p-4">
+              <h4 className="mb-2 font-bold">Team {teamIndex + 1}</h4>
               <div className="space-y-2">
                 {team.players.map((player, playerIndex) => (
-                  <select key={playerIndex} value={player} onChange={(e) => handlePlayerChange(teamIndex, playerIndex, e.target.value)} className="w-full bg-gray-600 text-white p-2 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <select key={playerIndex} value={player} onChange={(e) => handlePlayerChange(teamIndex, playerIndex, e.target.value)} className="min-h-11 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30">
                     {availablePlayers.map((p) => (
                       <option key={p} value={p}>
                         {p}
@@ -80,9 +80,9 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
             </div>
           ))}
         </div>
-        <div className="flex gap-4">
-          <button onClick={onClose} className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">Cancel</button>
-          <button onClick={saveTeamChanges} disabled={isSaving} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed">{isSaving ? 'Saving...' : 'Save Changes'}</button>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button onClick={onClose} className="min-h-11 rounded-lg bg-slate-700 py-2 font-bold text-white hover:bg-slate-600">Cancel</button>
+          <button onClick={saveTeamChanges} disabled={isSaving} className="min-h-11 rounded-lg bg-emerald-600 py-2 font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>

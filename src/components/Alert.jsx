@@ -1,10 +1,10 @@
 export function CustomAlert({ title, message, onClose }) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-sm text-center">
-        <h3 className="text-xl font-bold mb-2">{title}</h3>
-        <p className="text-gray-300 mb-4">{message}</p>
-        <button onClick={onClose} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+      <div className="w-full max-w-sm rounded-lg border border-slate-700 bg-slate-900 p-5 text-center shadow-2xl">
+        <h3 className="mb-2 text-xl font-bold">{title}</h3>
+        <p className="mb-4 text-slate-300">{message}</p>
+        <button onClick={onClose} className="min-h-11 rounded-lg bg-sky-600 px-8 py-2 font-bold text-white hover:bg-sky-500">
           OK
         </button>
       </div>
@@ -14,13 +14,13 @@ export function CustomAlert({ title, message, onClose }) {
 
 export function ConfirmationModal({ title, message, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-sm text-center">
-        <h3 className="text-xl font-bold mb-2">{title}</h3>
-        <p className="text-gray-300 mb-4">{message}</p>
-        <div className="flex gap-4">
-          <button onClick={onCancel} className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">Cancel</button>
-          <button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">Confirm</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+      <div className="w-full max-w-sm rounded-lg border border-slate-700 bg-slate-900 p-5 text-center shadow-2xl">
+        <h3 className="mb-2 text-xl font-bold">{title}</h3>
+        <p className="mb-4 text-slate-300">{message}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button onClick={onCancel} className="min-h-11 w-full rounded-lg bg-slate-700 py-2 font-bold text-white hover:bg-slate-600">Cancel</button>
+          <button onClick={onConfirm} className="min-h-11 w-full rounded-lg bg-red-600 py-2 font-bold text-white hover:bg-red-500">Confirm</button>
         </div>
       </div>
     </div>
