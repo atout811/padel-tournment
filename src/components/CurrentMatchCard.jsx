@@ -31,11 +31,6 @@ export default function CurrentMatchCard({ match, onDeclareWinner }) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-[#BDEDEA] bg-[#E6FAF8] px-4 py-3">
-        <p className="text-sm font-black text-[#074A47]">Choose the match winner</p>
-        <p className="mt-1 text-sm font-semibold text-[#0E706B]">Large buttons are intentional for quick scoring courtside.</p>
-      </div>
-
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
         <WinnerPanel
           label="Team A"
@@ -74,6 +69,7 @@ function WinnerPanel({ label, name, isWinner, onChoose, disabled }) {
       }`}
     >
       <span className="text-xs font-black uppercase tracking-[0.18em] text-[#65736A]">{label}</span>
+      <span className="mx-auto mt-3 grid h-12 w-12 place-items-center rounded-2xl bg-[#E8F6EF] text-sm font-black text-[#146C52]">{getInitials(name)}</span>
       <span className="mx-auto mt-3 block max-w-[18rem] break-words text-2xl font-black leading-tight text-[#18211C]">{name}</span>
       <span
         className={`mx-auto mt-5 block w-full rounded-2xl px-4 py-3 text-base font-black ${
@@ -84,4 +80,14 @@ function WinnerPanel({ label, name, isWinner, onChoose, disabled }) {
       </span>
     </button>
   );
+}
+
+function getInitials(name) {
+  return name
+    .split('&')
+    .map((part) => part.trim()[0])
+    .filter(Boolean)
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 }

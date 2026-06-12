@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { createTournamentRecord } from '../utils/tournamentService';
-import { distributeMatchesFairly, generateLeagueMatches } from '../utils/scheduling';
+import { generateLeagueMatches, generateRoundRobinRounds } from '../utils/scheduling';
 import { buildScoringSettings } from '../utils/padelScoring';
 import { getSetupStatus, validatePlayerName } from '../utils/tournamentRules';
+import { CheckIcon, CourtIcon, ListIcon, TrophyIcon, UsersIcon, XIcon } from '../components/Icons';
 
 export default function PlayerSetupScreen({ showAlert, setTournament, setScreen }) {
   const [players, setPlayers] = useState([]);
@@ -49,16 +50,22 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   };
 
   const generateMatches = (teams, format) => {
-    const matches = [];
     if (format === 'league') {
       return generateLeagueMatches(teams);
     }
-    for (let i = 0; i < teams.length; i++) {
-      for (let j = i + 1; j < teams.length; j++) {
-        matches.push({ id: `round1_match_${i}_${j}`, round: 1, teamA: teams[i], teamB: teams[j], winnerId: null, status: 'pending' });
-      }
-    }
-    return distributeMatchesFairly(matches);
+
+    let matchId = 0;
+    return generateRoundRobinRounds(teams).flatMap((roundMatches, scheduleRoundIndex) =>
+      roundMatches.map(({ teamA, teamB }) => ({
+        id: `round1_match_${matchId++}`,
+        round: 1,
+        scheduleRound: scheduleRoundIndex + 1,
+        teamA,
+        teamB,
+        winnerId: null,
+        status: 'pending',
+      }))
+    );
   };
 
   const handleCreateTournament = async () => {
@@ -70,7 +77,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
 
     setIsSaving(true);
 
-    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+    const shuffledPlayers = shufflePlayers(players);
     const teams = [];
     for (let i = 0; i < Math.floor(shuffledPlayers.length / 2) * 2; i += 2) {
       teams.push({ id: `team_${i / 2 + 1}`, players: [shuffledPlayers[i], shuffledPlayers[i + 1]], points: 0 });
@@ -111,8 +118,8 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   };
 
   return (
-    <div className="space-y-5 rounded-b-3xl border-x border-b border-[#DDE7DE] bg-white/90 p-4 shadow-xl shadow-[#163B2E]/5 backdrop-blur sm:p-6">
-      <section className="rounded-3xl bg-gradient-to-br from-[#0D3B2E] via-[#146C52] to-[#0E8F8A] p-5 text-white shadow-lg shadow-[#0D3B2E]/15">
+    <div className="space-y-5 rounded-b-3xl border-x border-b border-club-border bg-white/90 p-4 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
+      <section className="rounded-3xl bg-gradient-to-br from-club-greenDeep via-[#146C52] to-club-teal p-5 text-white shadow-lg shadow-club-greenDeep/15">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#CFEFE5]">Padel Tournament Pro</p>
         <h2 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">Set up the next match day</h2>
         <p className="mt-2 max-w-2xl text-sm font-medium text-[#E8F6EF]">
@@ -121,9 +128,9 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
       </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <SummaryTile label="Players" value={players.length} detail={`${setupStatus.minPlayers}+ needed`} />
-        <SummaryTile label="Teams" value={setupStatus.teamCount} detail={hasOddPlayer ? 'includes substitute' : 'paired players'} />
-        <SummaryTile label="Courts" value={courtCount} detail={courtCount === 1 ? 'single court' : `${courtCount} active courts`} />
+        <SummaryTile icon={<UsersIcon />} label="Players" value={players.length} detail={`${setupStatus.minPlayers}+ needed`} />
+        <SummaryTile icon={<UsersIcon />} label="Teams" value={setupStatus.teamCount} detail={hasOddPlayer ? 'includes substitute' : 'paired players'} />
+        <SummaryTile icon={<CourtIcon />} label="Courts" value={courtCount} detail={courtCount === 1 ? 'single court' : `${courtCount} active courts`} />
       </section>
 
       <section className="rounded-3xl border border-[#DDE7DE] bg-[#F1F7F2] p-4">
@@ -139,6 +146,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
             title="Cup"
             eyebrow="Group stage to final"
             description="Top 4 teams qualify for semifinals, then a champion match."
+            icon={<TrophyIcon />}
             selected={tournamentFormat === 'cup'}
             onClick={() => setTournamentFormat('cup')}
           />
@@ -146,6 +154,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
             title="League"
             eyebrow="Two round-robin legs"
             description="Every team gets repeat matches and standings decide the winner."
+            icon={<ListIcon />}
             selected={tournamentFormat === 'league'}
             onClick={() => setTournamentFormat('league')}
           />
@@ -188,10 +197,11 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
             {playerError && <p className="mt-2 text-sm font-bold text-red-600">{playerError}</p>}
           </div>
           <button
-            className="min-h-14 rounded-2xl bg-[#168A5B] px-6 text-base font-black text-white shadow-lg shadow-[#168A5B]/20 transition hover:bg-[#0F6F49] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#168A5B] px-6 text-base font-black text-white shadow-lg shadow-[#168A5B]/20 transition hover:bg-[#0F6F49] disabled:cursor-not-allowed disabled:opacity-60"
             onClick={handleAddPlayer}
             disabled={isSaving}
           >
+            <UsersIcon className="h-5 w-5" />
             Add Player
           </button>
         </div>
@@ -313,10 +323,22 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   );
 }
 
-function SummaryTile({ label, value, detail }) {
+function shufflePlayers(players) {
+  const shuffledPlayers = [...players];
+  for (let index = shuffledPlayers.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffledPlayers[index], shuffledPlayers[swapIndex]] = [shuffledPlayers[swapIndex], shuffledPlayers[index]];
+  }
+  return shuffledPlayers;
+}
+
+function SummaryTile({ icon, label, value, detail }) {
   return (
     <div className="rounded-3xl border border-[#DDE7DE] bg-white p-4 shadow-sm">
-      <p className="text-sm font-bold text-[#65736A]">{label}</p>
+      <div className="flex items-center gap-2 text-[#65736A]">
+        {icon}
+        <p className="text-sm font-bold">{label}</p>
+      </div>
       <p className="mt-1 text-3xl font-black tabular-nums text-[#18211C]">{value}</p>
       <p className="mt-1 text-xs font-bold uppercase tracking-wide text-[#8A978E]">{detail}</p>
     </div>
@@ -331,7 +353,7 @@ function StatusPill({ ready, text }) {
   );
 }
 
-function ChoiceCard({ title, eyebrow, description, selected, onClick }) {
+function ChoiceCard({ title, eyebrow, description, icon, selected, onClick }) {
   return (
     <button
       type="button"
@@ -340,10 +362,16 @@ function ChoiceCard({ title, eyebrow, description, selected, onClick }) {
         selected ? 'border-[#168A5B] bg-[#E8F6EF] shadow-[0_0_0_4px_rgba(22,138,91,0.12)]' : 'border-[#DDE7DE] bg-white hover:border-[#BFD0C2] hover:bg-[#F1F7F2]'
       }`}
     >
-      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wide ${selected ? 'bg-[#168A5B] text-white' : 'bg-[#F1F7F2] text-[#65736A]'}`}>
-        {selected ? 'Selected' : eyebrow}
+      <div className="flex items-center justify-between gap-3">
+        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wide ${selected ? 'bg-[#168A5B] text-white' : 'bg-[#F1F7F2] text-[#65736A]'}`}>
+          {selected ? 'Selected' : eyebrow}
+        </span>
+        {icon && <span className={`grid h-10 w-10 place-items-center rounded-2xl ${selected ? 'bg-white text-[#168A5B]' : 'bg-[#F1F7F2] text-[#65736A]'}`}>{icon}</span>}
+      </div>
+      <span className="mt-3 flex items-center gap-2 text-xl font-black text-[#18211C]">
+        {selected && <CheckIcon className="h-5 w-5 text-[#168A5B]" />}
+        {title}
       </span>
-      <span className="mt-3 block text-xl font-black text-[#18211C]">{title}</span>
       <span className="mt-1 block text-sm font-semibold leading-relaxed text-[#65736A]">{description}</span>
     </button>
   );
@@ -352,20 +380,31 @@ function ChoiceCard({ title, eyebrow, description, selected, onClick }) {
 function PlayerChip({ index, name, onRemove, disabled }) {
   return (
     <div className="flex max-w-full items-center gap-2 rounded-2xl border border-[#DDE7DE] bg-[#F7FAF5] py-2 pl-2 pr-1 shadow-sm">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E8F6EF] text-sm font-black text-[#146C52]">{index}</span>
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E8F6EF] text-xs font-black text-[#146C52]">{getInitials(name) || index}</span>
       <span className="min-w-0 truncate text-sm font-black text-[#18211C]">{name}</span>
       <button
         type="button"
         onClick={onRemove}
         disabled={disabled}
         aria-label={`Remove ${name}`}
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-lg font-black text-[#8A978E] transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[#8A978E] transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        x
+        <XIcon className="h-4 w-4" />
       </button>
     </div>
   );
 }
+
+function getInitials(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
+
 
 function FieldSelect({ id, label, value, disabled, onChange, options }) {
   return (

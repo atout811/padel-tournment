@@ -8,6 +8,7 @@ import EditTeamsModal from '../screens/modals/EditTeamsModal';
 import GameHistoryModal from '../screens/modals/GameHistoryModal';
 import { normalizeScoringSettings } from '../utils/padelScoring';
 import { buildLeaderboard, emptyTeamStats, selectActiveMatches, syncTeamPointsFromMatches } from '../utils/tournamentRules';
+import { CheckIcon, CourtIcon, ShareIcon, SparkIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
 
 const getTeamName = (team) => team.players.join(' & ');
 
@@ -29,11 +30,11 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     () => selectActiveMatches(pendingMatches, courtCount, tournament.currentMatchId),
     [courtCount, pendingMatches, tournament.currentMatchId]
   );
+  const activeMatchIds = useMemo(() => new Set(activeMatches.map((match) => match.id)), [activeMatches]);
   const courtSlots = useMemo(() => Array.from({ length: courtCount }, (_, index) => activeMatches[index] || null), [activeMatches, courtCount]);
   const upcomingMatches = useMemo(() => {
-    const activeIds = new Set(activeMatches.map((match) => match.id));
-    return distributeMatchesFairly(pendingMatches.filter((match) => !activeIds.has(match.id)));
-  }, [activeMatches, pendingMatches]);
+    return distributeMatchesFairly(pendingMatches.filter((match) => !activeMatchIds.has(match.id)));
+  }, [activeMatchIds, pendingMatches]);
 
   const finalMatch = useMemo(() => tournament.matches.find((match) => match.matchType === 'final' && match.status === 'completed'), [tournament.matches]);
   const round2LeagueMatches = useMemo(() => tournament.matches.filter((match) => match.round === 2), [tournament.matches]);
@@ -259,6 +260,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/15">
           <div className="h-full rounded-full bg-[#F5B84B] transition-all" style={{ width: `${roundProgress}%` }} />
         </div>
+        <StageTimeline tournament={tournament} isFinished={isTournamentFinished} />
         <p className="mt-2 text-xs font-bold text-[#CFEFE5]">
           Best of {scoringSettings.maxSets}, {scoringSettings.deuceMode === 'golden' ? 'golden point' : 'advantage'} at deuce
         </p>
@@ -276,8 +278,9 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
               type="button"
               onClick={handleCopyShareLink}
               disabled={isCopyingLink}
-              className="min-h-12 rounded-2xl bg-[#0E8F8A] px-5 font-black text-white transition hover:bg-[#0E706B] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#0E8F8A] px-5 font-black text-white transition hover:bg-[#0E706B] disabled:cursor-not-allowed disabled:opacity-60"
             >
+              <ShareIcon className="h-5 w-5" />
               {isCopyingLink ? 'Copying...' : copyFeedback || 'Copy Link'}
             </button>
           </div>
@@ -288,7 +291,10 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         <section className="rounded-3xl border border-[#BFD0C2] bg-[#E8F6EF] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-black uppercase tracking-wide text-[#146C52]">Result updated</p>
+              <p className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-[#146C52]">
+                <SparkIcon className="h-5 w-5" />
+                Result updated
+              </p>
               <h3 className="mt-1 text-xl font-black text-[#18211C]">{lastResult.title}</h3>
               <p className="mt-1 text-sm font-bold text-[#146C52]">{lastResult.detail}</p>
             </div>
@@ -343,7 +349,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       <section className="grid gap-4 lg:grid-cols-2">
         <MatchSection title="Upcoming Matches" detail={`${upcomingMatches.length} waiting after active courts`} emptyText="No upcoming matches in this stage.">
           {upcomingMatches.map((match) => (
-            <MatchCard key={match.id} match={match} onSetCurrent={setAsCurrentMatch} isCurrent={tournament.currentMatchId === match.id} />
+            <MatchCard key={match.id} match={match} onSetCurrent={setAsCurrentMatch} isCurrent={false} />
           ))}
         </MatchSection>
 
@@ -355,15 +361,18 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2">
-        <button onClick={() => setShowEditTeams(true)} className="min-h-12 rounded-2xl border border-[#DDE7DE] bg-white px-4 font-black text-[#18211C] shadow-sm transition hover:bg-[#F1F7F2]">
+        <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#DDE7DE] bg-white px-4 font-black text-[#18211C] shadow-sm transition hover:bg-[#F1F7F2]">
+          <UsersIcon className="h-5 w-5 text-[#146C52]" />
           Edit Teams
         </button>
-        <button onClick={() => setShowGameHistory(true)} className="min-h-12 rounded-2xl border border-[#DDE7DE] bg-white px-4 font-black text-[#18211C] shadow-sm transition hover:bg-[#F1F7F2]">
+        <button onClick={() => setShowGameHistory(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[#DDE7DE] bg-white px-4 font-black text-[#18211C] shadow-sm transition hover:bg-[#F1F7F2]">
+          <CheckIcon className="h-5 w-5 text-[#146C52]" />
           Match History
         </button>
       </section>
 
-      <button onClick={() => setShowEndConfirm(true)} className="min-h-12 w-full rounded-2xl border border-red-200 bg-red-50 px-4 font-black text-red-700 transition hover:bg-red-100">
+      <button onClick={() => setShowEndConfirm(true)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 font-black text-red-700 transition hover:bg-red-100">
+        <TrashIcon className="h-5 w-5" />
         End Tournament
       </button>
 
@@ -417,6 +426,54 @@ function StatPill({ label, value }) {
   );
 }
 
+function StageTimeline({ tournament, isFinished }) {
+  const stages =
+    tournament.format === 'league'
+      ? [
+          { key: 'round1', label: 'Round 1', active: tournament.currentRound === 1 && !isFinished, complete: tournament.currentRound > 1 || isFinished },
+          { key: 'round2', label: 'Round 2', active: tournament.currentRound === 2 && !isFinished, complete: isFinished },
+          { key: 'champion', label: 'Champion', active: isFinished, complete: isFinished },
+        ]
+      : [
+          { key: 'group', label: 'Group', active: tournament.currentRound === 1 && !isFinished, complete: tournament.currentRound > 1 || isFinished },
+          {
+            key: 'semi',
+            label: 'Semifinal',
+            active: tournament.currentRound === 2 && !isFinished && !tournament.matches.some((match) => match.matchType === 'final'),
+            complete: tournament.matches.some((match) => match.matchType === 'final') || isFinished,
+          },
+          {
+            key: 'final',
+            label: 'Final',
+            active: tournament.matches.some((match) => match.matchType === 'final' && match.status !== 'completed'),
+            complete: isFinished,
+          },
+          { key: 'champion', label: 'Champion', active: isFinished, complete: isFinished },
+        ];
+
+  return (
+    <div className="mt-4 grid gap-2 sm:grid-cols-4">
+      {stages.map((stage) => (
+        <div
+          key={stage.key}
+          className={`rounded-2xl border px-3 py-2 text-sm font-black ${
+            stage.active
+              ? 'border-[#F5B84B] bg-[#FFF4D6] text-[#8A5A00]'
+              : stage.complete
+                ? 'border-white/20 bg-white/20 text-white'
+                : 'border-white/10 bg-white/10 text-[#CFEFE5]'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            {stage.complete ? <CheckIcon className="h-4 w-4" /> : stage.key === 'champion' ? <TrophyIcon className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}
+            {stage.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SectionHeader({ eyebrow, title, detail }) {
   return (
     <div>
@@ -430,11 +487,14 @@ function SectionHeader({ eyebrow, title, detail }) {
 function CourtCard({ courtNumber, match, onDeclareWinner }) {
   if (!match) {
     return (
-      <div className="min-h-72 rounded-3xl border border-dashed border-[#BFD0C2] bg-white p-4 text-center">
+      <div className="min-h-72 rounded-3xl border border-dashed border-[#BDEDEA] bg-[#E6FAF8] p-4 text-center">
         <div className="flex h-full min-h-64 flex-col items-center justify-center">
-          <span className="rounded-full bg-[#F1F7F2] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#65736A]">Court {courtNumber}</span>
-          <h3 className="mt-3 text-xl font-black text-[#18211C]">Open court</h3>
-          <p className="mt-2 max-w-xs text-sm font-semibold text-[#65736A]">No safe match is available without reusing a team already playing.</p>
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-[#0E8F8A] shadow-sm">
+            <CourtIcon className="h-6 w-6" />
+          </span>
+          <span className="mt-3 rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-wide text-[#0E706B]">Court {courtNumber}</span>
+          <h3 className="mt-3 text-xl font-black text-[#18211C]">Court waiting</h3>
+          <p className="mt-2 max-w-xs text-sm font-semibold text-[#0E706B]">No safe match is available without asking a team to play twice at once.</p>
         </div>
       </div>
     );
@@ -444,7 +504,10 @@ function CourtCard({ courtNumber, match, onDeclareWinner }) {
     <div className="rounded-3xl border border-[#DDE7DE] bg-white p-4 shadow-sm">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0E8F8A]">Court {courtNumber}</p>
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#0E8F8A]">
+            <CourtIcon className="h-4 w-4" />
+            Court {courtNumber}
+          </p>
           <h3 className="text-xl font-black text-[#18211C]">{getMatchLabel(match)}</h3>
         </div>
         <p className="rounded-2xl bg-[#F1F7F2] px-3 py-2 text-xs font-black text-[#65736A]">
@@ -494,8 +557,11 @@ function FinishedSummary({ champion, leaderboard, teamStats, completedMatches, f
   return (
     <section className="rounded-3xl border border-[#F5B84B]/50 bg-gradient-to-br from-[#FFF4D6] via-white to-[#E8F6EF] p-5 shadow-lg shadow-[#8A5A00]/10">
       <div className="text-center">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-[#8A5A00]">Tournament Finished</p>
-        <h2 className="mt-2 text-4xl font-black text-[#18211C]">Champion</h2>
+        <span className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-[#F5B84B] text-white shadow-lg shadow-[#8A5A00]/20">
+          <TrophyIcon className="h-9 w-9" />
+        </span>
+        <p className="mt-4 text-xs font-black uppercase tracking-[0.22em] text-[#8A5A00]">Tournament Finished</p>
+        <h2 className="mt-2 text-4xl font-black text-[#18211C]">Champion Moment</h2>
         <p className="mt-3 text-2xl font-black text-[#146C52]">{champion ? getTeamName(champion) : 'Champion pending'}</p>
         {finalMatch && (
           <p className="mt-2 text-sm font-bold text-[#65736A]">
@@ -506,15 +572,25 @@ function FinishedSummary({ champion, leaderboard, teamStats, completedMatches, f
 
       <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
         <div className="rounded-3xl border border-[#DDE7DE] bg-white p-3">
-          <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-[#65736A]">Final Ranking</h3>
-          <div className="space-y-2">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-[#65736A]">
+            <TrophyIcon className="h-5 w-5 text-[#F5B84B]" />
+            Final Ranking
+          </h3>
+          <div className="grid gap-2 sm:grid-cols-3">
             {topTeams.map((team, index) => {
               const stats = teamStats.get(team.id) || emptyTeamStats();
               return (
-                <div key={team.id} className="flex items-center gap-3 rounded-2xl bg-[#F7FAF5] p-3">
-                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#FFF4D6] text-sm font-black text-[#8A5A00]">{index + 1}</span>
-                  <span className="min-w-0 flex-1 break-words font-black text-[#18211C]">{getTeamName(team)}</span>
-                  <span className="font-black text-[#65736A]">{stats.points} pts</span>
+                <div
+                  key={team.id}
+                  className={`rounded-2xl p-3 text-center ${
+                    index === 0 ? 'bg-[#FFF4D6] ring-2 ring-[#F5B84B]/40' : 'bg-[#F7FAF5]'
+                  }`}
+                >
+                  <span className={`mx-auto grid h-10 w-10 place-items-center rounded-2xl text-sm font-black ${index === 0 ? 'bg-[#F5B84B] text-white' : 'bg-white text-[#65736A]'}`}>
+                    {index + 1}
+                  </span>
+                  <span className="mt-2 block min-w-0 break-words font-black leading-tight text-[#18211C]">{getTeamName(team)}</span>
+                  <span className="mt-1 block text-sm font-black text-[#65736A]">{stats.points} pts</span>
                 </div>
               );
             })}

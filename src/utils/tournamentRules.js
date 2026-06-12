@@ -69,40 +69,41 @@ export const selectActiveMatches = (pendingMatches, courtCount, preferredMatchId
   const preferredMatch = pendingMatches.find((match) => match.id === preferredMatchId);
   const rest = pendingMatches.filter((match) => match.id !== preferredMatchId);
   const orderedMatches = [...(preferredMatch ? [preferredMatch] : []), ...distributeMatchesFairly(rest)];
+  let bestBatch = [];
+  let bestOrderScore = Number.POSITIVE_INFINITY;
 
-  const buildBatchFromAnchor = (anchorIndex) => {
-    const activeMatches = [];
-    const usedTeamIds = new Set();
-    const anchoredOrder = [orderedMatches[anchorIndex], ...orderedMatches.filter((_, index) => index !== anchorIndex)];
+  const isBetterBatch = (candidate, orderScore) => {
+    const candidateHasPreferred = preferredMatch && candidate.some((match) => match.id === preferredMatch.id);
+    const bestHasPreferred = preferredMatch && bestBatch.some((match) => match.id === preferredMatch.id);
 
-    for (const match of anchoredOrder) {
-      if (activeMatches.length >= safeCourtCount) break;
+    return (
+      candidate.length > bestBatch.length ||
+      (candidate.length === bestBatch.length && candidateHasPreferred && !bestHasPreferred) ||
+      (candidate.length === bestBatch.length && candidateHasPreferred === bestHasPreferred && orderScore < bestOrderScore)
+    );
+  };
 
+  const search = (startIndex, candidate, usedTeamIds, orderScore) => {
+    if (isBetterBatch(candidate, orderScore)) {
+      bestBatch = candidate;
+      bestOrderScore = orderScore;
+    }
+
+    if (candidate.length >= safeCourtCount) return;
+
+    for (let index = startIndex; index < orderedMatches.length; index++) {
+      const match = orderedMatches[index];
       const teamIds = getMatchTeamIds(match);
       const hasConflict = teamIds.some((teamId) => usedTeamIds.has(teamId));
       if (hasConflict) continue;
 
-      activeMatches.push(match);
-      teamIds.forEach((teamId) => usedTeamIds.add(teamId));
+      const nextUsedTeamIds = new Set(usedTeamIds);
+      teamIds.forEach((teamId) => nextUsedTeamIds.add(teamId));
+      search(index + 1, [...candidate, match], nextUsedTeamIds, orderScore + index);
     }
-
-    return activeMatches;
   };
 
-  let bestBatch = [];
-
-  for (let index = 0; index < orderedMatches.length; index++) {
-    const candidate = buildBatchFromAnchor(index);
-    const candidateHasPreferred = preferredMatch && candidate.some((match) => match.id === preferredMatch.id);
-    const bestHasPreferred = preferredMatch && bestBatch.some((match) => match.id === preferredMatch.id);
-
-    if (
-      candidate.length > bestBatch.length ||
-      (candidate.length === bestBatch.length && candidateHasPreferred && !bestHasPreferred)
-    ) {
-      bestBatch = candidate;
-    }
-  }
+  search(0, [], new Set(), 0);
 
   return bestBatch;
 };

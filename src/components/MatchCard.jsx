@@ -73,11 +73,26 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
 
 function TeamLine({ name, won }) {
   return (
-    <p className={`break-words text-base font-black leading-tight ${won ? 'text-[#146C52]' : 'text-[#18211C]'}`}>
-      {won && <span className="mr-2 text-[#168A5B]">Winner</span>}
-      {name}
-    </p>
+    <div className="flex items-center gap-2">
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl text-xs font-black ${won ? 'bg-[#168A5B] text-white' : 'bg-[#F1F7F2] text-[#65736A]'}`}>
+        {getInitials(name)}
+      </span>
+      <p className={`break-words text-base font-black leading-tight ${won ? 'text-[#146C52]' : 'text-[#18211C]'}`}>
+        {won && <span className="mr-2 text-[#168A5B]">Winner</span>}
+        {name}
+      </p>
+    </div>
   );
+}
+
+function getInitials(name) {
+  return name
+    .split('&')
+    .map((part) => part.trim()[0])
+    .filter(Boolean)
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 function ScorePill({ active, children }) {
