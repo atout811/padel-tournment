@@ -1,16 +1,9 @@
 import { supabase } from './supabaseClient';
-import { getOrCreateUserId } from './storage';
+import { createUuid, getOrCreateUserId } from './storage';
 
 export const GROUPS_STORAGE_KEY = 'padel-groups-data';
 
 const nowIso = () => new Date().toISOString();
-
-const createId = (prefix) => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-};
 
 const loadLocalGroups = () => {
   try {
@@ -51,7 +44,7 @@ export const createGroup = async (name) => {
 
   const ownerId = getOrCreateUserId();
   const timestamp = nowIso();
-  const group = { id: createId('group'), ownerId, name: trimmedName, createdAt: timestamp, updatedAt: timestamp };
+  const group = { id: createUuid(), ownerId, name: trimmedName, createdAt: timestamp, updatedAt: timestamp };
 
   if (!supabase) {
     const groups = loadLocalGroups();
@@ -94,6 +87,6 @@ export const deleteGroup = async (groupId) => {
     return;
   }
 
-  const { error } = await supabase.from('padel_groups').delete().eq('id', groupId);
+  const { error } = await supabase.from('padel_groups').delete().eq('id', groupId).select('id').single();
   if (error) throw new Error(`Failed to delete group: ${error.message}`);
 };

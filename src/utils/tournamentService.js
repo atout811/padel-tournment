@@ -1,12 +1,7 @@
 import { supabase } from './supabaseClient';
-import { deleteTournamentData as clearCachedTournament, getOrCreateUserId, loadTournamentData as loadCachedTournament, saveTournamentData as cacheTournament } from './storage';
+import { createUuid, deleteTournamentData as clearCachedTournament, getOrCreateUserId, isUuid, loadTournamentData as loadCachedTournament, saveTournamentData as cacheTournament } from './storage';
 
-const generateTournamentId = () => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `tour_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-};
+const generateTournamentId = () => createUuid();
 
 const withTimestamps = (tournament) => ({
   ...tournament,
@@ -15,16 +10,15 @@ const withTimestamps = (tournament) => ({
 
 export const createTournamentRecord = async (tournament) => {
   const ownerId = getOrCreateUserId();
-  const tournamentId = tournament.id || generateTournamentId();
+  const tournamentId = isUuid(tournament.id) ? tournament.id : generateTournamentId();
   const record = withTimestamps({
     ...tournament,
     id: tournamentId,
     ownerId,
   });
 
-  cacheTournament(record);
-
   if (!supabase) {
+    cacheTournament(record);
     return record;
   }
 
@@ -43,6 +37,7 @@ export const createTournamentRecord = async (tournament) => {
     throw new Error(`Failed to create tournament: ${error.message}`);
   }
 
+  cacheTournament(record);
   return record;
 };
 
@@ -52,9 +47,9 @@ export const updateTournamentRecord = async (tournament) => {
   }
 
   const record = withTimestamps(tournament);
-  cacheTournament(record);
 
   if (!supabase) {
+    cacheTournament(record);
     return record;
   }
 
@@ -64,12 +59,15 @@ export const updateTournamentRecord = async (tournament) => {
       data: record,
       updated_at: record.updatedAt,
     })
-    .eq('id', record.id);
+    .eq('id', record.id)
+    .select('id')
+    .single();
 
   if (error) {
     throw new Error(`Failed to update tournament: ${error.message}`);
   }
 
+  cacheTournament(record);
   return record;
 };
 
@@ -79,12 +77,13 @@ export const fetchTournamentById = async (tournamentId) => {
   }
 
   if (!supabase) {
-    return loadCachedTournament();
+    const cachedTournament = loadCachedTournament();
+    return cachedTournament?.id === tournamentId ? cachedTournament : null;
   }
 
   const { data, error } = await supabase
     .from('tournaments')
-    .select('data')
+    .select('data, owner_id')
     .eq('id', tournamentId)
     .maybeSingle();
 
@@ -92,7 +91,7 @@ export const fetchTournamentById = async (tournamentId) => {
     throw new Error(`Failed to load tournament: ${error.message}`);
   }
 
-  const tournament = data?.data || null;
+  const tournament = data?.data ? { ...data.data, ownerId: data.owner_id || data.data.ownerId } : null;
 
   if (tournament) {
     cacheTournament(tournament);
@@ -102,20 +101,23 @@ export const fetchTournamentById = async (tournamentId) => {
 };
 
 export const removeTournamentRecord = async (tournamentId) => {
-  clearCachedTournament();
-
-  if (!tournamentId || !supabase) {
+  if (!tournamentId || !supabase || !isUuid(tournamentId)) {
+    clearCachedTournament();
     return;
   }
 
   const { error } = await supabase
     .from('tournaments')
     .delete()
-    .eq('id', tournamentId);
+    .eq('id', tournamentId)
+    .select('id')
+    .single();
 
   if (error) {
     throw new Error(`Failed to delete tournament: ${error.message}`);
   }
+
+  clearCachedTournament();
 };
 
 export const subscribeToTournament = (tournamentId, handler) => {
@@ -163,8 +165,12 @@ export const subscribeToTournament = (tournamentId, handler) => {
       },
       (payload) => {
         if (payload.new?.data) {
-          cacheTournament(payload.new.data);
-          handler(payload.new.data);
+          const updatedTournament = {
+            ...payload.new.data,
+            ownerId: payload.new.owner_id || payload.new.data.ownerId,
+          };
+          cacheTournament(updatedTournament);
+          handler(updatedTournament);
         }
       }
     )

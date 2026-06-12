@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { updateTournamentRecord } from '../../utils/tournamentService';
 import { summarizePadelScore } from '../../utils/padelScoring';
-import { syncTeamPointsFromMatches } from '../../utils/tournamentRules';
+import { reconcileCupProgression, syncTeamPointsFromMatches } from '../../utils/tournamentRules';
 
 const getTeamName = (team) => team.players.join(' & ');
 
@@ -33,7 +33,9 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
       updatedTournament.matches[matchIndex].status = 'completed';
     }
     try {
-      const savedTournament = await updateTournamentRecord(syncTeamPointsFromMatches(updatedTournament));
+      const reconciledTournament =
+        updatedTournament.format === 'league' ? syncTeamPointsFromMatches(updatedTournament) : reconcileCupProgression(updatedTournament);
+      const savedTournament = await updateTournamentRecord(reconciledTournament);
       setTournament(savedTournament);
       showAlert('Success', 'Match result updated successfully.');
     } catch (error) {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function CurrentMatchCard({ match, onDeclareWinner }) {
+export default function CurrentMatchCard({ match, onDeclareWinner, disabled = false }) {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedWinnerId, setSelectedWinnerId] = useState('');
 
@@ -12,7 +12,7 @@ export default function CurrentMatchCard({ match, onDeclareWinner }) {
   }, [match.id]);
 
   const handleWinner = async (side) => {
-    if (isSaving) return;
+    if (isSaving || disabled) return;
 
     const winnerId = side === 'teamA' ? match.teamA.id : match.teamB.id;
     const score = {
@@ -43,14 +43,14 @@ export default function CurrentMatchCard({ match, onDeclareWinner }) {
           name={getTeamName(match.teamA)}
           isWinner={selectedWinnerId === match.teamA.id}
           onChoose={() => handleWinner('teamA')}
-          disabled={isSaving}
+          disabled={isSaving || disabled}
         />
         <WinnerButton
           label="Team B won"
           name={getTeamName(match.teamB)}
           isWinner={selectedWinnerId === match.teamB.id}
           onChoose={() => handleWinner('teamB')}
-          disabled={isSaving}
+          disabled={isSaving || disabled}
         />
       </div>
 

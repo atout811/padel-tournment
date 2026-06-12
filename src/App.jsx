@@ -8,7 +8,7 @@ import PlayerSetupScreen from './screens/PlayerSetupScreen.jsx';
 import PlayersPoolScreen from './screens/PlayersPoolScreen.jsx';
 import StartGroupNightScreen from './screens/StartGroupNightScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
-import { getOrCreateUserId, loadTournamentData } from './utils/storage';
+import { getOrCreateUserId, isUuid, loadTournamentData } from './utils/storage';
 import { buildTournamentShareUrl, createTournamentRecord, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
 
 export default function App() {
@@ -108,7 +108,7 @@ export default function App() {
 
         if (cachedTournament) {
           let hydratedTournament = cachedTournament;
-          if (!cachedTournament.id) {
+          if (!isUuid(cachedTournament.id)) {
             try {
               hydratedTournament = await createTournamentRecord(cachedTournament);
             } catch (syncError) {

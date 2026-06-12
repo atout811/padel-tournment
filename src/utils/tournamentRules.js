@@ -191,3 +191,86 @@ export const syncTeamPointsFromMatches = (tournament) => {
     })),
   };
 };
+
+const createCupSemifinals = (rankedTeams) => [
+  { id: 'round2_semifinal_1', round: 2, matchType: 'semifinal', teamA: rankedTeams[0], teamB: rankedTeams[3], winnerId: null, status: 'pending' },
+  { id: 'round2_semifinal_2', round: 2, matchType: 'semifinal', teamA: rankedTeams[1], teamB: rankedTeams[2], winnerId: null, status: 'pending' },
+];
+
+const createCupFinal = (semifinalMatches, teams) => {
+  const semifinal1Winner = teams.find((team) => team.id === semifinalMatches[0].winnerId);
+  const semifinal2Winner = teams.find((team) => team.id === semifinalMatches[1].winnerId);
+  if (!semifinal1Winner || !semifinal2Winner) return null;
+  return { id: 'round2_finals', round: 2, matchType: 'final', teamA: semifinal1Winner, teamB: semifinal2Winner, winnerId: null, status: 'pending' };
+};
+
+const hasSameTeams = (leftMatch, rightMatch) =>
+  leftMatch?.teamA?.id === rightMatch?.teamA?.id && leftMatch?.teamB?.id === rightMatch?.teamB?.id;
+
+const preserveResultIfSameMatch = (nextMatch, existingMatch) => {
+  if (!hasSameTeams(nextMatch, existingMatch)) return nextMatch;
+  return {
+    ...nextMatch,
+    winnerId: existingMatch.winnerId || null,
+    status: existingMatch.status || 'pending',
+    ...(existingMatch.score ? { score: existingMatch.score } : {}),
+  };
+};
+
+export const reconcileCupProgression = (tournament) => {
+  if (tournament?.format === 'league') return syncTeamPointsFromMatches(tournament);
+
+  const syncedTournament = syncTeamPointsFromMatches(JSON.parse(JSON.stringify(tournament)));
+  const round1Matches = syncedTournament.matches.filter((match) => match.round === 1);
+  const round1Complete = round1Matches.length > 0 && round1Matches.every((match) => match.status === 'completed' && match.winnerId);
+
+  if (!round1Complete) {
+    const nextTournament = syncTeamPointsFromMatches({
+      ...syncedTournament,
+      matches: round1Matches,
+      currentRound: 1,
+    });
+    return {
+      ...nextTournament,
+      currentMatchId: round1Matches.find((match) => match.status === 'pending')?.id || null,
+    };
+  }
+
+  const groupStageTournament = syncTeamPointsFromMatches({
+    ...syncedTournament,
+    matches: round1Matches,
+  });
+  const { leaderboard } = buildLeaderboard(groupStageTournament);
+  const top4Teams = leaderboard.slice(0, 4);
+  if (top4Teams.length < 4) return syncedTournament;
+
+  const existingSemifinals = syncedTournament.matches.filter((match) => match.matchType === 'semifinal');
+  const semifinalMatches = createCupSemifinals(top4Teams).map((match) => {
+    const existingMatch = existingSemifinals.find((item) => item.id === match.id);
+    return preserveResultIfSameMatch(match, existingMatch);
+  });
+
+  const nextMatches = [...round1Matches, ...semifinalMatches];
+  const completedSemifinals = semifinalMatches.filter((match) => match.status === 'completed' && match.winnerId);
+  if (completedSemifinals.length === 2) {
+    const finalMatch = createCupFinal(semifinalMatches, syncedTournament.teams);
+    const existingFinal = syncedTournament.matches.find((match) => match.matchType === 'final');
+    if (finalMatch) {
+      nextMatches.push(preserveResultIfSameMatch(finalMatch, existingFinal));
+    }
+  }
+
+  const currentRound = 2;
+  const currentMatchStillPending = nextMatches.find((match) => match.id === syncedTournament.currentMatchId && match.status === 'pending');
+  const firstPendingMatch = nextMatches.find((match) => match.round === currentRound && match.status === 'pending');
+  const nextTournament = syncTeamPointsFromMatches({
+    ...syncedTournament,
+    matches: nextMatches,
+    currentRound,
+  });
+
+  return {
+    ...nextTournament,
+    currentMatchId: currentMatchStillPending?.id || firstPendingMatch?.id || null,
+  };
+};

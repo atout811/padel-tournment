@@ -1,15 +1,9 @@
 import { supabase } from './supabaseClient';
+import { createUuid } from './storage';
 
 export const GROUP_SESSIONS_STORAGE_KEY = 'padel-group-sessions-data';
 
 const nowIso = () => new Date().toISOString();
-
-const createId = () => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `session_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-};
 
 const loadLocalSessions = () => {
   try {
@@ -35,7 +29,7 @@ const fromRow = (row) => ({
 
 export const createGroupSession = async ({ groupId, participantMeta }) => {
   const timestamp = nowIso();
-  const session = { id: createId(), groupId, tournamentId: null, participantMeta, createdAt: timestamp, updatedAt: timestamp };
+  const session = { id: createUuid(), groupId, tournamentId: null, participantMeta, createdAt: timestamp, updatedAt: timestamp };
 
   if (!supabase) {
     saveLocalSessions([session, ...loadLocalSessions()]);
@@ -68,6 +62,11 @@ export const linkGroupSessionTournament = async (sessionId, tournamentId) => {
     return;
   }
 
-  const { error } = await supabase.from('group_sessions').update({ tournament_id: tournamentId, updated_at: timestamp }).eq('id', sessionId);
+  const { error } = await supabase
+    .from('group_sessions')
+    .update({ tournament_id: tournamentId, updated_at: timestamp })
+    .eq('id', sessionId)
+    .select('id')
+    .single();
   if (error) throw new Error(`Failed to link group session: ${error.message}`);
 };

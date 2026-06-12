@@ -1,16 +1,10 @@
 import { supabase } from './supabaseClient';
+import { createUuid } from './storage';
 import { normalizePlayerName } from './tournamentRules';
 
 export const GROUP_PLAYERS_STORAGE_KEY = 'padel-group-players-data';
 
 const nowIso = () => new Date().toISOString();
-
-const createId = () => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `player_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-};
 
 const loadLocalPlayers = () => {
   try {
@@ -46,6 +40,9 @@ const ensureUniqueName = (players, groupId, name, currentPlayerId) => {
   if (exists) throw new Error('That player already exists in this group.');
 };
 
+const findPlayerByName = (players, groupId, name) =>
+  players.find((player) => player.groupId === groupId && player.name.toLowerCase() === name.toLowerCase());
+
 const fromRow = (row) => ({
   id: row.id,
   groupId: row.group_id,
@@ -75,15 +72,40 @@ export const addGroupPlayer = async ({ groupId, name, level }) => {
 
   if (!supabase) {
     const players = loadLocalPlayers();
-    ensureUniqueName(players, groupId, normalizedName);
-    const player = { id: createId(), groupId, name: normalizedName, level: normalizedLevel, active: true, createdAt: timestamp, updatedAt: timestamp };
+    const existingPlayer = findPlayerByName(players, groupId, normalizedName);
+    if (existingPlayer) {
+      if (existingPlayer.active !== false) throw new Error('That player already exists in this group.');
+      const restoredPlayer = { ...existingPlayer, name: normalizedName, level: normalizedLevel, active: true, updatedAt: timestamp };
+      saveLocalPlayers(players.map((player) => (player.id === restoredPlayer.id ? restoredPlayer : player)));
+      return restoredPlayer;
+    }
+
+    const player = { id: createUuid(), groupId, name: normalizedName, level: normalizedLevel, active: true, createdAt: timestamp, updatedAt: timestamp };
     saveLocalPlayers([...players, player]);
     return player;
   }
 
+  const { data: existingRows, error: lookupError } = await supabase.from('group_players').select('*').eq('group_id', groupId);
+  if (lookupError) throw new Error(`Failed to add player: ${lookupError.message}`);
+
+  const existingPlayer = (existingRows || []).map(fromRow).find((player) => player.name.toLowerCase() === normalizedName.toLowerCase());
+  if (existingPlayer) {
+    if (existingPlayer.active !== false) throw new Error('That player already exists in this group.');
+
+    const { data, error } = await supabase
+      .from('group_players')
+      .update({ name: normalizedName, level: normalizedLevel, active: true, updated_at: timestamp })
+      .eq('id', existingPlayer.id)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to restore player: ${error.message}`);
+    return fromRow(data);
+  }
+
   const { data, error } = await supabase
     .from('group_players')
-    .insert({ id: createId(), group_id: groupId, name: normalizedName, level: normalizedLevel, active: true, created_at: timestamp, updated_at: timestamp })
+    .insert({ id: createUuid(), group_id: groupId, name: normalizedName, level: normalizedLevel, active: true, created_at: timestamp, updated_at: timestamp })
     .select()
     .single();
 

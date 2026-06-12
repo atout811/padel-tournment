@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { removeTournamentRecord, updateTournamentRecord } from '../utils/tournamentService';
 import { distributeMatchesFairly } from '../utils/scheduling';
 import CurrentMatchCard from '../components/CurrentMatchCard';
@@ -19,6 +19,8 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   const [copyFeedback, setCopyFeedback] = useState('');
   const [lastResult, setLastResult] = useState(null);
   const [activePanel, setActivePanel] = useState('standings');
+  const [isSavingResult, setIsSavingResult] = useState(false);
+  const isSavingResultRef = useRef(false);
 
   const { leaderboard, teamStats } = useMemo(() => buildLeaderboard(tournament), [tournament]);
   const currentRoundMatches = useMemo(() => tournament.matches.filter((match) => match.round === tournament.currentRound), [tournament.matches, tournament.currentRound]);
@@ -84,12 +86,20 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       return;
     }
 
+    if (isSavingResultRef.current) {
+      showAlert('Save In Progress', 'Wait for the current match result to finish saving.');
+      return;
+    }
+
     let updatedTournament = JSON.parse(JSON.stringify(tournament));
     const matchIndex = updatedTournament.matches.findIndex((item) => item.id === match.id);
     if (matchIndex === -1) {
       showAlert('Error', 'Could not find this match.');
       return;
     }
+
+    isSavingResultRef.current = true;
+    setIsSavingResult(true);
 
     updatedTournament.matches[matchIndex].winnerId = winnerId;
     updatedTournament.matches[matchIndex].status = 'completed';
@@ -131,6 +141,9 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     } catch (error) {
       console.error('Error saving score:', error);
       showAlert('Error', 'Could not save the result. Please try again.');
+    } finally {
+      isSavingResultRef.current = false;
+      setIsSavingResult(false);
     }
   };
 
@@ -312,7 +325,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
           </div>
           <div className="grid gap-2 md:grid-cols-2">
             {courtSlots.map((match, index) => (
-              <CourtCard key={match?.id || `empty-court-${index}`} courtNumber={index + 1} match={match} onDeclareWinner={handleDeclareWinner} />
+              <CourtCard key={match?.id || `empty-court-${index}`} courtNumber={index + 1} match={match} onDeclareWinner={handleDeclareWinner} disabled={isSavingResult} />
             ))}
           </div>
         </section>
@@ -499,7 +512,7 @@ function MatchPanel({ emptyText, children }) {
   );
 }
 
-function CourtCard({ courtNumber, match, onDeclareWinner }) {
+function CourtCard({ courtNumber, match, onDeclareWinner, disabled }) {
   if (!match) {
     return (
       <div className="rounded-2xl border border-dashed border-[#1F60D1] bg-[#1F60D1]/16 p-3 text-center">
@@ -521,7 +534,7 @@ function CourtCard({ courtNumber, match, onDeclareWinner }) {
         </p>
         <p className="truncate rounded-full bg-[#07111B] px-2 py-1 text-[0.65rem] font-black text-[#8D99A6]">{getMatchLabel(match)}</p>
       </div>
-      <CurrentMatchCard match={match} onDeclareWinner={onDeclareWinner} />
+      <CurrentMatchCard match={match} onDeclareWinner={onDeclareWinner} disabled={disabled} />
     </div>
   );
 }
