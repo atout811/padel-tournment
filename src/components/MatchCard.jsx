@@ -19,10 +19,10 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
     <div
       className={`w-full rounded-3xl border p-4 text-left shadow-sm ${
         isCompleted
-          ? 'border-[#BFD0C2] bg-[#E8F6EF]'
+          ? 'border-[#BEDC45] bg-[#BEDC45]/14'
           : isCurrent
-            ? 'border-[#BDEDEA] bg-[#E6FAF8] shadow-[#0E8F8A]/10'
-            : 'border-[#DDE7DE] bg-white'
+            ? 'border-[#1F60D1] bg-[#1F60D1]/16 shadow-[#1F60D1]/10'
+            : 'border-[rgba(255,255,255,0.08)] bg-[#0A141E]'
       }`}
     >
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -34,7 +34,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
         {!isCompleted && onSetCurrent && !isCurrent && (
           <button
             onClick={() => onSetCurrent(match)}
-            className="min-h-10 rounded-2xl border border-[#DDE7DE] bg-white px-3 py-2 text-sm font-black text-[#18211C] transition hover:border-[#BDEDEA] hover:bg-[#E6FAF8]"
+            className="min-h-10 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 py-2 text-sm font-black text-[#F7F8F7] transition hover:border-[#1F60D1] hover:bg-[#1F60D1]/16"
           >
             Put on court
           </button>
@@ -48,7 +48,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
         </div>
         <div className="grid min-w-14 content-center gap-2 text-center">
           {padelScoreSummary ? (
-            <span className="max-w-32 rounded-2xl bg-white px-3 py-2 text-xs font-black leading-relaxed text-[#18211C] shadow-sm sm:max-w-40">
+            <span className="max-w-32 rounded-2xl bg-[#0A141E] px-3 py-2 text-xs font-black leading-relaxed text-[#F7F8F7] shadow-sm sm:max-w-40">
               {padelScoreSummary}
             </span>
           ) : hasScore ? (
@@ -57,13 +57,13 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
               <ScorePill active={teamBWon}>{match.score.teamB}</ScorePill>
             </>
           ) : (
-            <span className="self-center rounded-full bg-[#F1F7F2] px-3 py-2 text-xs font-black text-[#65736A]">VS</span>
+            <span className="self-center rounded-full bg-[#07111B] px-3 py-2 text-xs font-black text-[#8D99A6]">VS</span>
           )}
         </div>
       </div>
 
       {isCompleted && (
-        <p className="mt-3 rounded-2xl bg-white p-2 text-center text-sm font-black text-[#146C52]">
+        <p className="mt-3 rounded-2xl bg-[#0A141E] p-2 text-center text-sm font-black text-[#BEDC45]">
           Winner: {teamAWon ? getTeamName(match.teamA) : getTeamName(match.teamB)}
         </p>
       )}
@@ -74,11 +74,11 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
 function TeamLine({ name, won }) {
   return (
     <div className="flex items-center gap-2">
-      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl text-xs font-black ${won ? 'bg-[#168A5B] text-white' : 'bg-[#F1F7F2] text-[#65736A]'}`}>
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl text-xs font-black ${won ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#8D99A6]'}`}>
         {getInitials(name)}
       </span>
-      <p className={`break-words text-base font-black leading-tight ${won ? 'text-[#146C52]' : 'text-[#18211C]'}`}>
-        {won && <span className="mr-2 text-[#168A5B]">Winner</span>}
+      <p className={`break-words text-base font-black leading-tight ${won ? 'text-[#BEDC45]' : 'text-[#F7F8F7]'}`}>
+        {won && <span className="mr-2 text-[#BEDC45]">Winner</span>}
         {name}
       </p>
     </div>
@@ -97,7 +97,7 @@ function getInitials(name) {
 
 function ScorePill({ active, children }) {
   return (
-    <span className={`rounded-2xl px-3 py-1 text-lg font-black tabular-nums ${active ? 'bg-[#168A5B] text-white' : 'bg-[#F1F7F2] text-[#65736A]'}`}>
+    <span className={`rounded-2xl px-3 py-1 text-lg font-black tabular-nums ${active ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#8D99A6]'}`}>
       {children}
     </span>
   );
@@ -105,10 +105,10 @@ function ScorePill({ active, children }) {
 
 function Badge({ tone, children }) {
   const tones = {
-    cyan: 'bg-[#E6FAF8] text-[#0E706B]',
-    emerald: 'bg-[#E8F6EF] text-[#146C52]',
-    gold: 'bg-[#FFF4D6] text-[#8A5A00]',
-    slate: 'bg-[#F1F7F2] text-[#65736A]',
+    cyan: 'bg-[#1F60D1]/16 text-[#CFD2D3]',
+    emerald: 'bg-[#BEDC45]/14 text-[#BEDC45]',
+    gold: 'bg-[#19232B] text-[#BEDC45]',
+    slate: 'bg-[#07111B] text-[#8D99A6]',
   };
 
   return <span className={`rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wide ${tones[tone] || tones.slate}`}>{children}</span>;
