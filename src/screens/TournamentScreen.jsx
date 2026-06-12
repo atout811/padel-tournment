@@ -232,7 +232,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     try {
       await removeTournamentRecord(tournament.id);
       setTournament(null);
-      setScreen('setup');
+      setScreen('home');
     } catch (error) {
       console.error('Error deleting tournament:', error);
       showAlert('Error', 'Could not delete tournament.');

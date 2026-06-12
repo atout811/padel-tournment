@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { createTournamentRecord } from '../utils/tournamentService';
-import { generateLeagueMatches, generateRoundRobinRounds } from '../utils/scheduling';
-import { buildScoringSettings } from '../utils/padelScoring';
 import { getSetupStatus, validatePlayerName } from '../utils/tournamentRules';
+import { buildTournament } from '../utils/tournamentBuilder';
 import { CheckIcon, CourtIcon, ListIcon, TrophyIcon, UsersIcon, XIcon } from '../components/Icons';
 
 export default function PlayerSetupScreen({ showAlert, setTournament, setScreen }) {
@@ -49,25 +48,6 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
     setPlayerError('');
   };
 
-  const generateMatches = (teams, format) => {
-    if (format === 'league') {
-      return generateLeagueMatches(teams);
-    }
-
-    let matchId = 0;
-    return generateRoundRobinRounds(teams).flatMap((roundMatches, scheduleRoundIndex) =>
-      roundMatches.map(({ teamA, teamB }) => ({
-        id: `round1_match_${matchId++}`,
-        round: 1,
-        scheduleRound: scheduleRoundIndex + 1,
-        teamA,
-        teamB,
-        winnerId: null,
-        status: 'pending',
-      }))
-    );
-  };
-
   const handleCreateTournament = async () => {
     const currentStatus = getSetupStatus(players, tournamentFormat);
     if (!currentStatus.isValid) {
@@ -77,33 +57,14 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
 
     setIsSaving(true);
 
-    const shuffledPlayers = shufflePlayers(players);
-    const teams = [];
-    for (let i = 0; i < Math.floor(shuffledPlayers.length / 2) * 2; i += 2) {
-      teams.push({ id: `team_${i / 2 + 1}`, players: [shuffledPlayers[i], shuffledPlayers[i + 1]], points: 0 });
-    }
-    if (shuffledPlayers.length % 2 !== 0) {
-      teams.push({ id: `team_${teams.length + 1}`, players: [shuffledPlayers[shuffledPlayers.length - 1], 'Substitute'], points: 0 });
-    }
-
-    const matches = generateMatches(teams, tournamentFormat);
-    const scoringSettings = buildScoringSettings({ maxSets, deuceMode });
-
-    const newTournament = {
+    const newTournament = buildTournament({
       players,
-      teams,
-      matches,
-      substitute: null,
-      status: 'active',
-      currentRound: 1,
-      maxRounds: 2,
       format: tournamentFormat,
       scoringPreset,
-      scoringSettings,
+      maxSets,
+      deuceMode,
       courtCount,
-      createdAt: new Date().toISOString(),
-      currentMatchId: matches.find((match) => match.round === 1 && match.status === 'pending')?.id || null,
-    };
+    });
 
     try {
       const createdTournament = await createTournamentRecord(newTournament);
@@ -321,15 +282,6 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
       </div>
     </div>
   );
-}
-
-function shufflePlayers(players) {
-  const shuffledPlayers = [...players];
-  for (let index = shuffledPlayers.length - 1; index > 0; index--) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [shuffledPlayers[index], shuffledPlayers[swapIndex]] = [shuffledPlayers[swapIndex], shuffledPlayers[index]];
-  }
-  return shuffledPlayers;
 }
 
 function SummaryTile({ icon, label, value, detail }) {

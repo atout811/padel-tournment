@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Header from './components/Header.jsx';
 import { CustomAlert } from './components/Alert.jsx';
+import GroupHomeScreen from './screens/GroupHomeScreen.jsx';
+import GroupListScreen from './screens/GroupListScreen.jsx';
+import HomeScreen from './screens/HomeScreen.jsx';
 import PlayerSetupScreen from './screens/PlayerSetupScreen.jsx';
+import PlayersPoolScreen from './screens/PlayersPoolScreen.jsx';
+import StartGroupNightScreen from './screens/StartGroupNightScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
 import { getOrCreateUserId, loadTournamentData } from './utils/storage';
 import { buildTournamentShareUrl, createTournamentRecord, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
@@ -11,9 +16,30 @@ export default function App() {
   const [screen, setScreen] = useState('loading');
   const [alert, setAlert] = useState({ show: false, title: '', message: '' });
   const [shareLink, setShareLink] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const subscriptionCleanup = useRef(null);
+  const historyReady = useRef(false);
 
-  const showAlert = (title, message) => setAlert({ show: true, title, message });
+  const showAlert = useCallback((title, message) => setAlert({ show: true, title, message }), []);
+
+  const navigateToScreen = useCallback((nextScreen, options = {}) => {
+    const { group, replace = false } = options;
+    if (group !== undefined) {
+      setSelectedGroup(group);
+    }
+    setScreen(nextScreen);
+
+    if (!historyReady.current) {
+      return;
+    }
+
+    const state = {
+      screen: nextScreen,
+      selectedGroup: group !== undefined ? group : selectedGroup,
+    };
+    const method = replace ? 'replaceState' : 'pushState';
+    window.history[method](state, '', window.location.href);
+  }, [selectedGroup]);
 
   const detachSubscription = useCallback(() => {
     if (subscriptionCleanup.current) {
@@ -65,11 +91,13 @@ export default function App() {
           if (remoteTournament) {
             setTournament(remoteTournament);
             setScreen('tournament');
+            window.history.replaceState({ screen: 'tournament', selectedGroup: null }, '', window.location.href);
           } else {
             showAlert('Tournament Not Found', 'This tournament link appears to be invalid or has been removed.');
-            setScreen('setup');
-            window.history.replaceState(null, '', window.location.pathname);
+            setScreen('home');
+            window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.pathname);
           }
+          historyReady.current = true;
           return;
         }
 
@@ -93,11 +121,14 @@ export default function App() {
           if (hydratedTournament) {
             setTournament(hydratedTournament);
             setScreen('tournament');
+            window.history.replaceState({ screen: 'tournament', selectedGroup: null }, '', window.location.href);
           } else {
-            setScreen('setup');
+            setScreen('home');
+            window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
           }
         } else {
-          setScreen('setup');
+          setScreen('home');
+          window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
         }
       } catch (error) {
         console.error('Error initializing app:', error);
@@ -105,8 +136,10 @@ export default function App() {
           return;
         }
         showAlert('Error', 'Could not load tournament data.');
-        setScreen('setup');
+        setScreen('home');
+        window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
       }
+      historyReady.current = true;
     };
 
     initialize();
@@ -115,7 +148,21 @@ export default function App() {
       active = false;
       detachSubscription();
     };
-  }, [detachSubscription]);
+  }, [detachSubscription, showAlert]);
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      const nextScreen = event.state?.screen;
+      if (!nextScreen) {
+        return;
+      }
+      setSelectedGroup(event.state.selectedGroup || null);
+      setScreen(nextScreen);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     if (tournament?.id) {
@@ -123,23 +170,38 @@ export default function App() {
       const nextShareUrl = buildTournamentShareUrl(tournament.id);
       setShareLink(nextShareUrl);
       if (window.location.href !== nextShareUrl) {
-        window.history.replaceState(null, '', nextShareUrl);
+        window.history.replaceState({ screen: 'tournament', selectedGroup: null }, '', nextShareUrl);
       }
     } else {
       setShareLink('');
       if (window.location.search.includes('tournamentId')) {
-        window.history.replaceState(null, '', window.location.pathname);
+        window.history.replaceState({ screen, selectedGroup }, '', window.location.pathname);
       }
       detachSubscription();
     }
-  }, [tournament?.id, attachSubscription, detachSubscription]);
+  }, [tournament?.id, attachSubscription, detachSubscription, screen, selectedGroup]);
 
   const renderScreen = () => {
     if (screen === 'loading') return <LoadingScreen />;
+    if (screen === 'home' && !tournament) return <HomeScreen setScreen={navigateToScreen} />;
+    if (screen === 'groups' && !tournament) return <GroupListScreen showAlert={showAlert} setScreen={navigateToScreen} setSelectedGroup={setSelectedGroup} />;
+    if (screen === 'groupHome' && !tournament)
+      return <GroupHomeScreen group={selectedGroup} showAlert={showAlert} setScreen={navigateToScreen} />;
+    if (screen === 'playersPool' && !tournament)
+      return <PlayersPoolScreen group={selectedGroup} showAlert={showAlert} setScreen={navigateToScreen} />;
+    if (screen === 'startGroupNight' && !tournament)
+      return (
+        <StartGroupNightScreen
+          group={selectedGroup}
+          showAlert={showAlert}
+          setTournament={setTournament}
+          setScreen={navigateToScreen}
+        />
+      );
     if (screen === 'setup' || !tournament)
-      return <PlayerSetupScreen showAlert={showAlert} setTournament={setTournament} setScreen={setScreen} />;
-    if (screen === 'tournament' && tournament)
-      return <TournamentScreen tournament={tournament} setTournament={setTournament} showAlert={showAlert} setScreen={setScreen} shareLink={shareLink} />;
+      return <PlayerSetupScreen showAlert={showAlert} setTournament={setTournament} setScreen={navigateToScreen} />;
+    if (tournament)
+      return <TournamentScreen tournament={tournament} setTournament={setTournament} showAlert={showAlert} setScreen={navigateToScreen} shareLink={shareLink} />;
     return <LoadingScreen />;
   };
 
