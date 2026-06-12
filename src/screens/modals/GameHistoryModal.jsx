@@ -94,7 +94,7 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
                       value={match.winnerId || ''}
                       onChange={(e) => handleWinnerChange(match, e.target.value)}
                       disabled={updatingMatchId === match.id}
-                      className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-2 font-bold text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-2 font-bold text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="">No Winner</option>
                       <option value={match.teamA.id}>{getTeamName(match.teamA)}</option>

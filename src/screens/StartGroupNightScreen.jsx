@@ -145,7 +145,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
                 handleAddGuest();
               }
             }}
-            className="min-h-14 flex-1 rounded-2xl border border-[rgba(255,255,255,0.08)] px-4 font-semibold outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
+            className="min-h-14 flex-1 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
             placeholder="Guest name"
           />
           <button type="button" onClick={handleAddGuest} className="min-h-14 rounded-2xl bg-[#BEDC45] px-6 font-black text-[#020D16]">
@@ -232,7 +232,7 @@ function FieldSelect({ id, label, value, disabled, onChange, options }) {
       <label htmlFor={id} className="mb-2 block text-sm font-black uppercase tracking-wide text-[#8D99A6]">
         {label}
       </label>
-      <select id={id} value={value} onChange={onChange} disabled={disabled} className="min-h-14 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] px-4 text-base font-black text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20 disabled:opacity-60">
+      <select id={id} value={value} onChange={onChange} disabled={disabled} className="min-h-14 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 text-base font-black text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20 disabled:opacity-60">
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

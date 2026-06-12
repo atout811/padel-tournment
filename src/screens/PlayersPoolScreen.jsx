@@ -103,7 +103,7 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
               }
             }}
             maxLength={28}
-            className="min-h-14 rounded-2xl border border-[rgba(255,255,255,0.08)] px-4 font-semibold outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
+            className="min-h-14 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
             placeholder="Player name"
           />
           <LevelSelect value={level} onChange={(event) => setLevel(Number(event.target.value))} disabled={isSaving} />
@@ -127,7 +127,7 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
               <div key={player.id} className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-3">
                 {editingId === player.id ? (
                   <div className="grid gap-2 sm:grid-cols-[1fr_120px_auto_auto]">
-                    <input value={editName} onChange={(event) => setEditName(event.target.value)} className="min-h-12 rounded-2xl border border-[rgba(255,255,255,0.08)] px-3 font-semibold outline-none focus:border-[#BEDC45]" />
+                    <input value={editName} onChange={(event) => setEditName(event.target.value)} className="min-h-12 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-3 font-semibold text-[#F7F8F7] outline-none focus:border-[#BEDC45]" />
                     <LevelSelect value={editLevel} onChange={(event) => setEditLevel(Number(event.target.value))} disabled={isSaving} />
                     <button type="button" onClick={saveEdit} disabled={isSaving} className="rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] disabled:opacity-60">
                       Save
@@ -169,7 +169,7 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
 
 function LevelSelect({ value, onChange, disabled }) {
   return (
-    <select value={value} onChange={onChange} disabled={disabled} className="min-h-12 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 font-black text-[#F7F8F7] outline-none focus:border-[#BEDC45] disabled:opacity-60">
+    <select value={value} onChange={onChange} disabled={disabled} className="min-h-14 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-3 font-black text-[#F7F8F7] outline-none focus:border-[#BEDC45] disabled:opacity-60">
       {[1, 2, 3, 4, 5].map((item) => (
         <option key={item} value={item}>
           Level {item}

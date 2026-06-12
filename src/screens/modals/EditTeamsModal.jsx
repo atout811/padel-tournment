@@ -67,7 +67,7 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
               <h4 className="mb-2 font-black text-[#F7F8F7]">Team {teamIndex + 1}</h4>
               <div className="space-y-2">
                 {team.players.map((player, playerIndex) => (
-                  <select key={playerIndex} value={player} onChange={(e) => handlePlayerChange(teamIndex, playerIndex, e.target.value)} className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-2 font-bold text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20">
+                  <select key={playerIndex} value={player} onChange={(e) => handlePlayerChange(teamIndex, playerIndex, e.target.value)} className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-2 font-bold text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20">
                     {availablePlayers.map((p) => (
                       <option key={p} value={p}>
                         {p}

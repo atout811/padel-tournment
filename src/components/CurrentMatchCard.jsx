@@ -30,18 +30,23 @@ export default function CurrentMatchCard({ match, onDeclareWinner }) {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
-        <WinnerPanel
-          label="Team A"
+    <div className="space-y-2">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl bg-[#07111B] px-3 py-2">
+        <TeamName name={getTeamName(match.teamA)} align="right" />
+        <span className="rounded-full bg-[#0A141E] px-2 py-1 text-[0.65rem] font-black text-[#8D99A6]">VS</span>
+        <TeamName name={getTeamName(match.teamB)} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <WinnerButton
+          label="Team A won"
           name={getTeamName(match.teamA)}
           isWinner={selectedWinnerId === match.teamA.id}
           onChoose={() => handleWinner('teamA')}
           disabled={isSaving}
         />
-        <div className="hidden items-center justify-center px-1 text-sm font-black text-[#8D99A6] sm:flex">VS</div>
-        <WinnerPanel
-          label="Team B"
+        <WinnerButton
+          label="Team B won"
           name={getTeamName(match.teamB)}
           isWinner={selectedWinnerId === match.teamB.id}
           onChoose={() => handleWinner('teamB')}
@@ -50,44 +55,34 @@ export default function CurrentMatchCard({ match, onDeclareWinner }) {
       </div>
 
       {isSaving && (
-        <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-3 text-center text-sm font-black text-[#8D99A6]">
-          Saving result and loading the next safe match...
+        <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] px-3 py-2 text-center text-xs font-black text-[#8D99A6]">
+          Saving result...
         </div>
       )}
     </div>
   );
 }
 
-function WinnerPanel({ label, name, isWinner, onChoose, disabled }) {
+function TeamName({ name, align = 'left' }) {
+  return (
+    <span className={`min-w-0 truncate text-sm font-black text-[#F7F8F7] ${align === 'right' ? 'text-right' : ''}`} title={name}>
+      {name}
+    </span>
+  );
+}
+
+function WinnerButton({ label, name, isWinner, onChoose, disabled }) {
   return (
     <button
       type="button"
       onClick={onChoose}
       disabled={disabled}
-      className={`min-h-40 w-full rounded-3xl border-2 p-5 text-center shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-80 ${
-        isWinner ? 'border-[#BEDC45] bg-[#BEDC45]/14' : 'border-[rgba(255,255,255,0.08)] bg-[#0A141E] hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B]'
+      className={`min-h-12 rounded-xl border px-2 py-2 text-center shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80 ${
+        isWinner ? 'border-[#BEDC45] bg-[#BEDC45] text-[#020D16]' : 'border-[#BEDC45]/45 bg-[#BEDC45]/14 text-[#BEDC45] hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B]'
       }`}
     >
-      <span className="text-xs font-black uppercase tracking-[0.18em] text-[#8D99A6]">{label}</span>
-      <span className="mx-auto mt-3 grid h-12 w-12 place-items-center rounded-2xl bg-[#BEDC45]/14 text-sm font-black text-[#BEDC45]">{getInitials(name)}</span>
-      <span className="mx-auto mt-3 block max-w-[18rem] break-words text-2xl font-black leading-tight text-[#F7F8F7]">{name}</span>
-      <span
-        className={`mx-auto mt-5 block w-full rounded-2xl px-4 py-3 text-base font-black ${
-          isWinner ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#F7F8F7]'
-        }`}
-      >
-        {isWinner ? 'Winner selected' : 'This team won'}
-      </span>
+      <span className="block truncate text-xs font-black uppercase tracking-wide">{label}</span>
+      <span className="mt-0.5 block truncate text-[0.68rem] font-bold opacity-80">{name}</span>
     </button>
   );
-}
-
-function getInitials(name) {
-  return name
-    .split('&')
-    .map((part) => part.trim()[0])
-    .filter(Boolean)
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
 }

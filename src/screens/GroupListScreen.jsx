@@ -74,7 +74,7 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
               }
             }}
             maxLength={60}
-            className="min-h-14 flex-1 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 text-base font-semibold text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
+            className="min-h-14 flex-1 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 text-base font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
             placeholder="Group name"
           />
           <button

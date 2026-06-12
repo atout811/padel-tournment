@@ -6,7 +6,6 @@ import MatchCard from '../components/MatchCard';
 import { ConfirmationModal } from '../components/Alert';
 import EditTeamsModal from '../screens/modals/EditTeamsModal';
 import GameHistoryModal from '../screens/modals/GameHistoryModal';
-import { normalizeScoringSettings } from '../utils/padelScoring';
 import { buildLeaderboard, emptyTeamStats, selectActiveMatches, syncTeamPointsFromMatches } from '../utils/tournamentRules';
 import { CheckIcon, CourtIcon, ShareIcon, SparkIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
 
@@ -19,7 +18,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   const [isCopyingLink, setIsCopyingLink] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState('');
   const [lastResult, setLastResult] = useState(null);
-  const scoringSettings = useMemo(() => normalizeScoringSettings(tournament.scoringSettings), [tournament.scoringSettings]);
+  const [activePanel, setActivePanel] = useState('standings');
 
   const { leaderboard, teamStats } = useMemo(() => buildLeaderboard(tournament), [tournament]);
   const currentRoundMatches = useMemo(() => tournament.matches.filter((match) => match.round === tournament.currentRound), [tournament.matches, tournament.currentRound]);
@@ -240,31 +239,17 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   };
 
   return (
-    <div className="space-y-5 rounded-b-3xl border-x border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-4 shadow-xl shadow-[#020D16]/5 backdrop-blur sm:p-6">
-      <section className="rounded-3xl bg-gradient-to-br from-[#020D16] via-[#19232B] to-[#1F60D1] p-5 text-white shadow-lg shadow-[#020D16]/15">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#CFD2D3]">{tournament.format === 'league' ? 'League Tournament' : 'Cup Tournament'}</p>
-            <h2 className="mt-2 text-3xl font-black leading-tight">{getStageTitle(tournament)}</h2>
-            <p className="mt-2 text-sm font-semibold text-[#BEDC45]">
-              {completedInRound} of {currentRoundMatches.length} matches complete, {pendingMatches.length} waiting.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-            <StatPill label="Players" value={tournament.players?.length || 0} />
-            <StatPill label="Teams" value={tournament.teams.length} />
-            <StatPill label="Courts" value={courtCount} />
-            <StatPill label="Done" value={completedMatches.length} />
-          </div>
-        </div>
-        <div className="mt-5 h-3 overflow-hidden rounded-full bg-[#0A141E]/15">
-          <div className="h-full rounded-full bg-[#BEDC45] transition-all" style={{ width: `${roundProgress}%` }} />
-        </div>
-        <StageTimeline tournament={tournament} isFinished={isTournamentFinished} />
-        <p className="mt-2 text-xs font-bold text-[#CFD2D3]">
-          Best of {scoringSettings.maxSets}, {scoringSettings.deuceMode === 'golden' ? 'golden point' : 'advantage'} at deuce
-        </p>
-      </section>
+    <div className="space-y-3 rounded-b-3xl border-x border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-3 pb-24 shadow-xl shadow-[#020D16]/5 backdrop-blur sm:p-6 sm:pb-6">
+      <StageBar
+        tournament={tournament}
+        isFinished={isTournamentFinished}
+        completedInRound={completedInRound}
+        currentRoundMatches={currentRoundMatches}
+        pendingMatches={pendingMatches}
+        completedMatches={completedMatches}
+        courtCount={courtCount}
+        roundProgress={roundProgress}
+      />
 
       {shareLink && (
         <section className="rounded-3xl border border-[#1F60D1] bg-[#1F60D1]/16 p-4">
@@ -317,9 +302,15 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       )}
 
       {!isTournamentFinished && (
-        <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-4">
-          <SectionHeader eyebrow="Active Courts" title={`${activeMatches.length} of ${courtCount} court${courtCount === 1 ? '' : 's'} playing`} detail="A team is never placed on two courts at the same time." />
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">Active Courts</p>
+              <h2 className="text-base font-black text-[#F7F8F7]">{activeMatches.length}/{courtCount} playing</h2>
+            </div>
+            <p className="rounded-full bg-[#0A141E] px-3 py-1 text-xs font-black text-[#8D99A6]">{pendingMatches.length} waiting</p>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2">
             {courtSlots.map((match, index) => (
               <CourtCard key={match?.id || `empty-court-${index}`} courtNumber={index + 1} match={match} onDeclareWinner={handleDeclareWinner} />
             ))}
@@ -327,40 +318,51 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         </section>
       )}
 
-      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-        <SectionHeader
-          eyebrow={tournament.format === 'league' ? 'Standings' : 'Ranking'}
-          title={tournament.format === 'league' ? 'League Table' : 'Cup Progress'}
-          detail={tournament.format === 'league' ? 'Leader is highlighted by points, wins, then difference.' : 'Top 4 qualify from the group stage.'}
-        />
-        <div className="mt-4 space-y-2">
-          {leaderboard.map((team, index) => {
-            const stats = teamStats.get(team.id) || emptyTeamStats();
-            const isLeader = index === 0;
-            const isTop4 = index < 4 && tournament.currentRound === 1 && tournament.format !== 'league';
-            const isChampion = champion?.id === team.id && isTournamentFinished;
-            return (
-              <StandingRow key={team.id} rank={index + 1} team={team} stats={stats} highlighted={isLeader || isTop4 || isChampion} label={getStandingLabel({ isLeader, isTop4, isChampion, format: tournament.format })} />
-            );
-          })}
+      <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 shadow-sm">
+        <div className="grid grid-cols-3 gap-1 rounded-2xl bg-[#07111B] p-1">
+          <TabButton active={activePanel === 'standings'} onClick={() => setActivePanel('standings')}>
+            Table
+          </TabButton>
+          <TabButton active={activePanel === 'upcoming'} onClick={() => setActivePanel('upcoming')}>
+            Next <span className="ml-1 text-[0.65rem] opacity-70">{upcomingMatches.length}</span>
+          </TabButton>
+          <TabButton active={activePanel === 'completed'} onClick={() => setActivePanel('completed')}>
+            Done <span className="ml-1 text-[0.65rem] opacity-70">{completedMatches.length}</span>
+          </TabButton>
         </div>
+
+        {activePanel === 'standings' && (
+          <div className="mt-3 space-y-2">
+            {leaderboard.map((team, index) => {
+              const stats = teamStats.get(team.id) || emptyTeamStats();
+              const isLeader = index === 0;
+              const isTop4 = index < 4 && tournament.currentRound === 1 && tournament.format !== 'league';
+              const isChampion = champion?.id === team.id && isTournamentFinished;
+              return (
+                <StandingRow key={team.id} rank={index + 1} team={team} stats={stats} highlighted={isLeader || isTop4 || isChampion} label={getStandingLabel({ isLeader, isTop4, isChampion, format: tournament.format })} />
+              );
+            })}
+          </div>
+        )}
+
+        {activePanel === 'upcoming' && (
+          <MatchPanel emptyText="No upcoming matches in this stage.">
+            {upcomingMatches.map((match) => (
+              <MatchCard key={match.id} match={match} onSetCurrent={setAsCurrentMatch} isCurrent={false} />
+            ))}
+          </MatchPanel>
+        )}
+
+        {activePanel === 'completed' && (
+          <MatchPanel emptyText="Completed results will appear here.">
+            {completedMatches.map((match) => (
+              <MatchCard key={match.id} match={match} isCurrent={false} />
+            ))}
+          </MatchPanel>
+        )}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <MatchSection title="Upcoming Matches" detail={`${upcomingMatches.length} waiting after active courts`} emptyText="No upcoming matches in this stage.">
-          {upcomingMatches.map((match) => (
-            <MatchCard key={match.id} match={match} onSetCurrent={setAsCurrentMatch} isCurrent={false} />
-          ))}
-        </MatchSection>
-
-        <MatchSection title="Completed Matches" detail={`${completedMatches.length} result${completedMatches.length === 1 ? '' : 's'} saved`} emptyText="Completed results will appear here.">
-          {completedMatches.map((match) => (
-            <MatchCard key={match.id} match={match} isCurrent={false} />
-          ))}
-        </MatchSection>
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-2">
+      <section className="hidden gap-3 sm:grid sm:grid-cols-2">
         <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 font-black text-[#F7F8F7] shadow-sm transition hover:bg-[#07111B]">
           <UsersIcon className="h-5 w-5 text-[#BEDC45]" />
           Edit Teams
@@ -375,6 +377,22 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         <TrashIcon className="h-5 w-5" />
         End Tournament
       </button>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 p-3 backdrop-blur sm:hidden">
+        <div className="mx-auto grid max-w-6xl grid-cols-[1fr_1fr_auto] gap-2">
+          <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 text-sm font-black text-[#F7F8F7]">
+            <UsersIcon className="h-4 w-4 text-[#BEDC45]" />
+            Teams
+          </button>
+          <button onClick={() => setShowGameHistory(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 text-sm font-black text-[#F7F8F7]">
+            <CheckIcon className="h-4 w-4 text-[#BEDC45]" />
+            History
+          </button>
+          <button onClick={() => setShowEndConfirm(true)} aria-label="End Tournament" className="grid h-12 w-12 place-items-center rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 text-[#DB4145]">
+            <TrashIcon className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
 
       {showEndConfirm && (
         <ConfirmationModal title="End Tournament?" message="This deletes the saved tournament from this device and Supabase if connected." onConfirm={confirmEndTournament} onCancel={() => setShowEndConfirm(false)} />
@@ -417,69 +435,66 @@ function getStandingLabel({ isLeader, isTop4, isChampion, format }) {
   return '';
 }
 
-function StatPill({ label, value }) {
-  return (
-    <div className="rounded-2xl bg-[#0A141E]/12 px-3 py-2">
-      <p className="text-xl font-black tabular-nums text-white">{value}</p>
-      <p className="text-xs font-bold uppercase tracking-wide text-[#CFD2D3]">{label}</p>
-    </div>
-  );
-}
-
-function StageTimeline({ tournament, isFinished }) {
-  const stages =
-    tournament.format === 'league'
-      ? [
-          { key: 'round1', label: 'Round 1', active: tournament.currentRound === 1 && !isFinished, complete: tournament.currentRound > 1 || isFinished },
-          { key: 'round2', label: 'Round 2', active: tournament.currentRound === 2 && !isFinished, complete: isFinished },
-          { key: 'champion', label: 'Champion', active: isFinished, complete: isFinished },
-        ]
-      : [
-          { key: 'group', label: 'Group', active: tournament.currentRound === 1 && !isFinished, complete: tournament.currentRound > 1 || isFinished },
-          {
-            key: 'semi',
-            label: 'Semifinal',
-            active: tournament.currentRound === 2 && !isFinished && !tournament.matches.some((match) => match.matchType === 'final'),
-            complete: tournament.matches.some((match) => match.matchType === 'final') || isFinished,
-          },
-          {
-            key: 'final',
-            label: 'Final',
-            active: tournament.matches.some((match) => match.matchType === 'final' && match.status !== 'completed'),
-            complete: isFinished,
-          },
-          { key: 'champion', label: 'Champion', active: isFinished, complete: isFinished },
-        ];
+function StageBar({ tournament, isFinished, completedInRound, currentRoundMatches, pendingMatches, completedMatches, courtCount, roundProgress }) {
+  const stageTitle = isFinished ? 'Finished' : getStageTitle(tournament);
+  const stageLabel = tournament.format === 'league' ? 'League' : 'Cup';
 
   return (
-    <div className="mt-4 grid gap-2 sm:grid-cols-4">
-      {stages.map((stage) => (
-        <div
-          key={stage.key}
-          className={`rounded-2xl border px-3 py-2 text-sm font-black ${
-            stage.active
-              ? 'border-[#BEDC45] bg-[#19232B] text-[#BEDC45]'
-              : stage.complete
-                ? 'border-white/20 bg-[#0A141E]/20 text-white'
-                : 'border-white/10 bg-[#0A141E]/10 text-[#CFD2D3]'
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            {stage.complete ? <CheckIcon className="h-4 w-4" /> : stage.key === 'champion' ? <TrophyIcon className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}
-            {stage.label}
-          </span>
+    <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">{stageLabel}</p>
+          <h2 className="truncate text-lg font-black leading-tight text-[#F7F8F7]">{stageTitle}</h2>
         </div>
-      ))}
+        <div className="shrink-0 text-right">
+          <p className="text-lg font-black tabular-nums text-[#BEDC45]">{completedInRound}/{currentRoundMatches.length || 0}</p>
+          <p className="text-[0.65rem] font-bold uppercase tracking-wide text-[#8D99A6]">matches</p>
+        </div>
+      </div>
+
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#07111B]">
+        <div className="h-full rounded-full bg-[#BEDC45] transition-all" style={{ width: `${roundProgress}%` }} />
+      </div>
+
+      <div className="mt-3 grid grid-cols-4 gap-1.5">
+        <MiniStat label="Teams" value={tournament.teams.length} />
+        <MiniStat label="Courts" value={courtCount} />
+        <MiniStat label="Waiting" value={pendingMatches.length} />
+        <MiniStat label="Done" value={completedMatches.length} />
+      </div>
+    </section>
+  );
+}
+
+function MiniStat({ label, value }) {
+  return (
+    <div className="rounded-xl bg-[#07111B] px-2 py-2 text-center">
+      <p className="text-base font-black tabular-nums text-[#F7F8F7]">{value}</p>
+      <p className="truncate text-[0.62rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
     </div>
   );
 }
 
-function SectionHeader({ eyebrow, title, detail }) {
+function TabButton({ active, onClick, children }) {
   return (
-    <div>
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#BEDC45]">{eyebrow}</p>
-      <h2 className="mt-1 text-2xl font-black text-[#F7F8F7]">{title}</h2>
-      {detail && <p className="mt-1 text-sm font-semibold text-[#8D99A6]">{detail}</p>}
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-10 rounded-xl px-2 text-sm font-black transition ${
+        active ? 'bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MatchPanel({ emptyText, children }) {
+  const hasChildren = React.Children.count(children) > 0;
+
+  return (
+    <div className="mt-3 space-y-2">
+      {hasChildren ? children : <p className="rounded-2xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#0D1823] px-4 py-6 text-center text-sm font-bold text-[#8D99A6]">{emptyText}</p>}
     </div>
   );
 }
@@ -487,32 +502,24 @@ function SectionHeader({ eyebrow, title, detail }) {
 function CourtCard({ courtNumber, match, onDeclareWinner }) {
   if (!match) {
     return (
-      <div className="min-h-72 rounded-3xl border border-dashed border-[#1F60D1] bg-[#1F60D1]/16 p-4 text-center">
-        <div className="flex h-full min-h-64 flex-col items-center justify-center">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#0A141E] text-[#1F60D1] shadow-sm">
-            <CourtIcon className="h-6 w-6" />
-          </span>
-          <span className="mt-3 rounded-full bg-[#0A141E] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#CFD2D3]">Court {courtNumber}</span>
-          <h3 className="mt-3 text-xl font-black text-[#F7F8F7]">Court waiting</h3>
-          <p className="mt-2 max-w-xs text-sm font-semibold text-[#CFD2D3]">No safe match is available without asking a team to play twice at once.</p>
+      <div className="rounded-2xl border border-dashed border-[#1F60D1] bg-[#1F60D1]/16 p-3 text-center">
+        <div className="flex min-h-28 flex-col items-center justify-center">
+          <span className="rounded-full bg-[#0A141E] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#CFD2D3]">Court {courtNumber}</span>
+          <h3 className="mt-2 text-base font-black text-[#F7F8F7]">Waiting</h3>
+          <p className="mt-1 max-w-xs text-xs font-semibold text-[#CFD2D3]">No safe match available.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#1F60D1]">
-            <CourtIcon className="h-4 w-4" />
-            Court {courtNumber}
-          </p>
-          <h3 className="text-xl font-black text-[#F7F8F7]">{getMatchLabel(match)}</h3>
-        </div>
-        <p className="rounded-2xl bg-[#07111B] px-3 py-2 text-xs font-black text-[#8D99A6]">
-          {getTeamName(match.teamA)} vs {getTeamName(match.teamB)}
+    <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 shadow-sm">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-[0.65rem] font-black uppercase tracking-[0.16em] text-[#1F60D1]">
+          <CourtIcon className="h-3.5 w-3.5" />
+          Court {courtNumber}
         </p>
+        <p className="truncate rounded-full bg-[#07111B] px-2 py-1 text-[0.65rem] font-black text-[#8D99A6]">{getMatchLabel(match)}</p>
       </div>
       <CurrentMatchCard match={match} onDeclareWinner={onDeclareWinner} />
     </div>
@@ -535,19 +542,6 @@ function StandingRow({ rank, team, stats, highlighted, label }) {
         </p>
       </div>
     </div>
-  );
-}
-
-function MatchSection({ title, detail, emptyText, children }) {
-  const hasChildren = React.Children.count(children) > 0;
-
-  return (
-    <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-      <SectionHeader eyebrow="Match List" title={title} detail={detail} />
-      <div className="mt-4 space-y-3">
-        {hasChildren ? children : <p className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#0D1823] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">{emptyText}</p>}
-      </div>
-    </section>
   );
 }
 
