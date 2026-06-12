@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { updateTournamentRecord } from '../../utils/tournamentService';
 import { summarizePadelScore } from '../../utils/padelScoring';
+import { syncTeamPointsFromMatches } from '../../utils/tournamentRules';
 
 const getTeamName = (team) => team.players.join(' & ');
 
@@ -20,7 +21,6 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
 
     setUpdatingMatchId(match.id);
 
-    const oldWinnerId = currentWinnerId;
     updatedTournament.matches[matchIndex].winnerId = newWinnerId || null;
     if (updatedTournament.matches[matchIndex].score?.sets) {
       updatedTournament.matches[matchIndex].score.winnerId = newWinnerId || null;
@@ -29,21 +29,11 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
     if (!newWinnerId) {
       updatedTournament.matches[matchIndex].status = 'pending';
     }
-    if (oldWinnerId) {
-      const oldWinnerTeamIndex = updatedTournament.teams.findIndex((t) => t.id === oldWinnerId);
-      if (oldWinnerTeamIndex > -1) {
-        updatedTournament.teams[oldWinnerTeamIndex].points = Math.max(0, (updatedTournament.teams[oldWinnerTeamIndex].points || 0) - 3);
-      }
-    }
     if (newWinnerId) {
-      const newWinnerTeamIndex = updatedTournament.teams.findIndex((t) => t.id === newWinnerId);
-      if (newWinnerTeamIndex > -1) {
-        updatedTournament.teams[newWinnerTeamIndex].points = (updatedTournament.teams[newWinnerTeamIndex].points || 0) + 3;
-        updatedTournament.matches[matchIndex].status = 'completed';
-      }
+      updatedTournament.matches[matchIndex].status = 'completed';
     }
     try {
-      const savedTournament = await updateTournamentRecord(updatedTournament);
+      const savedTournament = await updateTournamentRecord(syncTeamPointsFromMatches(updatedTournament));
       setTournament(savedTournament);
       showAlert('Success', 'Match result updated successfully.');
     } catch (error) {
@@ -55,20 +45,20 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-3 sm:items-center sm:p-4">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-4 shadow-2xl sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0D3B2E]/75 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[#DDE7DE] bg-white p-4 shadow-2xl sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-xl font-bold">Match History</h3>
-            <p className="text-sm text-slate-400">{completedMatches.length} completed matches</p>
+            <h3 className="text-2xl font-black text-[#18211C]">Match History</h3>
+            <p className="text-sm font-semibold text-[#65736A]">{completedMatches.length} completed matches</p>
           </div>
-          <button onClick={onClose} className="min-h-10 rounded-lg border border-slate-600 px-3 text-sm font-bold text-slate-200 hover:bg-slate-800">
+          <button onClick={onClose} className="min-h-10 rounded-2xl border border-[#DDE7DE] px-3 text-sm font-black text-[#18211C] hover:bg-[#F1F7F2]">
             Close
           </button>
         </div>
 
         {completedMatches.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-slate-700 bg-slate-950 py-8 text-center text-slate-400">No completed matches yet.</p>
+          <p className="rounded-3xl border border-dashed border-[#BFD0C2] bg-[#F7FAF5] py-8 text-center font-bold text-[#65736A]">No completed matches yet.</p>
         ) : (
           <div className="space-y-3">
             {completedMatches.map((match) => {
@@ -77,34 +67,34 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
               const hasScore = Number.isFinite(Number(match.score?.teamA)) && Number.isFinite(Number(match.score?.teamB));
               const padelScoreSummary = summarizePadelScore(match.score, match.teamA.id, match.teamB.id);
               return (
-                <div key={match.id} className="rounded-lg border border-slate-700 bg-slate-800 p-4">
+                <div key={match.id} className="rounded-3xl border border-[#DDE7DE] bg-[#F7FAF5] p-4">
                   <div className="mb-3 grid grid-cols-[1fr_auto] gap-3">
                     <div className="min-w-0 space-y-2">
-                      <p className={`break-words font-semibold ${teamAWon ? 'text-amber-300' : 'text-white'}`}>{getTeamName(match.teamA)}</p>
-                      <p className={`break-words font-semibold ${teamBWon ? 'text-amber-300' : 'text-white'}`}>{getTeamName(match.teamB)}</p>
+                      <p className={`break-words font-black ${teamAWon ? 'text-[#146C52]' : 'text-[#18211C]'}`}>{getTeamName(match.teamA)}</p>
+                      <p className={`break-words font-black ${teamBWon ? 'text-[#146C52]' : 'text-[#18211C]'}`}>{getTeamName(match.teamB)}</p>
                     </div>
                     <div className="grid content-center gap-2 text-center">
                       {padelScoreSummary ? (
-                        <span className="max-w-32 rounded bg-slate-950 px-3 py-2 text-xs font-black leading-relaxed text-slate-100">
+                        <span className="max-w-32 rounded-2xl bg-white px-3 py-2 text-xs font-black leading-relaxed text-[#18211C]">
                           {padelScoreSummary}
                         </span>
                       ) : hasScore ? (
                         <>
-                          <span className="rounded bg-slate-950 px-3 py-1 text-lg font-black tabular-nums">{match.score.teamA}</span>
-                          <span className="rounded bg-slate-950 px-3 py-1 text-lg font-black tabular-nums">{match.score.teamB}</span>
+                          <span className="rounded-2xl bg-white px-3 py-1 text-lg font-black tabular-nums text-[#18211C]">{match.score.teamA}</span>
+                          <span className="rounded-2xl bg-white px-3 py-1 text-lg font-black tabular-nums text-[#18211C]">{match.score.teamB}</span>
                         </>
                       ) : (
-                        <span className="text-xs font-bold text-slate-500">No score</span>
+                        <span className="text-xs font-bold text-[#65736A]">No score</span>
                       )}
                     </div>
                   </div>
-                  <div className="border-t border-slate-700 pt-3">
-                    <label className="mb-2 block text-sm font-bold text-slate-300">Change Winner</label>
+                  <div className="border-t border-[#DDE7DE] pt-3">
+                    <label className="mb-2 block text-sm font-black text-[#65736A]">Change Winner</label>
                     <select
                       value={match.winnerId || ''}
                       onChange={(e) => handleWinnerChange(match, e.target.value)}
                       disabled={updatingMatchId === match.id}
-                      className="min-h-11 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="min-h-12 w-full rounded-2xl border border-[#DDE7DE] bg-white p-2 font-bold text-[#18211C] outline-none focus:border-[#168A5B] focus:ring-4 focus:ring-[#E8F6EF] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="">No Winner</option>
                       <option value={match.teamA.id}>{getTeamName(match.teamA)}</option>

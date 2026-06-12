@@ -1,166 +1,87 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  awardPadelSet,
-  createInitialPadelScore,
-  formatSetScore,
-  getSetsWon,
-  normalizeScoringSettings,
-} from '../utils/padelScoring';
+import { useEffect, useState } from 'react';
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function CurrentMatchCard({ match, onDeclareWinner, onScoreChange, scoringSettings }) {
-  const settings = useMemo(() => normalizeScoringSettings(scoringSettings), [scoringSettings]);
-  const [score, setScore] = useState(() => createInitialPadelScore(settings));
-  const [history, setHistory] = useState([]);
+export default function CurrentMatchCard({ match, onDeclareWinner }) {
   const [isSaving, setIsSaving] = useState(false);
-  const autoSaveKeyRef = useRef('');
-  const loadedMatchIdRef = useRef('');
+  const [selectedWinnerId, setSelectedWinnerId] = useState('');
 
   useEffect(() => {
-    const isNewMatch = loadedMatchIdRef.current !== match.id;
-    const incomingScore = match.score?.sets && !match.score?.isComplete ? { ...match.score, settings } : createInitialPadelScore(settings);
+    setIsSaving(false);
+    setSelectedWinnerId('');
+  }, [match.id]);
 
-    setScore((current) => {
-      if (isNewMatch || JSON.stringify(current) !== JSON.stringify(incomingScore)) {
-        return incomingScore;
-      }
-      return current;
-    });
+  const handleWinner = async (side) => {
+    if (isSaving) return;
 
-    if (isNewMatch) {
-      setHistory([]);
-      setIsSaving(false);
-      autoSaveKeyRef.current = '';
-      loadedMatchIdRef.current = match.id;
-    }
-  }, [match.id, match.score, settings]);
+    const winnerId = side === 'teamA' ? match.teamA.id : match.teamB.id;
+    const score = {
+      teamA: side === 'teamA' ? 1 : 0,
+      teamB: side === 'teamB' ? 1 : 0,
+    };
 
-  const setsWon = getSetsWon(score, match.teamA.id, match.teamB.id);
-  const completedSets = score.sets.filter((set) => set.winnerId);
-
-  const handleAwardSet = (side) => {
-    const nextScore = awardPadelSet(score, side, match.teamA.id, match.teamB.id, settings);
-    setHistory((historyItems) => [...historyItems, score]);
-    setScore(nextScore);
-    if (!nextScore.isComplete) {
-      onScoreChange?.(match, nextScore);
-    }
-  };
-
-  const handleUndo = () => {
-    setHistory((current) => {
-      if (current.length === 0) return current;
-      const previous = current[current.length - 1];
-      setScore(previous);
-      onScoreChange?.(match, previous);
-      return current.slice(0, -1);
-    });
-  };
-
-  useEffect(() => {
-    if (!score.isComplete || !score.winnerId) {
-      return;
-    }
-
-    const autoSaveKey = `${match.id}:${score.winnerId}:${score.sets.map((set) => `${set.teamAPoints}-${set.teamBPoints}-${set.winnerId || ''}`).join('|')}`;
-    if (autoSaveKeyRef.current === autoSaveKey) {
-      return;
-    }
-
-    autoSaveKeyRef.current = autoSaveKey;
+    setSelectedWinnerId(winnerId);
     setIsSaving(true);
-    onDeclareWinner(match, { winnerId: score.winnerId, score }).finally(() => {
+    try {
+      await onDeclareWinner(match, { winnerId, score });
+    } finally {
       setIsSaving(false);
-    });
-  }, [match, onDeclareWinner, score]);
+    }
+  };
 
   return (
-    <div className="space-y-4 rounded-lg bg-slate-900">
-      <div className="rounded-lg border border-slate-700 bg-slate-950 p-3 text-center">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Set Entry</p>
-        <p className="mt-1 text-sm font-semibold text-slate-300">
-          Tap the team that wins a set. First to {settings.setsToWin} set{settings.setsToWin > 1 ? 's' : ''} wins the match.
-        </p>
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-[#BDEDEA] bg-[#E6FAF8] px-4 py-3">
+        <p className="text-sm font-black text-[#074A47]">Choose the match winner</p>
+        <p className="mt-1 text-sm font-semibold text-[#0E706B]">Large buttons are intentional for quick scoring courtside.</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
-        <TeamSetPanel
+        <WinnerPanel
           label="Team A"
           name={getTeamName(match.teamA)}
-          setsWon={setsWon.teamA}
-          targetSets={settings.setsToWin}
-          isWinner={score.winnerId === match.teamA.id}
-          onAwardSet={() => handleAwardSet('teamA')}
-          disabled={score.isComplete || isSaving}
+          isWinner={selectedWinnerId === match.teamA.id}
+          onChoose={() => handleWinner('teamA')}
+          disabled={isSaving}
         />
-        <div className="hidden items-center justify-center px-2 text-sm font-black text-slate-500 sm:flex">VS</div>
-        <TeamSetPanel
+        <div className="hidden items-center justify-center px-1 text-sm font-black text-[#8A978E] sm:flex">VS</div>
+        <WinnerPanel
           label="Team B"
           name={getTeamName(match.teamB)}
-          setsWon={setsWon.teamB}
-          targetSets={settings.setsToWin}
-          isWinner={score.winnerId === match.teamB.id}
-          onAwardSet={() => handleAwardSet('teamB')}
-          disabled={score.isComplete || isSaving}
+          isWinner={selectedWinnerId === match.teamB.id}
+          onChoose={() => handleWinner('teamB')}
+          disabled={isSaving}
         />
       </div>
 
-      {completedSets.length > 0 && (
-        <div className="rounded-lg border border-slate-700 bg-slate-950 p-3">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Sets</p>
-          <div className="flex flex-wrap gap-2">
-            {completedSets.map((set, index) => (
-              <span key={index} className="rounded bg-slate-800 px-2 py-1 text-xs font-bold text-slate-300">
-                S{index + 1}: {formatSetScore(set)}
-              </span>
-            ))}
-          </div>
+      {isSaving && (
+        <div className="rounded-2xl border border-[#DDE7DE] bg-[#F7FAF5] p-3 text-center text-sm font-black text-[#65736A]">
+          Saving result and loading the next safe match...
         </div>
       )}
-
-      {score.isComplete ? (
-        <div className="rounded-lg border border-amber-300/60 bg-amber-400/10 p-3 text-center">
-          <p className="text-sm font-bold text-amber-200">
-            Match winner: {score.winnerId === match.teamA.id ? getTeamName(match.teamA) : getTeamName(match.teamB)}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-amber-100/80">
-            {isSaving ? 'Saving result and moving to the next match...' : 'Result saved. Loading next match...'}
-          </p>
-        </div>
-      ) : null}
-
-      <button
-        type="button"
-        onClick={handleUndo}
-        disabled={history.length === 0 || isSaving || score.isComplete}
-        className="min-h-12 w-full rounded-lg border border-slate-600 px-4 py-3 font-bold text-slate-200 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Undo Set
-      </button>
     </div>
   );
 }
 
-function TeamSetPanel({ label, name, setsWon, targetSets, isWinner, onAwardSet, disabled }) {
+function WinnerPanel({ label, name, isWinner, onChoose, disabled }) {
   return (
-    <div className={`rounded-lg border p-3 ${isWinner ? 'border-amber-300 bg-amber-400/10' : 'border-slate-700 bg-slate-800'}`}>
-      <div className="mb-3">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
-        <p className="break-words text-lg font-bold leading-tight text-white">{name}</p>
-      </div>
-      <div className="rounded-lg bg-slate-950 p-4 text-center">
-        <p className="text-5xl font-black tabular-nums text-white">{setsWon}</p>
-        <p className="mt-1 text-xs font-semibold text-slate-500">of {targetSets} sets</p>
-      </div>
-      <button
-        type="button"
-        onClick={onAwardSet}
-        disabled={disabled}
-        className="mt-3 min-h-12 w-full rounded-lg bg-emerald-600 px-4 py-3 text-base font-bold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+    <button
+      type="button"
+      onClick={onChoose}
+      disabled={disabled}
+      className={`min-h-40 w-full rounded-3xl border-2 p-5 text-center shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-80 ${
+        isWinner ? 'border-[#168A5B] bg-[#E8F6EF]' : 'border-[#DDE7DE] bg-white hover:border-[#BFD0C2] hover:bg-[#F1F7F2]'
+      }`}
+    >
+      <span className="text-xs font-black uppercase tracking-[0.18em] text-[#65736A]">{label}</span>
+      <span className="mx-auto mt-3 block max-w-[18rem] break-words text-2xl font-black leading-tight text-[#18211C]">{name}</span>
+      <span
+        className={`mx-auto mt-5 block w-full rounded-2xl px-4 py-3 text-base font-black ${
+          isWinner ? 'bg-[#168A5B] text-white' : 'bg-[#F1F7F2] text-[#18211C]'
+        }`}
       >
-        + Set
-      </button>
-    </div>
+        {isWinner ? 'Winner selected' : 'This team won'}
+      </span>
+    </button>
   );
 }

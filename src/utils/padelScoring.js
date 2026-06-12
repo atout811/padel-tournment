@@ -123,6 +123,25 @@ export const awardPadelSet = (score, setWinnerSide, teamAId, teamBId, rawSetting
   return nextScore;
 };
 
+export const awardPadelMatch = (score, matchWinnerSide, teamAId, teamBId, rawSettings) => {
+  if (score.isComplete) return score;
+
+  const settings = normalizeScoringSettings(rawSettings || score.settings);
+  const nextScore = JSON.parse(JSON.stringify({ ...score, settings }));
+  const side = matchWinnerSide === 'teamB' ? 'teamB' : 'teamA';
+  const winnerId = side === 'teamA' ? teamAId : teamBId;
+
+  nextScore.sets = Array.from({ length: settings.setsToWin }, () => ({
+    teamAPoints: side === 'teamA' ? 4 : 0,
+    teamBPoints: side === 'teamB' ? 4 : 0,
+    winnerId,
+  }));
+  nextScore.currentSetIndex = nextScore.sets.length - 1;
+  nextScore.winnerId = winnerId;
+  nextScore.isComplete = true;
+  return nextScore;
+};
+
 const finishSet = (score, setWinnerId, teamAId, teamBId, settings) => {
   const currentSet = getCurrentSet(score);
   currentSet.winnerId = setWinnerId;

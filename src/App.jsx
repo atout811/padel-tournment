@@ -144,8 +144,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans">
-      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4 sm:py-6">
+    <div className="min-h-screen bg-[#F6F8F4] text-[#18211C] font-sans">
+      <div className="mx-auto w-full max-w-6xl px-3 py-3 sm:px-4 sm:py-6">
         <Header />
         <main>{renderScreen()}</main>
         {alert.show && (
@@ -158,8 +158,8 @@ export default function App() {
 
 function LoadingScreen() {
   return (
-    <div className="flex items-center justify-center rounded-b-lg border-x border-b border-slate-800 bg-slate-900 p-10">
-      <p className="text-lg font-semibold text-slate-200">Loading tournament...</p>
+    <div className="flex items-center justify-center rounded-b-3xl border-x border-b border-[#DDE7DE] bg-white/90 p-10 shadow-xl shadow-[#163B2E]/5">
+      <p className="text-lg font-black text-[#146C52]">Loading tournament...</p>
     </div>
   );
 }

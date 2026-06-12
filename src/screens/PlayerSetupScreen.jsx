@@ -2,10 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { createTournamentRecord } from '../utils/tournamentService';
 import { distributeMatchesFairly, generateLeagueMatches } from '../utils/scheduling';
 import { buildScoringSettings } from '../utils/padelScoring';
+import { getSetupStatus, validatePlayerName } from '../utils/tournamentRules';
 
 export default function PlayerSetupScreen({ showAlert, setTournament, setScreen }) {
   const [players, setPlayers] = useState([]);
   const [playerName, setPlayerName] = useState('');
+  const [playerError, setPlayerError] = useState('');
   const [tournamentFormat, setTournamentFormat] = useState('cup');
   const [scoringPreset, setScoringPreset] = useState('standard');
   const [maxSets, setMaxSets] = useState(3);
@@ -14,7 +16,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const teamCount = useMemo(() => Math.floor(players.length / 2), [players.length]);
+  const setupStatus = useMemo(() => getSetupStatus(players, tournamentFormat), [players, tournamentFormat]);
   const hasOddPlayer = players.length % 2 !== 0;
 
   const applyPreset = (preset) => {
@@ -29,17 +31,21 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   };
 
   const handleAddPlayer = () => {
-    const trimmedName = playerName.trim();
-    if (trimmedName && !players.includes(trimmedName)) {
-      setPlayers([...players, trimmedName]);
-      setPlayerName('');
-    } else {
-      showAlert('Invalid Name', 'Player name cannot be empty or a duplicate.');
+    const validation = validatePlayerName(playerName, players);
+    if (!validation.isValid) {
+      setPlayerError(validation.message);
+      showAlert('Check Player Name', validation.message);
+      return;
     }
+
+    setPlayers([...players, validation.name]);
+    setPlayerName('');
+    setPlayerError('');
   };
 
   const handleRemovePlayer = (nameToRemove) => {
-    setPlayers(players.filter((p) => p !== nameToRemove));
+    setPlayers(players.filter((player) => player !== nameToRemove));
+    setPlayerError('');
   };
 
   const generateMatches = (teams, format) => {
@@ -56,8 +62,9 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   };
 
   const handleCreateTournament = async () => {
-    if (players.length < 4) {
-      showAlert('Not Enough Players', 'You need at least 4 players to start a tournament.');
+    const currentStatus = getSetupStatus(players, tournamentFormat);
+    if (!currentStatus.isValid) {
+      showAlert('Tournament Not Ready', currentStatus.message);
       return;
     }
 
@@ -88,7 +95,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
       scoringSettings,
       courtCount,
       createdAt: new Date().toISOString(),
-      currentMatchId: matches.find((m) => m.round === 1 && m.status === 'pending')?.id || null,
+      currentMatchId: matches.find((match) => match.round === 1 && match.status === 'pending')?.id || null,
     };
 
     try {
@@ -104,214 +111,281 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   };
 
   return (
-    <div className="space-y-5 rounded-b-lg border-x border-b border-slate-800 bg-slate-900 p-4 sm:p-6">
-      <section>
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-5 rounded-b-3xl border-x border-b border-[#DDE7DE] bg-white/90 p-4 shadow-xl shadow-[#163B2E]/5 backdrop-blur sm:p-6">
+      <section className="rounded-3xl bg-gradient-to-br from-[#0D3B2E] via-[#146C52] to-[#0E8F8A] p-5 text-white shadow-lg shadow-[#0D3B2E]/15">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#CFEFE5]">Padel Tournament Pro</p>
+        <h2 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">Set up the next match day</h2>
+        <p className="mt-2 max-w-2xl text-sm font-medium text-[#E8F6EF]">
+          Add players, pick a format, choose available courts, and start with a schedule players can follow from their phones.
+        </p>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <SummaryTile label="Players" value={players.length} detail={`${setupStatus.minPlayers}+ needed`} />
+        <SummaryTile label="Teams" value={setupStatus.teamCount} detail={hasOddPlayer ? 'includes substitute' : 'paired players'} />
+        <SummaryTile label="Courts" value={courtCount} detail={courtCount === 1 ? 'single court' : `${courtCount} active courts`} />
+      </section>
+
+      <section className="rounded-3xl border border-[#DDE7DE] bg-[#F1F7F2] p-4">
+        <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-bold">Create a Padel Night</h2>
-            <p className="text-sm text-slate-400">Add friends, pick a format, and start playing.</p>
+            <h3 className="text-lg font-black text-[#18211C]">Tournament Format</h3>
+            <p className="mt-1 text-sm font-medium text-[#65736A]">Cup needs 8 players. League can start with 4.</p>
           </div>
-          <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-300">
-            {players.length} players / {teamCount} teams
+          <StatusPill ready={setupStatus.isValid} text={setupStatus.isValid ? 'Ready' : 'Needs players'} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ChoiceCard
+            title="Cup"
+            eyebrow="Group stage to final"
+            description="Top 4 teams qualify for semifinals, then a champion match."
+            selected={tournamentFormat === 'cup'}
+            onClick={() => setTournamentFormat('cup')}
+          />
+          <ChoiceCard
+            title="League"
+            eyebrow="Two round-robin legs"
+            description="Every team gets repeat matches and standings decide the winner."
+            selected={tournamentFormat === 'league'}
+            onClick={() => setTournamentFormat('league')}
+          />
+        </div>
+        <p className={`mt-3 rounded-2xl px-3 py-2 text-sm font-bold ${setupStatus.isValid ? 'bg-[#E8F6EF] text-[#146C52]' : 'bg-[#FFF4D6] text-[#8A5A00]'}`}>
+          {setupStatus.message}
+        </p>
+      </section>
+
+      <section className="rounded-3xl border border-[#DDE7DE] bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-black text-[#18211C]">Players</h3>
+            <p className="text-sm font-medium text-[#65736A]">Names are trimmed and checked for duplicates.</p>
           </div>
+          <span className="rounded-full bg-[#F1F7F2] px-3 py-1 text-sm font-black text-[#146C52]">{players.length}</span>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
-          <input
-            type="text"
-            className="min-h-12 flex-grow rounded-lg border border-slate-600 bg-slate-800 p-3 text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30"
-            placeholder="Enter player name"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleAddPlayer();
-              }
-            }}
-          />
+          <div className="flex-1">
+            <input
+              type="text"
+              className={`min-h-14 w-full rounded-2xl border bg-white px-4 text-base font-semibold text-[#18211C] outline-none transition focus:ring-4 ${
+                playerError ? 'border-red-300 focus:border-red-500 focus:ring-red-100' : 'border-[#DDE7DE] focus:border-[#168A5B] focus:ring-[#E8F6EF]'
+              }`}
+              placeholder="Player name"
+              value={playerName}
+              maxLength={40}
+              onChange={(event) => {
+                setPlayerName(event.target.value);
+                if (playerError) setPlayerError('');
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  handleAddPlayer();
+                }
+              }}
+            />
+            {playerError && <p className="mt-2 text-sm font-bold text-red-600">{playerError}</p>}
+          </div>
           <button
-            className="min-h-12 rounded-lg bg-emerald-600 px-6 py-3 font-bold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-14 rounded-2xl bg-[#168A5B] px-6 text-base font-black text-white shadow-lg shadow-[#168A5B]/20 transition hover:bg-[#0F6F49] disabled:cursor-not-allowed disabled:opacity-60"
             onClick={handleAddPlayer}
             disabled={isSaving}
           >
             Add Player
           </button>
         </div>
-      </section>
 
-      <section className="space-y-2">
-        {players.length > 0 ? (
-          players.map((item, index) => (
-            <div key={item} className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800 p-3">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-950 text-sm font-bold text-emerald-300">
-                {index + 1}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-base font-semibold">{item}</span>
-              <button
-                onClick={() => handleRemovePlayer(item)}
-                disabled={isSaving}
-                className="min-h-10 rounded-lg border border-red-500/40 px-3 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Remove
-              </button>
+        <div className="mt-4">
+          {players.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {players.map((player, index) => (
+                <PlayerChip key={player} index={index + 1} name={player} onRemove={() => handleRemovePlayer(player)} disabled={isSaving} />
+              ))}
             </div>
-          ))
-        ) : (
-          <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950 p-6 text-center text-slate-400">
-            No players added yet.
-          </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed border-[#BFD0C2] bg-[#F1F7F2] px-4 py-8 text-center">
+              <p className="text-base font-black text-[#18211C]">No players yet</p>
+              <p className="mt-1 text-sm font-medium text-[#65736A]">Add at least four players for League or eight for Cup.</p>
+            </div>
+          )}
+        </div>
+
+        {hasOddPlayer && (
+          <p className="mt-3 rounded-2xl bg-[#E6FAF8] px-3 py-2 text-sm font-bold text-[#0E706B]">
+            Odd player count: one random player will be paired with a substitute slot.
+          </p>
         )}
-        {hasOddPlayer && <p className="text-sm text-amber-300">Odd player count: the last player will be paired with a substitute slot.</p>}
       </section>
 
-      <section className="rounded-lg border border-slate-700 bg-slate-950 p-3">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-400">Tournament Type</h3>
-            <p className="text-sm text-slate-500">Choose how teams progress.</p>
+      <section className="grid gap-3 sm:grid-cols-[1fr_1fr]">
+        <div className="rounded-3xl border border-[#DDE7DE] bg-white p-4 shadow-sm">
+          <label htmlFor="courtCount" className="mb-2 block text-sm font-black uppercase tracking-wide text-[#65736A]">
+            Courts Available
+          </label>
+          <select
+            id="courtCount"
+            value={courtCount}
+            onChange={(event) => setCourtCount(Number(event.target.value))}
+            disabled={isSaving}
+            className="min-h-14 w-full rounded-2xl border border-[#DDE7DE] bg-[#F7FAF5] px-4 text-base font-black text-[#18211C] outline-none focus:border-[#168A5B] focus:ring-4 focus:ring-[#E8F6EF] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <option value={1}>1 court</option>
+            <option value={2}>2 courts</option>
+            <option value={3}>3 courts</option>
+          </select>
+        </div>
+
+        <div className="rounded-3xl border border-[#DDE7DE] bg-white p-4 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((value) => !value)}
+            className="min-h-14 w-full rounded-2xl border border-[#DDE7DE] bg-[#F7FAF5] px-4 text-left text-base font-black text-[#18211C] transition hover:bg-[#F1F7F2]"
+          >
+            {showAdvanced ? 'Hide scoring options' : 'Scoring options'}
+          </button>
+        </div>
+      </section>
+
+      {showAdvanced && (
+        <section className="rounded-3xl border border-[#DDE7DE] bg-[#F1F7F2] p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ChoiceCard
+              title="Classic"
+              eyebrow="Best of 3"
+              description="Casual sets with advantage at deuce."
+              selected={scoringPreset === 'standard'}
+              onClick={() => applyPreset('standard')}
+            />
+            <ChoiceCard
+              title="Quick"
+              eyebrow="Best of 1"
+              description="Short match with golden point."
+              selected={scoringPreset === 'fast'}
+              onClick={() => applyPreset('fast')}
+            />
           </div>
-          <span className="rounded bg-slate-800 px-2 py-1 text-xs font-bold text-slate-400">1 of 2</span>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <ChoiceCard
-            title="Cup"
-            description="Top 4 go to semifinals and final."
-            selected={tournamentFormat === 'cup'}
-            onClick={() => setTournamentFormat('cup')}
-          />
-          <ChoiceCard
-            title="League"
-            description="Every team plays every other team twice."
-            selected={tournamentFormat === 'league'}
-            onClick={() => setTournamentFormat('league')}
-          />
-        </div>
-      </section>
 
-      <section className="rounded-lg border border-slate-700 bg-slate-950 p-3">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-400">Match Style</h3>
-            <p className="text-sm text-slate-500">Pick the rhythm for each matchup.</p>
-          </div>
-          <span className="rounded bg-slate-800 px-2 py-1 text-xs font-bold text-slate-400">1 of 2</span>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <ChoiceCard
-            title="Classic"
-            description="Best of 3 casual sets with advantage."
-            selected={scoringPreset === 'standard'}
-            onClick={() => applyPreset('standard')}
-          />
-          <ChoiceCard
-            title="Quick"
-            description="One casual set with golden point."
-            selected={scoringPreset === 'fast'}
-            onClick={() => applyPreset('fast')}
-          />
-        </div>
-      </section>
-
-      <section className="rounded-lg border border-slate-700 bg-slate-800 p-4">
-        <label htmlFor="courtCount" className="mb-2 block text-sm font-bold text-slate-300">
-          Courts Available
-        </label>
-        <select
-          id="courtCount"
-          value={courtCount}
-          onChange={(e) => setCourtCount(Number(e.target.value))}
-          disabled={isSaving}
-          className="min-h-11 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <option value={1}>1 court</option>
-          <option value={2}>2 courts</option>
-          <option value={3}>3 courts</option>
-        </select>
-      </section>
-
-      <section className="rounded-lg border border-slate-700 bg-slate-950 p-4">
-        <button
-          type="button"
-          onClick={() => setShowAdvanced((value) => !value)}
-          className="min-h-10 w-full rounded-lg border border-slate-600 px-3 text-sm font-bold text-slate-200 hover:bg-slate-800"
-        >
-          {showAdvanced ? 'Hide Advanced Scoring' : 'Advanced Scoring'}
-        </button>
-
-        {showAdvanced && (
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <label htmlFor="maxSets" className="mb-2 block text-sm font-bold text-slate-300">
-                Match Length
-              </label>
-              <select
-                id="maxSets"
-                value={maxSets}
-                onChange={(e) => {
-                  setMaxSets(Number(e.target.value));
-                  setScoringPreset('custom');
-                }}
-                disabled={isSaving}
-                className="min-h-11 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value={1}>Best of 1 set</option>
-                <option value={3}>Best of 3 sets</option>
-                <option value={5}>Best of 5 sets</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="deuceMode" className="mb-2 block text-sm font-bold text-slate-300">
-                Deuce Rule
-              </label>
-              <select
-                id="deuceMode"
-                value={deuceMode}
-                onChange={(e) => {
-                  setDeuceMode(e.target.value);
-                  setScoringPreset('custom');
-                }}
-                disabled={isSaving}
-                className="min-h-11 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="advantage">Advantage at deuce</option>
-                <option value="golden">Golden point at deuce</option>
-              </select>
-            </div>
+            <FieldSelect
+              id="maxSets"
+              label="Match Length"
+              value={maxSets}
+              disabled={isSaving}
+              onChange={(event) => {
+                setMaxSets(Number(event.target.value));
+                setScoringPreset('custom');
+              }}
+              options={[
+                { value: 1, label: 'Best of 1 set' },
+                { value: 3, label: 'Best of 3 sets' },
+                { value: 5, label: 'Best of 5 sets' },
+              ]}
+            />
+            <FieldSelect
+              id="deuceMode"
+              label="Deuce Rule"
+              value={deuceMode}
+              disabled={isSaving}
+              onChange={(event) => {
+                setDeuceMode(event.target.value);
+                setScoringPreset('custom');
+              }}
+              options={[
+                { value: 'advantage', label: 'Advantage at deuce' },
+                { value: 'golden', label: 'Golden point at deuce' },
+              ]}
+            />
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
+      <div className="sticky bottom-3 z-10 rounded-3xl border border-white/70 bg-white/90 p-3 shadow-2xl shadow-[#163B2E]/15 backdrop-blur">
+        <button
+          className="min-h-14 w-full rounded-2xl bg-[#168A5B] px-4 text-lg font-black text-white shadow-lg shadow-[#168A5B]/20 transition hover:bg-[#0F6F49] disabled:cursor-not-allowed disabled:bg-[#DDE7DE] disabled:text-[#65736A] disabled:shadow-none"
+          onClick={handleCreateTournament}
+          disabled={isSaving || !setupStatus.isValid}
+        >
+          {isSaving ? 'Creating...' : setupStatus.isValid ? 'Start Tournament' : setupStatus.message}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SummaryTile({ label, value, detail }) {
+  return (
+    <div className="rounded-3xl border border-[#DDE7DE] bg-white p-4 shadow-sm">
+      <p className="text-sm font-bold text-[#65736A]">{label}</p>
+      <p className="mt-1 text-3xl font-black tabular-nums text-[#18211C]">{value}</p>
+      <p className="mt-1 text-xs font-bold uppercase tracking-wide text-[#8A978E]">{detail}</p>
+    </div>
+  );
+}
+
+function StatusPill({ ready, text }) {
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${ready ? 'bg-[#E8F6EF] text-[#146C52]' : 'bg-[#FFF4D6] text-[#8A5A00]'}`}>
+      {text}
+    </span>
+  );
+}
+
+function ChoiceCard({ title, eyebrow, description, selected, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative min-h-32 rounded-3xl border p-4 text-left transition active:scale-[0.99] ${
+        selected ? 'border-[#168A5B] bg-[#E8F6EF] shadow-[0_0_0_4px_rgba(22,138,91,0.12)]' : 'border-[#DDE7DE] bg-white hover:border-[#BFD0C2] hover:bg-[#F1F7F2]'
+      }`}
+    >
+      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wide ${selected ? 'bg-[#168A5B] text-white' : 'bg-[#F1F7F2] text-[#65736A]'}`}>
+        {selected ? 'Selected' : eyebrow}
+      </span>
+      <span className="mt-3 block text-xl font-black text-[#18211C]">{title}</span>
+      <span className="mt-1 block text-sm font-semibold leading-relaxed text-[#65736A]">{description}</span>
+    </button>
+  );
+}
+
+function PlayerChip({ index, name, onRemove, disabled }) {
+  return (
+    <div className="flex max-w-full items-center gap-2 rounded-2xl border border-[#DDE7DE] bg-[#F7FAF5] py-2 pl-2 pr-1 shadow-sm">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#E8F6EF] text-sm font-black text-[#146C52]">{index}</span>
+      <span className="min-w-0 truncate text-sm font-black text-[#18211C]">{name}</span>
       <button
-        className="min-h-12 w-full rounded-lg bg-emerald-600 px-4 py-3 text-lg font-bold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-        onClick={handleCreateTournament}
-        disabled={isSaving}
+        type="button"
+        onClick={onRemove}
+        disabled={disabled}
+        aria-label={`Remove ${name}`}
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-lg font-black text-[#8A978E] transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSaving ? 'Creating...' : 'Create Tournament'}
+        x
       </button>
     </div>
   );
 }
 
-function ChoiceCard({ title, description, selected, onClick }) {
+function FieldSelect({ id, label, value, disabled, onChange, options }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative min-h-24 overflow-hidden rounded-lg border p-4 text-left transition-colors ${
-        selected ? 'border-emerald-300 bg-emerald-500/15 shadow-[0_0_0_1px_rgba(110,231,183,0.35)]' : 'border-slate-700 bg-slate-800 hover:border-slate-500'
-      }`}
-    >
-      {selected && <span className="absolute inset-y-0 left-0 w-1.5 bg-emerald-400" />}
-      <span
-        className={`absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full border text-sm font-black ${
-          selected ? 'border-emerald-300 bg-emerald-400 text-slate-950' : 'border-slate-600 bg-slate-900 text-slate-600'
-        }`}
+    <div>
+      <label htmlFor={id} className="mb-2 block text-sm font-black uppercase tracking-wide text-[#65736A]">
+        {label}
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className="min-h-12 w-full rounded-2xl border border-[#DDE7DE] bg-white px-3 text-base font-bold text-[#18211C] outline-none focus:border-[#168A5B] focus:ring-4 focus:ring-[#E8F6EF] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {selected ? '✓' : ''}
-      </span>
-      <span className="block text-lg font-bold text-white">{title}</span>
-      <span className={`mt-1 block pr-8 text-sm ${selected ? 'text-emerald-100' : 'text-slate-400'}`}>{description}</span>
-    </button>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }

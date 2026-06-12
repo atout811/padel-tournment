@@ -58,16 +58,16 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-3 sm:items-center sm:p-4">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-4 shadow-2xl sm:p-6">
-        <h3 className="mb-4 text-xl font-bold">Edit Teams</h3>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0D3B2E]/75 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[#DDE7DE] bg-white p-4 shadow-2xl sm:p-6">
+        <h3 className="mb-4 text-2xl font-black text-[#18211C]">Edit Teams</h3>
         <div className="mb-6 space-y-4">
           {editableTeams.map((team, teamIndex) => (
-            <div key={team.id} className="rounded-lg border border-slate-700 bg-slate-800 p-4">
-              <h4 className="mb-2 font-bold">Team {teamIndex + 1}</h4>
+            <div key={team.id} className="rounded-3xl border border-[#DDE7DE] bg-[#F7FAF5] p-4">
+              <h4 className="mb-2 font-black text-[#18211C]">Team {teamIndex + 1}</h4>
               <div className="space-y-2">
                 {team.players.map((player, playerIndex) => (
-                  <select key={playerIndex} value={player} onChange={(e) => handlePlayerChange(teamIndex, playerIndex, e.target.value)} className="min-h-11 w-full rounded-lg border border-slate-600 bg-slate-900 p-2 text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/30">
+                  <select key={playerIndex} value={player} onChange={(e) => handlePlayerChange(teamIndex, playerIndex, e.target.value)} className="min-h-12 w-full rounded-2xl border border-[#DDE7DE] bg-white p-2 font-bold text-[#18211C] outline-none focus:border-[#168A5B] focus:ring-4 focus:ring-[#E8F6EF]">
                     {availablePlayers.map((p) => (
                       <option key={p} value={p}>
                         {p}
@@ -81,8 +81,8 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
           ))}
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <button onClick={onClose} className="min-h-11 rounded-lg bg-slate-700 py-2 font-bold text-white hover:bg-slate-600">Cancel</button>
-          <button onClick={saveTeamChanges} disabled={isSaving} className="min-h-11 rounded-lg bg-emerald-600 py-2 font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? 'Saving...' : 'Save Changes'}</button>
+          <button onClick={onClose} className="min-h-12 rounded-2xl border border-[#DDE7DE] bg-white py-2 font-black text-[#18211C] hover:bg-[#F1F7F2]">Cancel</button>
+          <button onClick={saveTeamChanges} disabled={isSaving} className="min-h-12 rounded-2xl bg-[#168A5B] py-2 font-black text-white hover:bg-[#0F6F49] disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>
