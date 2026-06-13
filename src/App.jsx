@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Header from './components/Header.jsx';
 import { CustomAlert } from './components/Alert.jsx';
 import GroupHomeScreen from './screens/GroupHomeScreen.jsx';
@@ -8,6 +8,7 @@ import PlayerSetupScreen from './screens/PlayerSetupScreen.jsx';
 import PlayersPoolScreen from './screens/PlayersPoolScreen.jsx';
 import StartGroupNightScreen from './screens/StartGroupNightScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
+import { fetchGroups } from './utils/groupService';
 import { getOrCreateUserId } from './utils/storage';
 import { buildTournamentShareUrl, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
 
@@ -142,13 +143,45 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  const findGroupForTournament = useCallback(
+    async (tournamentData) => {
+      const groupId = tournamentData?.groupId;
+      if (!groupId) return null;
+      if (selectedGroup?.id === groupId) return selectedGroup;
+
+      try {
+        const groups = await fetchGroups();
+        return groups.find((group) => group.id === groupId) || null;
+      } catch (error) {
+        console.error('Error resolving tournament group:', error);
+        return null;
+      }
+    },
+    [selectedGroup]
+  );
+
+  const leaveTournamentView = useCallback(
+    async (tournamentData = tournament, options = {}) => {
+      const group = await findGroupForTournament(tournamentData);
+      setTournament(null);
+
+      if (tournamentData?.groupId) {
+        navigateToScreen(group ? 'groupHome' : 'groups', { group, replace: options.replace ?? true });
+        return;
+      }
+
+      navigateToScreen('home', { replace: options.replace ?? true });
+    },
+    [findGroupForTournament, navigateToScreen, tournament]
+  );
+
   useEffect(() => {
     if (tournament?.id) {
       attachSubscription(tournament.id);
       const nextShareUrl = buildTournamentShareUrl(tournament.id);
       setShareLink(nextShareUrl);
       if (window.location.href !== nextShareUrl) {
-        window.history.replaceState({ screen: 'tournament', selectedGroup: null }, '', nextShareUrl);
+        window.history.replaceState({ screen: 'tournament', selectedGroup }, '', nextShareUrl);
       }
     } else {
       setShareLink('');
@@ -158,6 +191,23 @@ export default function App() {
       detachSubscription();
     }
   }, [tournament?.id, attachSubscription, detachSubscription, screen, selectedGroup]);
+
+  const navigation = useMemo(() => {
+    if (screen === 'loading') return null;
+    if (tournament) {
+      return {
+        label: tournament.groupId ? 'Group' : 'Home',
+        contextLabel: tournament.format === 'league' ? 'League Night' : 'Cup Night',
+        onBack: () => leaveTournamentView(tournament),
+      };
+    }
+    if (screen === 'groups') return { label: 'Home', contextLabel: 'Groups', onBack: () => navigateToScreen('home') };
+    if (screen === 'groupHome') return { label: 'Groups', contextLabel: selectedGroup?.name || 'Group', onBack: () => navigateToScreen('groups', { group: null }) };
+    if (screen === 'playersPool') return { label: 'Group', contextLabel: 'Players Pool', onBack: () => navigateToScreen(selectedGroup ? 'groupHome' : 'groups', { group: selectedGroup }) };
+    if (screen === 'startGroupNight') return { label: 'Group', contextLabel: 'Start Night', onBack: () => navigateToScreen(selectedGroup ? 'groupHome' : 'groups', { group: selectedGroup }) };
+    if (screen === 'setup') return { label: 'Home', contextLabel: 'Quick Start', onBack: () => navigateToScreen('home') };
+    return { contextLabel: 'Match Day' };
+  }, [leaveTournamentView, navigateToScreen, screen, selectedGroup, tournament]);
 
   const renderScreen = () => {
     if (screen === 'loading') return <LoadingScreen />;
@@ -179,14 +229,23 @@ export default function App() {
     if (screen === 'setup' || !tournament)
       return <PlayerSetupScreen showAlert={showAlert} setTournament={setTournament} setScreen={navigateToScreen} />;
     if (tournament)
-      return <TournamentScreen tournament={tournament} setTournament={setTournament} showAlert={showAlert} setScreen={navigateToScreen} shareLink={shareLink} />;
+      return (
+        <TournamentScreen
+          tournament={tournament}
+          setTournament={setTournament}
+          showAlert={showAlert}
+          setScreen={navigateToScreen}
+          shareLink={shareLink}
+          onTournamentEnded={leaveTournamentView}
+        />
+      );
     return <LoadingScreen />;
   };
 
   return (
     <div className="min-h-screen bg-[#020D16] text-[#F7F8F7] font-sans">
       <div className="mx-auto w-full max-w-6xl px-3 py-3 sm:px-4 sm:py-6">
-        <Header />
+        <Header backLabel={navigation?.label} contextLabel={navigation?.contextLabel} onBack={navigation?.onBack} />
         <main>{renderScreen()}</main>
         {alert.show && (
           <CustomAlert title={alert.title} message={alert.message} onClose={() => setAlert({ show: false, title: '', message: '' })} />

@@ -12,7 +12,7 @@ import { CheckIcon, CourtIcon, ShareIcon, SparkIcon, TrashIcon, TrophyIcon, User
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function TournamentScreen({ tournament, setTournament, showAlert, setScreen, shareLink }) {
+export default function TournamentScreen({ tournament, setTournament, showAlert, setScreen, shareLink, onTournamentEnded }) {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showEditTeams, setShowEditTeams] = useState(false);
   const [showGameHistory, setShowGameHistory] = useState(false);
@@ -289,9 +289,14 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   const confirmEndTournament = async () => {
     setShowEndConfirm(false);
     try {
+      const finishedTournament = tournament;
       await removeTournamentRecord(tournament.id);
-      setTournament(null);
-      setScreen('home');
+      if (onTournamentEnded) {
+        await onTournamentEnded(finishedTournament, { replace: true });
+      } else {
+        setTournament(null);
+        setScreen('home');
+      }
     } catch (error) {
       console.error('Error deleting tournament:', error);
       showAlert('Error', 'Could not delete tournament.');
@@ -357,7 +362,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
           teamStats={teamStats}
           completedMatches={completedMatches}
           finalMatch={finalMatch}
-          onStartNew={() => setShowEndConfirm(true)}
+          onEndTournament={() => setShowEndConfirm(true)}
         />
       )}
 
@@ -455,7 +460,12 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       </div>
 
       {showEndConfirm && (
-        <ConfirmationModal title="End Tournament?" message="This deletes the saved tournament from this device and Supabase if connected." onConfirm={confirmEndTournament} onCancel={() => setShowEndConfirm(false)} />
+        <ConfirmationModal
+          title="End Tournament?"
+          message={`This deletes the saved tournament from this device and Supabase if connected. You will return to ${tournament.groupId ? 'the group' : 'home'}.`}
+          onConfirm={confirmEndTournament}
+          onCancel={() => setShowEndConfirm(false)}
+        />
       )}
 
       {showEditTeams && (
@@ -605,7 +615,7 @@ function StandingRow({ rank, team, stats, highlighted, label }) {
   );
 }
 
-function FinishedSummary({ champion, leaderboard, teamStats, completedMatches, finalMatch, onStartNew }) {
+function FinishedSummary({ champion, leaderboard, teamStats, completedMatches, finalMatch, onEndTournament }) {
   const topTeams = leaderboard.slice(0, 3);
 
   return (
@@ -654,8 +664,8 @@ function FinishedSummary({ champion, leaderboard, teamStats, completedMatches, f
         <div className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 text-center sm:min-w-40">
           <p className="text-4xl font-black tabular-nums text-[#F7F8F7]">{completedMatches.length}</p>
           <p className="text-sm font-bold text-[#8D99A6]">matches played</p>
-          <button onClick={onStartNew} className="mt-4 min-h-11 w-full rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] transition hover:bg-[#D3F05A]">
-            Start New
+          <button onClick={onEndTournament} className="mt-4 min-h-11 w-full rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] transition hover:bg-[#D3F05A]">
+            End Tournament
           </button>
         </div>
       </div>

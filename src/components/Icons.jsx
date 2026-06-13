@@ -104,3 +104,12 @@ export function SparkIcon({ className }) {
     </IconBase>
   );
 }
+
+export function ArrowLeftIcon({ className }) {
+  return (
+    <IconBase className={className}>
+      <path d="m12 19-7-7 7-7" />
+      <path d="M19 12H5" />
+    </IconBase>
+  );
+}
