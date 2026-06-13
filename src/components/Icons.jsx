@@ -113,3 +113,13 @@ export function ArrowLeftIcon({ className }) {
     </IconBase>
   );
 }
+
+export function HomeIcon({ className }) {
+  return (
+    <IconBase className={className}>
+      <path d="m3 10.5 9-7 9 7" />
+      <path d="M5 10v10h14V10" />
+      <path d="M9 20v-6h6v6" />
+    </IconBase>
+  );
+}

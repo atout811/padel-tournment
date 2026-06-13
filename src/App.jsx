@@ -8,6 +8,7 @@ import PlayerSetupScreen from './screens/PlayerSetupScreen.jsx';
 import PlayersPoolScreen from './screens/PlayersPoolScreen.jsx';
 import StartGroupNightScreen from './screens/StartGroupNightScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
+import { HomeIcon, ListIcon, TrophyIcon, UsersIcon } from './components/Icons.jsx';
 import { fetchGroups } from './utils/groupService';
 import { getOrCreateUserId } from './utils/storage';
 import { buildTournamentShareUrl, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
@@ -211,7 +212,7 @@ export default function App() {
 
   const renderScreen = () => {
     if (screen === 'loading') return <LoadingScreen />;
-    if (screen === 'home' && !tournament) return <HomeScreen setScreen={navigateToScreen} />;
+    if (screen === 'home' && !tournament) return <HomeScreen setScreen={navigateToScreen} selectedGroup={selectedGroup} />;
     if (screen === 'groups' && !tournament) return <GroupListScreen showAlert={showAlert} setScreen={navigateToScreen} setSelectedGroup={setSelectedGroup} />;
     if (screen === 'groupHome' && !tournament)
       return <GroupHomeScreen group={selectedGroup} showAlert={showAlert} setScreen={navigateToScreen} />;
@@ -242,11 +243,47 @@ export default function App() {
     return <LoadingScreen />;
   };
 
+  const showBottomNav = !tournament && ['home', 'groups', 'groupHome', 'playersPool'].includes(screen);
+  const bottomNavItems = [
+    {
+      id: 'home',
+      label: 'Home',
+      icon: <HomeIcon className="h-5 w-5" />,
+      active: screen === 'home',
+      onClick: () => navigateToScreen('home', { group: selectedGroup }),
+    },
+    {
+      id: 'groups',
+      label: 'Groups',
+      icon: <UsersIcon className="h-5 w-5" />,
+      active: screen === 'groups' || screen === 'groupHome',
+      onClick: () => navigateToScreen('groups', { group: null }),
+    },
+    {
+      id: 'quick',
+      label: 'Quick',
+      icon: <TrophyIcon className="h-5 w-5" />,
+      active: screen === 'setup',
+      onClick: () => navigateToScreen('setup'),
+    },
+    {
+      id: 'pool',
+      label: 'Pool',
+      icon: <ListIcon className="h-5 w-5" />,
+      active: screen === 'playersPool',
+      disabled: !selectedGroup,
+      onClick: () => {
+        if (selectedGroup) navigateToScreen('playersPool', { group: selectedGroup });
+      },
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#020D16] text-[#F7F8F7] font-sans">
-      <div className="mx-auto w-full max-w-6xl px-3 py-3 sm:px-4 sm:py-6">
+    <div className="min-h-dvh bg-[#020D16] text-[#F7F8F7] font-sans">
+      <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-0 sm:px-4 sm:py-6">
         <Header backLabel={navigation?.label} contextLabel={navigation?.contextLabel} onBack={navigation?.onBack} />
-        <main>{renderScreen()}</main>
+        <main className={showBottomNav ? 'pb-24 sm:pb-0' : ''}>{renderScreen()}</main>
+        {showBottomNav && <BottomNavigation items={bottomNavItems} />}
         {alert.show && (
           <CustomAlert title={alert.title} message={alert.message} onClose={() => setAlert({ show: false, title: '', message: '' })} />
         )}
@@ -260,5 +297,32 @@ function LoadingScreen() {
     <div className="flex items-center justify-center rounded-b-3xl border-x border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-10 shadow-xl shadow-[#020D16]/5">
       <p className="text-lg font-black text-[#BEDC45]">Loading tournament...</p>
     </div>
+  );
+}
+
+function BottomNavigation({ items }) {
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-2xl shadow-[#020D16]/30 backdrop-blur sm:hidden">
+      <div className="mx-auto grid max-w-6xl grid-cols-4 gap-1">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={item.onClick}
+            disabled={item.disabled}
+            className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-black transition ${
+              item.active
+                ? 'bg-[#BEDC45] text-[#020D16]'
+                : item.disabled
+                  ? 'cursor-not-allowed text-[#4E5A66]'
+                  : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
+            }`}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </nav>
   );
 }

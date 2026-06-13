@@ -2,7 +2,7 @@ import { ArrowLeftIcon } from './Icons';
 
 export default function Header({ backLabel, contextLabel = 'Match Day', onBack }) {
   return (
-    <header className="rounded-t-3xl border border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 px-4 py-4 shadow-xl shadow-[#020D16]/5 backdrop-blur sm:px-6 sm:py-5">
+    <header className="sticky top-0 z-30 border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] shadow-xl shadow-[#020D16]/5 backdrop-blur sm:static sm:rounded-t-3xl sm:border sm:px-6 sm:py-5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {onBack && (
@@ -19,8 +19,8 @@ export default function Header({ backLabel, contextLabel = 'Match Day', onBack }
             P
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-xl font-black text-[#F7F8F7] sm:text-3xl">Padel Tournament Pro</h1>
-            <p className="truncate text-sm font-bold text-[#8D99A6]">Fast setup, clear courts, live standings</p>
+            <h1 className="truncate text-lg font-black text-[#F7F8F7] sm:text-3xl">Padel Night</h1>
+            <p className="truncate text-xs font-bold text-[#8D99A6] sm:text-sm">{contextLabel}</p>
           </div>
         </div>
         <span className="hidden max-w-44 truncate rounded-full bg-[#BEDC45]/14 px-3 py-2 text-xs font-black uppercase tracking-wide text-[#BEDC45] sm:inline-flex">

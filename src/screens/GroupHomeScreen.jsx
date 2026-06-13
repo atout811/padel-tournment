@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchGroupLeaderboard, getPlayerWinRate } from '../utils/playerProgressionService';
-import { CourtIcon, ListIcon, UsersIcon } from '../components/Icons';
+import { CourtIcon, UsersIcon } from '../components/Icons';
 
 export default function GroupHomeScreen({ group, showAlert, setScreen }) {
   const [activePlayers, setActivePlayers] = useState([]);
@@ -32,17 +32,18 @@ export default function GroupHomeScreen({ group, showAlert, setScreen }) {
   }
 
   return (
-    <div className="space-y-5 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-4 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
-      <section className="rounded-3xl bg-gradient-to-br from-club-greenDeep via-[#19232B] to-club-teal p-5 text-white shadow-lg shadow-club-greenDeep/15">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#CFD2D3]">Padel Group</p>
-        <h2 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">{group.name}</h2>
-        <p className="mt-2 text-sm font-medium text-[#BEDC45]">{activePlayers.length} active player{activePlayers.length === 1 ? '' : 's'} in the pool.</p>
+    <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
+      <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
+        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">Group</p>
+        <div className="mt-1 flex items-end justify-between gap-3">
+          <h2 className="min-w-0 truncate text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{group.name}</h2>
+          <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{activePlayers.length}</span>
+        </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2">
         <GroupAction icon={<CourtIcon className="h-6 w-6" />} title="Start New Night" detail="Select players and guests." onClick={() => setScreen('startGroupNight')} />
         <GroupAction icon={<UsersIcon className="h-6 w-6" />} title="Players Pool" detail="Add, edit, or deactivate players." onClick={() => setScreen('playersPool')} />
-        <GroupAction icon={<ListIcon className="h-6 w-6" />} title="Back" detail="Return to all groups." onClick={() => setScreen('groups')} />
       </section>
 
       <LeaderboardCard players={activePlayers.slice(0, 5)} onOpenPool={() => setScreen('playersPool')} />

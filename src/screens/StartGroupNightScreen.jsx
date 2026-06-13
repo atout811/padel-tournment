@@ -108,11 +108,13 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
   }
 
   return (
-    <div className="space-y-5 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-4 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
-      <section className="rounded-3xl bg-gradient-to-br from-club-greenDeep via-[#19232B] to-club-teal p-5 text-white shadow-lg shadow-club-greenDeep/15">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#CFD2D3]">Start New Night</p>
-        <h2 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">{group?.name || 'Group Night'}</h2>
-        <p className="mt-2 text-sm font-medium text-[#BEDC45]">{participantNames.length} selected for this tournament.</p>
+    <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
+      <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
+        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">Start New Night</p>
+        <div className="mt-1 flex items-end justify-between gap-3">
+          <h2 className="min-w-0 truncate text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{group?.name || 'Group Night'}</h2>
+          <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{participantNames.length}</span>
+        </div>
       </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
@@ -173,10 +175,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
       </section>
 
       <div className="sticky bottom-3 z-10 rounded-3xl border border-white/10 bg-[#07111B]/95 p-3 shadow-2xl shadow-[#020D16]/15 backdrop-blur">
-        <div className="grid gap-2 sm:grid-cols-[auto_1fr]">
-          <button type="button" onClick={() => setScreen('groupHome')} className="min-h-14 rounded-2xl border border-[rgba(255,255,255,0.08)] px-5 font-black text-[#8D99A6] hover:bg-[#07111B]">
-            Back
-          </button>
+        <div className="grid gap-2">
           <button type="button" onClick={startNight} disabled={isSaving || !setupStatus.isValid} className="min-h-14 rounded-2xl bg-[#BEDC45] px-4 text-lg font-black text-[#020D16] disabled:cursor-not-allowed disabled:bg-[rgba(255,255,255,0.08)] disabled:text-[#8D99A6]">
             {isSaving ? 'Starting...' : setupStatus.isValid ? 'Start Group Night' : setupStatus.message}
           </button>
