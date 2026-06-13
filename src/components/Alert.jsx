@@ -1,6 +1,6 @@
 export function CustomAlert({ title, message, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020D16]/75 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] grid h-dvh place-items-center overflow-y-auto bg-[#020D16]/75 p-4 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-5 text-center shadow-2xl">
         <h3 className="mb-2 text-2xl font-black text-[#F7F8F7]">{title}</h3>
         <p className="mb-5 text-sm font-semibold leading-relaxed text-[#8D99A6]">{message}</p>
@@ -14,7 +14,7 @@ export function CustomAlert({ title, message, onClose }) {
 
 export function ConfirmationModal({ title, message, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020D16]/75 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] grid h-dvh place-items-center overflow-y-auto bg-[#020D16]/75 p-4 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-5 text-center shadow-2xl">
         <h3 className="mb-2 text-2xl font-black text-[#F7F8F7]">{title}</h3>
         <p className="mb-5 text-sm font-semibold leading-relaxed text-[#8D99A6]">{message}</p>

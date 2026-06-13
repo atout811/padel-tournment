@@ -8,8 +8,8 @@ import PlayerSetupScreen from './screens/PlayerSetupScreen.jsx';
 import PlayersPoolScreen from './screens/PlayersPoolScreen.jsx';
 import StartGroupNightScreen from './screens/StartGroupNightScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
-import { getOrCreateUserId, isUuid, loadTournamentData } from './utils/storage';
-import { buildTournamentShareUrl, createTournamentRecord, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
+import { getOrCreateUserId } from './utils/storage';
+import { buildTournamentShareUrl, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
 
 export default function App() {
   const [tournament, setTournament] = useState(null);
@@ -101,35 +101,13 @@ export default function App() {
           return;
         }
 
-        const cachedTournament = loadTournamentData();
         if (!active) {
           return;
         }
 
-        if (cachedTournament) {
-          let hydratedTournament = cachedTournament;
-          if (!isUuid(cachedTournament.id)) {
-            try {
-              hydratedTournament = await createTournamentRecord(cachedTournament);
-            } catch (syncError) {
-              console.error('Error migrating local tournament to Supabase:', syncError);
-              showAlert('Sync Error', 'Existing local tournament could not be synced to the cloud. Please create a new tournament.');
-              hydratedTournament = null;
-            }
-          }
-
-          if (hydratedTournament) {
-            setTournament(hydratedTournament);
-            setScreen('tournament');
-            window.history.replaceState({ screen: 'tournament', selectedGroup: null }, '', window.location.href);
-          } else {
-            setScreen('home');
-            window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
-          }
-        } else {
-          setScreen('home');
-          window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
-        }
+        setTournament(null);
+        setScreen('home');
+        window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
       } catch (error) {
         console.error('Error initializing app:', error);
         if (!active) {
