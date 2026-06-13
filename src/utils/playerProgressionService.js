@@ -15,6 +15,11 @@ const safeInteger = (value, fallback = 0) => {
 
 const nonNegativeInteger = (value, fallback = 0) => Math.max(0, safeInteger(value, fallback));
 
+const isPermissionError = (error) => {
+  const message = String(error?.message || '').toLowerCase();
+  return error?.code === '42501' || message.includes('row-level security') || message.includes('permission denied');
+};
+
 const normalizeLevelValue = (level, fallback = 3) => {
   const numericLevel = safeInteger(level, fallback);
   if (numericLevel < 1) return 1;
@@ -279,6 +284,9 @@ export const applyGroupSessionStats = async ({ groupId, sessionId, tournamentDat
     .select('id')
     .maybeSingle();
 
+  if (isPermissionError(claimError)) {
+    return { status: 'skipped_no_access', updatedPlayers: 0 };
+  }
   if (claimError) throw new Error(`Failed to claim session stats: ${claimError.message}`);
   if (!claimedSession) {
     const { data: session, error: sessionError } = await supabase
@@ -288,6 +296,9 @@ export const applyGroupSessionStats = async ({ groupId, sessionId, tournamentDat
       .eq('group_id', groupId)
       .maybeSingle();
 
+    if (isPermissionError(sessionError)) {
+      return { status: 'skipped_no_access', updatedPlayers: 0 };
+    }
     if (sessionError) throw new Error(`Failed to check session stats: ${sessionError.message}`);
     if (!session) return { status: 'not_found', updatedPlayers: 0 };
     if (session.stats_applied) return { status: 'already_applied', updatedPlayers: 0 };

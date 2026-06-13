@@ -12,7 +12,7 @@ import { CheckIcon, CourtIcon, ShareIcon, SparkIcon, TrashIcon, TrophyIcon, User
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function TournamentScreen({ tournament, setTournament, showAlert, setScreen, shareLink, onTournamentEnded }) {
+export default function TournamentScreen({ tournament, setTournament, showAlert, setScreen, shareLink, onTournamentEnded, canManageTournament = true }) {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showEditTeams, setShowEditTeams] = useState(false);
   const [showGameHistory, setShowGameHistory] = useState(false);
@@ -362,7 +362,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
           teamStats={teamStats}
           completedMatches={completedMatches}
           finalMatch={finalMatch}
-          onEndTournament={() => setShowEndConfirm(true)}
+          onEndTournament={canManageTournament ? () => setShowEndConfirm(true) : null}
         />
       )}
 
@@ -427,35 +427,43 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         )}
       </section>
 
-      <section className="hidden gap-3 sm:grid sm:grid-cols-2">
-        <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 font-black text-[#F7F8F7] shadow-sm transition hover:bg-[#07111B]">
-          <UsersIcon className="h-5 w-5 text-[#BEDC45]" />
-          Edit Teams
-        </button>
+      <section className={`hidden gap-3 sm:grid ${canManageTournament ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
+        {canManageTournament && (
+          <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 font-black text-[#F7F8F7] shadow-sm transition hover:bg-[#07111B]">
+            <UsersIcon className="h-5 w-5 text-[#BEDC45]" />
+            Edit Teams
+          </button>
+        )}
         <button onClick={() => setShowGameHistory(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 font-black text-[#F7F8F7] shadow-sm transition hover:bg-[#07111B]">
           <CheckIcon className="h-5 w-5 text-[#BEDC45]" />
           Match History
         </button>
       </section>
 
-      <button onClick={() => setShowEndConfirm(true)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 px-4 font-black text-[#DB4145] transition hover:bg-[#DB4145]/20">
-        <TrashIcon className="h-5 w-5" />
-        End Tournament
-      </button>
+      {canManageTournament && (
+        <button onClick={() => setShowEndConfirm(true)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 px-4 font-black text-[#DB4145] transition hover:bg-[#DB4145]/20">
+          <TrashIcon className="h-5 w-5" />
+          End Tournament
+        </button>
+      )}
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 p-3 backdrop-blur sm:hidden">
-        <div className="mx-auto grid max-w-6xl grid-cols-[1fr_1fr_auto] gap-2">
-          <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 text-sm font-black text-[#F7F8F7]">
-            <UsersIcon className="h-4 w-4 text-[#BEDC45]" />
-            Teams
-          </button>
+        <div className={`mx-auto grid max-w-6xl gap-2 ${canManageTournament ? 'grid-cols-[1fr_1fr_auto]' : 'grid-cols-1'}`}>
+          {canManageTournament && (
+            <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 text-sm font-black text-[#F7F8F7]">
+              <UsersIcon className="h-4 w-4 text-[#BEDC45]" />
+              Teams
+            </button>
+          )}
           <button onClick={() => setShowGameHistory(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 text-sm font-black text-[#F7F8F7]">
             <CheckIcon className="h-4 w-4 text-[#BEDC45]" />
             History
           </button>
-          <button onClick={() => setShowEndConfirm(true)} aria-label="End Tournament" className="grid h-12 w-12 place-items-center rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 text-[#DB4145]">
-            <TrashIcon className="h-5 w-5" />
-          </button>
+          {canManageTournament && (
+            <button onClick={() => setShowEndConfirm(true)} aria-label="End Tournament" className="grid h-12 w-12 place-items-center rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 text-[#DB4145]">
+              <TrashIcon className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -664,9 +672,11 @@ function FinishedSummary({ champion, leaderboard, teamStats, completedMatches, f
         <div className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 text-center sm:min-w-40">
           <p className="text-4xl font-black tabular-nums text-[#F7F8F7]">{completedMatches.length}</p>
           <p className="text-sm font-bold text-[#8D99A6]">matches played</p>
-          <button onClick={onEndTournament} className="mt-4 min-h-11 w-full rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] transition hover:bg-[#D3F05A]">
-            End Tournament
-          </button>
+          {onEndTournament && (
+            <button onClick={onEndTournament} className="mt-4 min-h-11 w-full rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] transition hover:bg-[#D3F05A]">
+              End Tournament
+            </button>
+          )}
         </div>
       </div>
     </section>

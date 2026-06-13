@@ -72,9 +72,11 @@ export default function App() {
     const unsubscribe = onAuthStateChanged((session) => {
       if (!session) {
         setAuthSession(null);
-        setTournament(null);
-        setSelectedGroup(null);
-        setScreen('auth');
+        if (!new URLSearchParams(window.location.search).get('tournamentId')) {
+          setTournament(null);
+          setSelectedGroup(null);
+          setScreen('auth');
+        }
         setIsAuthLoading(false);
         return;
       }
@@ -152,13 +154,6 @@ export default function App() {
 
     const initialize = async () => {
       if (isAuthLoading) return;
-      if (isAuthAvailable() && !authSession) {
-        setTournament(null);
-        setScreen('auth');
-        window.history.replaceState({ screen: 'auth', selectedGroup: null }, '', window.location.pathname);
-        historyReady.current = true;
-        return;
-      }
 
       try {
         const params = new URLSearchParams(window.location.search);
@@ -176,9 +171,17 @@ export default function App() {
             window.history.replaceState({ screen: 'tournament', selectedGroup: null }, '', window.location.href);
           } else {
             showAlert('Tournament Not Found', 'This tournament link appears to be invalid or has been removed.');
-            setScreen('home');
+            setScreen(isAuthAvailable() && !authSession ? 'auth' : 'home');
             window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.pathname);
           }
+          historyReady.current = true;
+          return;
+        }
+
+        if (isAuthAvailable() && !authSession) {
+          setTournament(null);
+          setScreen('auth');
+          window.history.replaceState({ screen: 'auth', selectedGroup: null }, '', window.location.pathname);
           historyReady.current = true;
           return;
         }
@@ -259,7 +262,7 @@ export default function App() {
   useEffect(() => {
     if (tournament?.id) {
       attachSubscription(tournament.id);
-      const nextShareUrl = buildTournamentShareUrl(tournament.id);
+      const nextShareUrl = buildTournamentShareUrl({ id: tournament.id, scoreToken: tournament.scoreToken });
       setShareLink(nextShareUrl);
       if (window.location.href !== nextShareUrl) {
         window.history.replaceState({ screen: 'tournament', selectedGroup }, '', nextShareUrl);
@@ -271,7 +274,7 @@ export default function App() {
       }
       detachSubscription();
     }
-  }, [tournament?.id, attachSubscription, detachSubscription, screen, selectedGroup]);
+  }, [tournament?.id, tournament?.scoreToken, attachSubscription, detachSubscription, screen, selectedGroup]);
 
   const navigation = useMemo(() => {
     if (screen === 'loading') return null;
@@ -327,6 +330,7 @@ export default function App() {
           setScreen={navigateToScreen}
           shareLink={shareLink}
           onTournamentEnded={leaveTournamentView}
+          canManageTournament={!isAuthAvailable() || !tournament.ownerId || authSession?.user?.id === tournament.ownerId}
         />
       );
     return <LoadingScreen />;
@@ -366,12 +370,14 @@ export default function App() {
       },
     },
   ];
+  const isPublicTournamentRoute = Boolean(new URLSearchParams(window.location.search).get('tournamentId'));
+  const shouldShowAuth = isAuthAvailable() && !authSession && !isPublicTournamentRoute && !tournament;
 
   return (
     <>
       {isAuthLoading && isAuthAvailable() ? (
         <LoadingScreen />
-      ) : isAuthAvailable() && !authSession ? (
+      ) : shouldShowAuth ? (
         <AuthScreen showAlert={showAlert} />
       ) : (
     <div className="min-h-dvh bg-[#020D16] text-[#F7F8F7] font-sans">
