@@ -1,7 +1,8 @@
 import { supabase } from './supabaseClient';
+import { GROUP_SESSIONS_STORAGE_KEY } from './groupStorageKeys';
 import { createUuid } from './storage';
 
-export const GROUP_SESSIONS_STORAGE_KEY = 'padel-group-sessions-data';
+export { GROUP_SESSIONS_STORAGE_KEY };
 
 const nowIso = () => new Date().toISOString();
 
@@ -23,13 +24,14 @@ const fromRow = (row) => ({
   groupId: row.group_id,
   tournamentId: row.tournament_id,
   participantMeta: row.participant_meta || [],
+  statsApplied: row.stats_applied || false,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
 
 export const createGroupSession = async ({ groupId, participantMeta }) => {
   const timestamp = nowIso();
-  const session = { id: createUuid(), groupId, tournamentId: null, participantMeta, createdAt: timestamp, updatedAt: timestamp };
+  const session = { id: createUuid(), groupId, tournamentId: null, participantMeta, statsApplied: false, createdAt: timestamp, updatedAt: timestamp };
 
   if (!supabase) {
     saveLocalSessions([session, ...loadLocalSessions()]);
@@ -43,6 +45,7 @@ export const createGroupSession = async ({ groupId, participantMeta }) => {
       group_id: groupId,
       tournament_id: null,
       participant_meta: participantMeta,
+      stats_applied: false,
       created_at: timestamp,
       updated_at: timestamp,
     })

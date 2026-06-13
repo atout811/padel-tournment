@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { addGroupPlayer, deactivateGroupPlayer, fetchGroupPlayers, updateGroupPlayer } from '../utils/groupPlayerService';
+import { getPlayerWinRate } from '../utils/playerProgressionService';
 import { CheckIcon, TrashIcon, UsersIcon } from '../components/Icons';
 
 export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
   const [players, setPlayers] = useState([]);
   const [name, setName] = useState('');
-  const [level, setLevel] = useState(3);
+  const [level, setLevel] = useState(1);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
-  const [editLevel, setEditLevel] = useState(3);
+  const [editLevel, setEditLevel] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
 
   const loadPlayers = useCallback(async () => {
@@ -29,7 +30,7 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
       setIsSaving(true);
       await addGroupPlayer({ groupId: group.id, name, level });
       setName('');
-      setLevel(3);
+      setLevel(1);
       await loadPlayers();
     } catch (error) {
       console.error('Error adding player:', error);
@@ -42,7 +43,7 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
   const startEdit = (player) => {
     setEditingId(player.id);
     setEditName(player.name);
-    setEditLevel(player.level);
+    setEditLevel(player.initialLevel || player.level);
   };
 
   const saveEdit = async () => {
@@ -143,7 +144,7 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
                         <CheckIcon className="h-5 w-5 text-[#BEDC45]" />
                         {player.name}
                       </p>
-                      <p className="mt-1 text-sm font-bold text-[#8D99A6]">Level {player.level}</p>
+                      <PlayerStats player={player} />
                     </div>
                     <div className="flex gap-2">
                       <button type="button" onClick={() => startEdit(player)} className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 py-2 font-black text-[#F7F8F7] hover:bg-[#07111B]">
@@ -163,6 +164,28 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
           <p className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">No active players yet.</p>
         )}
       </section>
+    </div>
+  );
+}
+
+function PlayerStats({ player }) {
+  const matchesPlayed = Math.max(0, Number(player.matchesPlayed || 0));
+  const wins = Math.max(0, Number(player.wins || 0));
+  const losses = Math.max(0, Number(player.losses || 0));
+  const winRate = getPlayerWinRate(player);
+
+  return (
+    <div className="mt-1 space-y-0.5 text-sm font-bold text-[#8D99A6]">
+      <p>
+        Level {player.level} <span className="text-[#CFD2D3]">Rating {player.rating}</span>
+      </p>
+      {matchesPlayed ? (
+        <p>
+          {wins}W / {losses}L <span className="text-[#CFD2D3]">{winRate}% win rate</span> <span>{matchesPlayed} match{matchesPlayed === 1 ? '' : 'es'}</span>
+        </p>
+      ) : (
+        <p>No matches yet</p>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchGroupPlayers } from '../utils/groupPlayerService';
+import { fetchGroupLeaderboard, getPlayerWinRate } from '../utils/playerProgressionService';
 import { CourtIcon, ListIcon, UsersIcon } from '../components/Icons';
 
 export default function GroupHomeScreen({ group, showAlert, setScreen }) {
@@ -8,7 +8,7 @@ export default function GroupHomeScreen({ group, showAlert, setScreen }) {
   useEffect(() => {
     if (!group?.id) return;
     let active = true;
-    fetchGroupPlayers(group.id)
+    fetchGroupLeaderboard(group.id)
       .then((players) => {
         if (active) setActivePlayers(players);
       })
@@ -44,7 +44,45 @@ export default function GroupHomeScreen({ group, showAlert, setScreen }) {
         <GroupAction icon={<UsersIcon className="h-6 w-6" />} title="Players Pool" detail="Add, edit, or deactivate players." onClick={() => setScreen('playersPool')} />
         <GroupAction icon={<ListIcon className="h-6 w-6" />} title="Back" detail="Return to all groups." onClick={() => setScreen('groups')} />
       </section>
+
+      <LeaderboardCard players={activePlayers.slice(0, 5)} onOpenPool={() => setScreen('playersPool')} />
     </div>
+  );
+}
+
+function LeaderboardCard({ players, onOpenPool }) {
+  return (
+    <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-black text-[#F7F8F7]">Group Leaderboard</h3>
+          <p className="text-sm font-semibold text-[#8D99A6]">Top players by level and rating.</p>
+        </div>
+        <button type="button" onClick={onOpenPool} className="rounded-2xl border border-[rgba(255,255,255,0.08)] px-4 py-2 text-sm font-black text-[#8D99A6] hover:bg-[#07111B]">
+          Players Pool
+        </button>
+      </div>
+
+      {players.length ? (
+        <div className="space-y-2">
+          {players.map((player, index) => (
+            <div key={player.id} className="grid grid-cols-[36px_1fr_auto] items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-3">
+              <span className={`grid h-9 w-9 place-items-center rounded-2xl text-sm font-black ${index === 0 ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#8D99A6]'}`}>{index + 1}</span>
+              <div className="min-w-0">
+                <p className="truncate font-black text-[#F7F8F7]">{player.name}</p>
+                <p className="mt-0.5 text-xs font-bold text-[#8D99A6]">{player.matchesPlayed ? `${getPlayerWinRate(player)}% win rate` : 'No matches yet'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-black text-[#BEDC45]">Level {player.level}</p>
+                <p className="text-sm font-black tabular-nums text-[#F7F8F7]">{player.rating}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">No active players yet.</p>
+      )}
+    </section>
   );
 }
 

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { removeTournamentRecord, updateTournamentRecord } from '../utils/tournamentService';
 import { distributeMatchesFairly } from '../utils/scheduling';
+import { applyGroupSessionStats } from '../utils/playerProgressionService';
 import CurrentMatchCard from '../components/CurrentMatchCard';
 import MatchCard from '../components/MatchCard';
 import { ConfirmationModal } from '../components/Alert';
@@ -21,6 +22,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   const [activePanel, setActivePanel] = useState('standings');
   const [isSavingResult, setIsSavingResult] = useState(false);
   const isSavingResultRef = useRef(false);
+  const statsApplyAttemptedRef = useRef(null);
 
   const { leaderboard, teamStats } = useMemo(() => buildLeaderboard(tournament), [tournament]);
   const currentRoundMatches = useMemo(() => tournament.matches.filter((match) => match.round === tournament.currentRound), [tournament.matches, tournament.currentRound]);
@@ -53,6 +55,10 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   const completedInRound = currentRoundMatches.filter((match) => match.status === 'completed').length;
   const roundProgress = currentRoundMatches.length ? Math.round((completedInRound / currentRoundMatches.length) * 100) : 0;
 
+  useEffect(() => {
+    statsApplyAttemptedRef.current = null;
+  }, [tournament.groupSessionId]);
+
   const handleCopyShareLink = async () => {
     if (!shareLink) return;
     if (!navigator?.clipboard?.writeText) {
@@ -78,6 +84,47 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     setCopyFeedback('');
     setIsCopyingLink(false);
   }, [shareLink]);
+
+  useEffect(() => {
+    const groupId = tournament?.groupId;
+    const sessionId = tournament?.groupSessionId;
+    if (!isTournamentFinished || !groupId || !sessionId || statsApplyAttemptedRef.current === sessionId) {
+      return undefined;
+    }
+
+    let active = true;
+    statsApplyAttemptedRef.current = sessionId;
+
+    applyGroupSessionStats({ groupId, sessionId, tournamentData: tournament })
+      .then((result) => {
+        if (!active) return;
+        if (result.status === 'applied') {
+          setLastResult({
+            title: 'Player stats updated',
+            detail: result.updatedPlayers
+              ? `${result.updatedPlayers} player${result.updatedPlayers === 1 ? '' : 's'} updated from completed matches.`
+              : 'No group players needed stat changes.',
+          });
+          return;
+        }
+        if (result.status === 'already_applied') {
+          setLastResult({
+            title: 'Stats already applied',
+            detail: 'Group player records were not changed again.',
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('Error applying player stats:', error);
+        if (active) {
+          showAlert('Stats Not Updated', 'Tournament results were saved, but player stats could not be updated.');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isTournamentFinished, showAlert, tournament]);
 
   const handleDeclareWinner = async (match, result) => {
     const winnerId = typeof result === 'string' ? result : result?.winnerId;

@@ -66,8 +66,9 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
       return;
     }
 
+    // TODO Smart Shuffle: use group player rating/level here before names are paired into teams.
     const participantMeta = [
-      ...selectedPlayers.map((player) => ({ name: player.name, groupPlayerId: player.id, level: player.level, source: 'group' })),
+      ...selectedPlayers.map((player) => ({ name: player.name, groupPlayerId: player.id, level: player.level, rating: player.rating, source: 'group' })),
       ...guests.map((guest) => ({ name: guest.name, level: 3, source: 'guest' })),
     ];
 
@@ -207,6 +208,7 @@ function PlayerSelectCard({ player, selected, onClick }) {
         <span className="min-w-0">
           <span className="block truncate font-black text-[#F7F8F7]">{player.name}</span>
           <span className="mt-1 block text-sm font-bold text-[#8D99A6]">Level {player.level}</span>
+          <span className="mt-0.5 block text-xs font-bold text-[#8D99A6]">Rating {player.rating}</span>
         </span>
       </span>
     </button>

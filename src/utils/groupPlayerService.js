@@ -1,8 +1,10 @@
 import { supabase } from './supabaseClient';
+import { GROUP_PLAYERS_STORAGE_KEY } from './groupStorageKeys';
+import { getInitialRatingFromLevel, getLevelFromRating, normalizeProgressionPlayer } from './playerProgressionService';
 import { createUuid } from './storage';
 import { normalizePlayerName } from './tournamentRules';
 
-export const GROUP_PLAYERS_STORAGE_KEY = 'padel-group-players-data';
+export { GROUP_PLAYERS_STORAGE_KEY };
 
 const nowIso = () => new Date().toISOString();
 
@@ -43,19 +45,65 @@ const ensureUniqueName = (players, groupId, name, currentPlayerId) => {
 const findPlayerByName = (players, groupId, name) =>
   players.find((player) => player.groupId === groupId && player.name.toLowerCase() === name.toLowerCase());
 
-const fromRow = (row) => ({
-  id: row.id,
-  groupId: row.group_id,
-  name: row.name,
-  level: row.level,
-  active: row.active,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});
+const hasMatchHistory = (player) => {
+  const normalizedPlayer = normalizeProgressionPlayer(player);
+  return normalizedPlayer.matchesPlayed > 0 || normalizedPlayer.wins > 0 || normalizedPlayer.losses > 0;
+};
+
+const createProgressionSeed = (level) => {
+  const initialLevel = normalizeLevel(level);
+  const rating = getInitialRatingFromLevel(initialLevel);
+  return {
+    initialLevel,
+    level: getLevelFromRating(rating),
+    rating,
+    matchesPlayed: 0,
+    wins: 0,
+    losses: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    lastPlayedAt: null,
+  };
+};
+
+const createDbProgressionSeed = (level) => {
+  const seed = createProgressionSeed(level);
+  return {
+    initial_level: seed.initialLevel,
+    level: seed.level,
+    rating: seed.rating,
+    matches_played: seed.matchesPlayed,
+    wins: seed.wins,
+    losses: seed.losses,
+    current_streak: seed.currentStreak,
+    best_streak: seed.bestStreak,
+    last_played_at: seed.lastPlayedAt,
+  };
+};
+
+const buildLocalLevelUpdate = (level, currentPlayer) => {
+  const initialLevel = normalizeLevel(level);
+  if (currentPlayer && hasMatchHistory(currentPlayer)) {
+    return { initialLevel };
+  }
+  return createProgressionSeed(initialLevel);
+};
+
+const buildDbLevelUpdate = (level, currentPlayer) => {
+  const initialLevel = normalizeLevel(level);
+  if (currentPlayer && hasMatchHistory(currentPlayer)) {
+    return { initial_level: initialLevel };
+  }
+  return createDbProgressionSeed(initialLevel);
+};
+
+const fromRow = (row) => normalizeProgressionPlayer(row);
 
 export const fetchGroupPlayers = async (groupId, { includeInactive = false } = {}) => {
   if (!supabase) {
-    return loadLocalPlayers().filter((player) => player.groupId === groupId && (includeInactive || player.active !== false));
+    return loadLocalPlayers()
+      .filter((player) => player.groupId === groupId && (includeInactive || player.active !== false))
+      .map(fromRow);
   }
 
   let query = supabase.from('group_players').select('*').eq('group_id', groupId).order('name', { ascending: true });
@@ -65,7 +113,7 @@ export const fetchGroupPlayers = async (groupId, { includeInactive = false } = {
   return (data || []).map(fromRow);
 };
 
-export const addGroupPlayer = async ({ groupId, name, level }) => {
+export const addGroupPlayer = async ({ groupId, name, level = 1 }) => {
   const normalizedName = validateName(name);
   const normalizedLevel = normalizeLevel(level);
   const timestamp = nowIso();
@@ -75,14 +123,28 @@ export const addGroupPlayer = async ({ groupId, name, level }) => {
     const existingPlayer = findPlayerByName(players, groupId, normalizedName);
     if (existingPlayer) {
       if (existingPlayer.active !== false) throw new Error('That player already exists in this group.');
-      const restoredPlayer = { ...existingPlayer, name: normalizedName, level: normalizedLevel, active: true, updatedAt: timestamp };
+      const restoredPlayer = {
+        ...existingPlayer,
+        name: normalizedName,
+        ...buildLocalLevelUpdate(normalizedLevel, existingPlayer),
+        active: true,
+        updatedAt: timestamp,
+      };
       saveLocalPlayers(players.map((player) => (player.id === restoredPlayer.id ? restoredPlayer : player)));
-      return restoredPlayer;
+      return fromRow(restoredPlayer);
     }
 
-    const player = { id: createUuid(), groupId, name: normalizedName, level: normalizedLevel, active: true, createdAt: timestamp, updatedAt: timestamp };
+    const player = {
+      id: createUuid(),
+      groupId,
+      name: normalizedName,
+      ...createProgressionSeed(normalizedLevel),
+      active: true,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
     saveLocalPlayers([...players, player]);
-    return player;
+    return fromRow(player);
   }
 
   const { data: existingRows, error: lookupError } = await supabase.from('group_players').select('*').eq('group_id', groupId);
@@ -94,7 +156,7 @@ export const addGroupPlayer = async ({ groupId, name, level }) => {
 
     const { data, error } = await supabase
       .from('group_players')
-      .update({ name: normalizedName, level: normalizedLevel, active: true, updated_at: timestamp })
+      .update({ name: normalizedName, ...buildDbLevelUpdate(normalizedLevel, existingPlayer), active: true, updated_at: timestamp })
       .eq('id', existingPlayer.id)
       .select()
       .single();
@@ -105,7 +167,15 @@ export const addGroupPlayer = async ({ groupId, name, level }) => {
 
   const { data, error } = await supabase
     .from('group_players')
-    .insert({ id: createUuid(), group_id: groupId, name: normalizedName, level: normalizedLevel, active: true, created_at: timestamp, updated_at: timestamp })
+    .insert({
+      id: createUuid(),
+      group_id: groupId,
+      name: normalizedName,
+      ...createDbProgressionSeed(normalizedLevel),
+      active: true,
+      created_at: timestamp,
+      updated_at: timestamp,
+    })
     .select()
     .single();
 
@@ -131,19 +201,26 @@ export const updateGroupPlayer = async (playerId, updates) => {
         ? {
             ...player,
             ...(normalizedName ? { name: normalizedName } : {}),
-            ...(normalizedLevel ? { level: normalizedLevel } : {}),
+            ...(normalizedLevel !== undefined ? buildLocalLevelUpdate(normalizedLevel, current) : {}),
             ...(updates.active !== undefined ? { active: Boolean(updates.active) } : {}),
             updatedAt: timestamp,
           }
         : player
     );
     saveLocalPlayers(nextPlayers);
-    return nextPlayers.find((player) => player.id === playerId);
+    return fromRow(nextPlayers.find((player) => player.id === playerId));
+  }
+
+  let currentPlayer = null;
+  if (normalizedLevel !== undefined) {
+    const { data: currentRow, error: currentError } = await supabase.from('group_players').select('*').eq('id', playerId).single();
+    if (currentError) throw new Error(`Failed to load player: ${currentError.message}`);
+    currentPlayer = fromRow(currentRow);
   }
 
   const payload = { updated_at: timestamp };
   if (normalizedName) payload.name = normalizedName;
-  if (normalizedLevel) payload.level = normalizedLevel;
+  if (normalizedLevel !== undefined) Object.assign(payload, buildDbLevelUpdate(normalizedLevel, currentPlayer));
   if (updates.active !== undefined) payload.active = Boolean(updates.active);
   const { data, error } = await supabase.from('group_players').update(payload).eq('id', playerId).select().single();
   if (error) {
