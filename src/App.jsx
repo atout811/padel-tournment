@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Header from './components/Header.jsx';
 import InstallPrompt from './components/InstallPrompt.jsx';
 import { CustomAlert } from './components/Alert.jsx';
 import AuthScreen from './screens/AuthScreen.jsx';
