@@ -30,7 +30,7 @@ function HomeRow({ icon, title, detail, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="grid min-h-20 grid-cols-[48px_1fr_auto] items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 text-left shadow-sm transition hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B] active:scale-[0.99]"
+      className="grid min-h-20 w-full grid-cols-[48px_1fr_auto] items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 text-left shadow-sm transition hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B] active:scale-[0.99]"
     >
       <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#BEDC45]/14 text-[#BEDC45]">{icon}</span>
       <span className="min-w-0">

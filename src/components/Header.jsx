@@ -1,7 +1,29 @@
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeftIcon } from './Icons';
 
 export default function Header({ backLabel, contextLabel = 'Match Day', onBack, user, onSignOut }) {
   const userLabel = user?.email || user?.user_metadata?.full_name || '';
+  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const accountRef = useRef(null);
+
+  useEffect(() => {
+    if (!isAccountOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (accountRef.current && !accountRef.current.contains(event.target)) {
+        setIsAccountOpen(false);
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [isAccountOpen]);
+
+  const handleSignOut = () => {
+    setIsAccountOpen(false);
+    onSignOut?.();
+  };
 
   return (
     <header className="sticky top-0 z-30 border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] shadow-xl shadow-[#020D16]/5 backdrop-blur sm:static sm:rounded-t-3xl sm:border sm:px-6 sm:py-5">
@@ -30,15 +52,40 @@ export default function Header({ backLabel, contextLabel = 'Match Day', onBack, 
             {contextLabel}
           </span>
           {userLabel && (
-            <button
-              type="button"
-              onClick={onSignOut}
-              className="grid h-11 w-11 place-items-center rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] text-sm font-black uppercase text-[#BEDC45] transition hover:bg-[#0D1823]"
-              aria-label="Sign out"
-              title={`Sign out ${userLabel}`}
-            >
-              {getInitial(userLabel)}
-            </button>
+            <div ref={accountRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsAccountOpen((open) => !open)}
+                className="grid h-11 w-11 place-items-center rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] text-sm font-black uppercase text-[#BEDC45] transition hover:bg-[#0D1823]"
+                aria-label="Open account menu"
+                aria-expanded={isAccountOpen}
+                title={userLabel}
+              >
+                {getInitial(displayName || userLabel)}
+              </button>
+
+              {isAccountOpen && (
+                <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-72 rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 text-left shadow-2xl shadow-[#020D16]/40">
+                  <div className="flex items-center gap-3 rounded-2xl bg-[#07111B] p-3">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#BEDC45] text-base font-black uppercase text-[#020D16]">
+                      {getInitial(displayName || userLabel)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-[#F7F8F7]">{displayName || 'Signed in'}</p>
+                      <p className="truncate text-xs font-bold text-[#8D99A6]">{userLabel}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="mt-2 min-h-12 w-full rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 px-4 text-sm font-black text-[#DB4145] transition hover:bg-[#DB4145]/20"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
