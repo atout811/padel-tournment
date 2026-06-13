@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Header from './components/Header.jsx';
 import { CustomAlert } from './components/Alert.jsx';
+import AuthScreen from './screens/AuthScreen.jsx';
 import GroupHomeScreen from './screens/GroupHomeScreen.jsx';
 import GroupListScreen from './screens/GroupListScreen.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
@@ -9,6 +10,7 @@ import PlayersPoolScreen from './screens/PlayersPoolScreen.jsx';
 import StartGroupNightScreen from './screens/StartGroupNightScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
 import { HomeIcon, ListIcon, TrophyIcon, UsersIcon } from './components/Icons.jsx';
+import { claimLegacyOwnerData, getAuthSession, isAuthAvailable, onAuthStateChanged, signOut } from './utils/authService';
 import { fetchGroups } from './utils/groupService';
 import { getOrCreateUserId } from './utils/storage';
 import { buildTournamentShareUrl, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
@@ -19,10 +21,79 @@ export default function App() {
   const [alert, setAlert] = useState({ show: false, title: '', message: '' });
   const [shareLink, setShareLink] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [authSession, setAuthSession] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(isAuthAvailable());
   const subscriptionCleanup = useRef(null);
   const historyReady = useRef(false);
+  const claimedOwnerRef = useRef(null);
 
   const showAlert = useCallback((title, message) => setAlert({ show: true, title, message }), []);
+
+  const prepareAuthSession = useCallback(
+    async (session) => {
+      const authUserId = session?.user?.id;
+      if (!authUserId || claimedOwnerRef.current === authUserId) {
+        return session;
+      }
+
+      claimedOwnerRef.current = authUserId;
+      try {
+        await claimLegacyOwnerData(authUserId);
+      } catch (error) {
+        console.error('Error claiming local owner data:', error);
+        showAlert('Data Migration Failed', 'You are signed in, but old local data could not be attached to your account.');
+      }
+
+      return session;
+    },
+    [showAlert]
+  );
+
+  useEffect(() => {
+    if (!isAuthAvailable()) {
+      setIsAuthLoading(false);
+      return () => {};
+    }
+
+    let active = true;
+    getAuthSession()
+      .then((session) => prepareAuthSession(session))
+      .then((session) => {
+        if (active) setAuthSession(session);
+      })
+      .catch((error) => {
+        console.error('Error loading auth session:', error);
+        showAlert('Login Error', 'Could not load your login session.');
+      })
+      .finally(() => {
+        if (active) setIsAuthLoading(false);
+      });
+
+    const unsubscribe = onAuthStateChanged((session) => {
+      if (!session) {
+        setAuthSession(null);
+        setTournament(null);
+        setSelectedGroup(null);
+        setScreen('auth');
+        setIsAuthLoading(false);
+        return;
+      }
+
+      setIsAuthLoading(true);
+      prepareAuthSession(session)
+        .then((preparedSession) => setAuthSession(preparedSession))
+        .catch((error) => {
+          console.error('Error preparing auth session:', error);
+          setAuthSession(session);
+        })
+        .finally(() => setIsAuthLoading(false));
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [prepareAuthSession, showAlert]);
 
   const navigateToScreen = useCallback((nextScreen, options = {}) => {
     const { group, replace = false } = options;
@@ -80,6 +151,15 @@ export default function App() {
     let active = true;
 
     const initialize = async () => {
+      if (isAuthLoading) return;
+      if (isAuthAvailable() && !authSession) {
+        setTournament(null);
+        setScreen('auth');
+        window.history.replaceState({ screen: 'auth', selectedGroup: null }, '', window.location.pathname);
+        historyReady.current = true;
+        return;
+      }
+
       try {
         const params = new URLSearchParams(window.location.search);
         const tournamentIdFromUrl = params.get('tournamentId');
@@ -128,7 +208,7 @@ export default function App() {
       active = false;
       detachSubscription();
     };
-  }, [detachSubscription, showAlert]);
+  }, [authSession, detachSubscription, isAuthLoading, showAlert]);
 
   useEffect(() => {
     const handlePopState = (event) => {
@@ -210,6 +290,15 @@ export default function App() {
     return { contextLabel: 'Match Day' };
   }, [leaveTournamentView, navigateToScreen, screen, selectedGroup, tournament]);
 
+  const handleSignOut = useCallback(async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
+      showAlert('Sign Out Failed', error.message || 'Could not sign out.');
+    }
+  }, [showAlert]);
+
   const renderScreen = () => {
     if (screen === 'loading') return <LoadingScreen />;
     if (screen === 'home' && !tournament) return <HomeScreen setScreen={navigateToScreen} selectedGroup={selectedGroup} />;
@@ -279,22 +368,36 @@ export default function App() {
   ];
 
   return (
+    <>
+      {isAuthLoading && isAuthAvailable() ? (
+        <LoadingScreen />
+      ) : isAuthAvailable() && !authSession ? (
+        <AuthScreen showAlert={showAlert} />
+      ) : (
     <div className="min-h-dvh bg-[#020D16] text-[#F7F8F7] font-sans">
       <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-0 sm:px-4 sm:py-6">
-        <Header backLabel={navigation?.label} contextLabel={navigation?.contextLabel} onBack={navigation?.onBack} />
+        <Header
+          backLabel={navigation?.label}
+          contextLabel={navigation?.contextLabel}
+          onBack={navigation?.onBack}
+          user={authSession?.user}
+          onSignOut={isAuthAvailable() ? handleSignOut : undefined}
+        />
         <main className={showBottomNav ? 'pb-24 sm:pb-0' : ''}>{renderScreen()}</main>
         {showBottomNav && <BottomNavigation items={bottomNavItems} />}
-        {alert.show && (
-          <CustomAlert title={alert.title} message={alert.message} onClose={() => setAlert({ show: false, title: '', message: '' })} />
-        )}
       </div>
     </div>
+      )}
+      {alert.show && (
+        <CustomAlert title={alert.title} message={alert.message} onClose={() => setAlert({ show: false, title: '', message: '' })} />
+      )}
+    </>
   );
 }
 
 function LoadingScreen() {
   return (
-    <div className="flex items-center justify-center rounded-b-3xl border-x border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-10 shadow-xl shadow-[#020D16]/5">
+    <div className="flex min-h-dvh items-center justify-center rounded-b-3xl border-x border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-10 shadow-xl shadow-[#020D16]/5">
       <p className="text-lg font-black text-[#BEDC45]">Loading tournament...</p>
     </div>
   );

@@ -1,6 +1,8 @@
 import { ArrowLeftIcon } from './Icons';
 
-export default function Header({ backLabel, contextLabel = 'Match Day', onBack }) {
+export default function Header({ backLabel, contextLabel = 'Match Day', onBack, user, onSignOut }) {
+  const userLabel = user?.email || user?.user_metadata?.full_name || '';
+
   return (
     <header className="sticky top-0 z-30 border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] shadow-xl shadow-[#020D16]/5 backdrop-blur sm:static sm:rounded-t-3xl sm:border sm:px-6 sm:py-5">
       <div className="flex items-center justify-between gap-3">
@@ -23,10 +25,27 @@ export default function Header({ backLabel, contextLabel = 'Match Day', onBack }
             <p className="truncate text-xs font-bold text-[#8D99A6] sm:text-sm">{contextLabel}</p>
           </div>
         </div>
-        <span className="hidden max-w-44 truncate rounded-full bg-[#BEDC45]/14 px-3 py-2 text-xs font-black uppercase tracking-wide text-[#BEDC45] sm:inline-flex">
-          {contextLabel}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="hidden max-w-44 truncate rounded-full bg-[#BEDC45]/14 px-3 py-2 text-xs font-black uppercase tracking-wide text-[#BEDC45] sm:inline-flex">
+            {contextLabel}
+          </span>
+          {userLabel && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="grid h-11 w-11 place-items-center rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] text-sm font-black uppercase text-[#BEDC45] transition hover:bg-[#0D1823]"
+              aria-label="Sign out"
+              title={`Sign out ${userLabel}`}
+            >
+              {getInitial(userLabel)}
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );
+}
+
+function getInitial(value) {
+  return String(value || '?').trim().charAt(0) || '?';
 }

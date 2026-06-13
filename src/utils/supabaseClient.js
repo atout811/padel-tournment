@@ -11,7 +11,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 } else {
   client = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
-      persistSession: false,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
     },
     global: {
       headers: {
@@ -22,3 +24,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = client;
+
+export const getCurrentOwnerId = async () => {
+  if (!supabase) return getOrCreateUserId();
+
+  const { data, error } = await supabase.auth.getUser();
+  if (!error && data?.user?.id) return data.user.id;
+
+  return getOrCreateUserId();
+};

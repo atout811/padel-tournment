@@ -1,5 +1,5 @@
-import { supabase } from './supabaseClient';
-import { createUuid, getOrCreateUserId } from './storage';
+import { getCurrentOwnerId, supabase } from './supabaseClient';
+import { createUuid } from './storage';
 
 export const GROUPS_STORAGE_KEY = 'padel-groups-data';
 
@@ -27,7 +27,7 @@ const fromRow = (row) => ({
 });
 
 export const fetchGroups = async () => {
-  const ownerId = getOrCreateUserId();
+  const ownerId = await getCurrentOwnerId();
 
   if (!supabase) {
     return loadLocalGroups().filter((group) => group.ownerId === ownerId);
@@ -42,7 +42,7 @@ export const createGroup = async (name) => {
   const trimmedName = String(name || '').trim().replace(/\s+/g, ' ');
   if (!trimmedName) throw new Error('Group name is required.');
 
-  const ownerId = getOrCreateUserId();
+  const ownerId = await getCurrentOwnerId();
   const timestamp = nowIso();
   const group = { id: createUuid(), ownerId, name: trimmedName, createdAt: timestamp, updatedAt: timestamp };
 

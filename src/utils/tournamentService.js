@@ -1,5 +1,5 @@
-import { supabase } from './supabaseClient';
-import { createUuid, deleteTournamentData as clearCachedTournament, getOrCreateUserId, isUuid, loadTournamentData as loadCachedTournament, saveTournamentData as cacheTournament } from './storage';
+import { getCurrentOwnerId, supabase } from './supabaseClient';
+import { createUuid, deleteTournamentData as clearCachedTournament, isUuid, loadTournamentData as loadCachedTournament, saveTournamentData as cacheTournament } from './storage';
 
 const generateTournamentId = () => createUuid();
 
@@ -9,7 +9,7 @@ const withTimestamps = (tournament) => ({
 });
 
 export const createTournamentRecord = async (tournament) => {
-  const ownerId = getOrCreateUserId();
+  const ownerId = await getCurrentOwnerId();
   const tournamentId = isUuid(tournament.id) ? tournament.id : generateTournamentId();
   const record = withTimestamps({
     ...tournament,

@@ -105,6 +105,29 @@ export function SparkIcon({ className }) {
   );
 }
 
+export function GoogleIcon({ className }) {
+  return (
+    <svg className={className || baseClass} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M21.6 12.23c0-.78-.07-1.53-.2-2.23H12v4.22h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.89-1.74 2.98-4.31 2.98-7.52Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22c2.7 0 4.96-.89 6.62-2.41l-3.24-2.51c-.9.6-2.04.95-3.38.95-2.6 0-4.81-1.75-5.6-4.12H3.06v2.59A10 10 0 0 0 12 22Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.4 13.91a6.02 6.02 0 0 1 0-3.82V7.5H3.06a10 10 0 0 0 0 9l3.34-2.59Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.97c1.47 0 2.79.51 3.82 1.5l2.87-2.87C16.95 2.98 14.69 2 12 2a10 10 0 0 0-8.94 5.5l3.34 2.59C7.19 7.72 9.4 5.97 12 5.97Z"
+      />
+    </svg>
+  );
+}
+
 export function ArrowLeftIcon({ className }) {
   return (
     <IconBase className={className}>
