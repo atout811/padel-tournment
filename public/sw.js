@@ -1,11 +1,11 @@
-const CACHE_NAME = 'padel-night-v1';
+const CACHE_NAME = 'padel-night-v2';
 
 const getScopePath = () => new URL(self.registration.scope).pathname;
 
 const coreAssets = () => {
   const scopePath = getScopePath();
   return [
-    scopePath,
+    `${scopePath}index.html`,
     `${scopePath}manifest.webmanifest`,
     `${scopePath}padel-icon.svg`,
     `${scopePath}pwa-icon-192.png`,
@@ -18,7 +18,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(coreAssets()))
+      .then(async (cache) => {
+        await Promise.allSettled(coreAssets().map((url) => cache.add(url)));
+      })
       .then(() => self.skipWaiting())
   );
 });
@@ -44,10 +46,17 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(getScopePath(), copy));
+          const scopePath = getScopePath();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(`${scopePath}index.html`, copy);
+            cache.put(scopePath, copy);
+          });
           return response;
         })
-        .catch(() => caches.match(getScopePath()))
+        .catch(async () => {
+          const scopePath = getScopePath();
+          return (await caches.match(`${scopePath}index.html`)) || caches.match(scopePath);
+        })
     );
     return;
   }

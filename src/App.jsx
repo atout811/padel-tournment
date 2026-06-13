@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Header from './components/Header.jsx';
+import InstallPrompt from './components/InstallPrompt.jsx';
 import { CustomAlert } from './components/Alert.jsx';
 import AuthScreen from './screens/AuthScreen.jsx';
 import GroupHomeScreen from './screens/GroupHomeScreen.jsx';
@@ -397,6 +397,7 @@ export default function App() {
       {alert.show && (
         <CustomAlert title={alert.title} message={alert.message} onClose={() => setAlert({ show: false, title: '', message: '' })} />
       )}
+      <InstallPrompt />
     </>
   );
 }

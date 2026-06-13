@@ -2,8 +2,9 @@
   "name": "Padel Night",
   "short_name": "Padel Night",
   "description": "Organize casual padel nights, track live matches, and share scoring links with friends.",
-  "start_url": ".",
-  "scope": ".",
+  "id": "/padel-tournment/",
+  "start_url": "/padel-tournment/",
+  "scope": "/padel-tournment/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#020D16",
@@ -11,25 +12,25 @@
   "categories": ["sports", "productivity"],
   "icons": [
     {
-      "src": "padel-icon.svg",
+      "src": "/padel-tournment/padel-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "pwa-icon-192.png",
+      "src": "/padel-tournment/pwa-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "pwa-icon-512.png",
+      "src": "/padel-tournment/pwa-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "pwa-maskable-512.png",
+      "src": "/padel-tournment/pwa-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
