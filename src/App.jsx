@@ -10,6 +10,7 @@ import PlayerSetupScreen from './screens/PlayerSetupScreen.jsx';
 import PlayersPoolScreen from './screens/PlayersPoolScreen.jsx';
 import StartGroupNightScreen from './screens/StartGroupNightScreen.jsx';
 import TournamentHistoryScreen from './screens/TournamentHistoryScreen.jsx';
+import TournamentResultScreen from './screens/TournamentResultScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
 import { HomeIcon, ListIcon, TrophyIcon, UsersIcon } from './components/Icons.jsx';
 import { claimLegacyOwnerData, getAuthSession, isAuthAvailable, onAuthStateChanged, signOut } from './utils/authService';
@@ -19,6 +20,7 @@ import { buildTournamentShareUrl, fetchTournamentById, subscribeToTournament } f
 
 export default function App() {
   const [tournament, setTournament] = useState(null);
+  const [resultTournament, setResultTournament] = useState(null);
   const [screen, setScreen] = useState('loading');
   const [alert, setAlert] = useState({ show: false, title: '', message: '' });
   const [shareLink, setShareLink] = useState('');
@@ -76,6 +78,7 @@ export default function App() {
         setAuthSession(null);
         if (!new URLSearchParams(window.location.search).get('tournamentId')) {
           setTournament(null);
+          setResultTournament(null);
           setSelectedGroup(null);
           setScreen('auth');
         }
@@ -163,6 +166,7 @@ export default function App() {
         getOrCreateUserId();
         const cachedTournament = loadTournamentData();
         const restoreTournament = (tournamentData) => {
+          setResultTournament(null);
           setTournament(tournamentData);
           setScreen('tournament');
           saveActiveTournamentId(tournamentData.id);
@@ -215,6 +219,7 @@ export default function App() {
 
         if (isAuthAvailable() && !authSession) {
           setTournament(null);
+          setResultTournament(null);
           setScreen('auth');
           saveActiveTournamentId(null);
           window.history.replaceState({ screen: 'auth', selectedGroup: null }, '', window.location.pathname);
@@ -227,6 +232,7 @@ export default function App() {
         }
 
         setTournament(null);
+        setResultTournament(null);
         setScreen('home');
         saveActiveTournamentId(null);
         window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
@@ -236,6 +242,7 @@ export default function App() {
           return;
         }
         showAlert('Error', 'Could not load tournament data.');
+        setResultTournament(null);
         setScreen('home');
         saveActiveTournamentId(null);
         window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
@@ -297,6 +304,23 @@ export default function App() {
     [findGroupForTournament, navigateToScreen, tournament]
   );
 
+  const resumeTournament = useCallback(
+    (tournamentData) => {
+      setResultTournament(null);
+      setTournament(tournamentData);
+      navigateToScreen('tournament');
+    },
+    [navigateToScreen]
+  );
+
+  const openTournamentResult = useCallback(
+    (tournamentData) => {
+      setResultTournament(tournamentData);
+      navigateToScreen('tournamentResult');
+    },
+    [navigateToScreen]
+  );
+
   useEffect(() => {
     if (tournament?.id) {
       attachSubscription(tournament.id);
@@ -334,6 +358,7 @@ export default function App() {
     if (screen === 'startGroupNight') return { label: 'Group', contextLabel: 'Start Night', onBack: () => navigateToScreen(selectedGroup ? 'groupHome' : 'groups', { group: selectedGroup }) };
     if (screen === 'setup') return { label: 'Home', contextLabel: 'Quick Start', onBack: () => navigateToScreen('home') };
     if (screen === 'history') return { label: 'Home', contextLabel: 'History', onBack: () => navigateToScreen('home') };
+    if (screen === 'tournamentResult') return { label: 'History', contextLabel: 'Result', onBack: () => navigateToScreen('history') };
     return { contextLabel: 'Match Day' };
   }, [leaveTournamentView, navigateToScreen, screen, selectedGroup, tournament]);
 
@@ -348,14 +373,27 @@ export default function App() {
 
   const renderScreen = () => {
     if (screen === 'loading') return <LoadingScreen />;
-    if (screen === 'home' && !tournament) return <HomeScreen setScreen={navigateToScreen} selectedGroup={selectedGroup} />;
+    if (screen === 'home' && !tournament)
+      return <HomeScreen setScreen={navigateToScreen} selectedGroup={selectedGroup} onResumeTournament={resumeTournament} showAlert={showAlert} />;
     if (screen === 'groups' && !tournament) return <GroupListScreen showAlert={showAlert} setScreen={navigateToScreen} setSelectedGroup={setSelectedGroup} />;
     if (screen === 'groupHome' && !tournament)
       return <GroupHomeScreen group={selectedGroup} showAlert={showAlert} setScreen={navigateToScreen} />;
     if (screen === 'playersPool' && !tournament)
       return <PlayersPoolScreen group={selectedGroup} showAlert={showAlert} setScreen={navigateToScreen} />;
     if (screen === 'history' && !tournament)
-      return <TournamentHistoryScreen showAlert={showAlert} setTournament={setTournament} setScreen={navigateToScreen} />;
+      return <TournamentHistoryScreen showAlert={showAlert} onOpenTournamentResult={openTournamentResult} />;
+    if (screen === 'tournamentResult' && !tournament) {
+      return resultTournament ? (
+        <TournamentResultScreen
+          tournament={resultTournament}
+          showAlert={showAlert}
+          onResumeTournament={resumeTournament}
+          canManageTournament={!isAuthAvailable() || !resultTournament.ownerId || authSession?.user?.id === resultTournament.ownerId}
+        />
+      ) : (
+        <TournamentHistoryScreen showAlert={showAlert} onOpenTournamentResult={openTournamentResult} />
+      );
+    }
     if (screen === 'startGroupNight' && !tournament)
       return (
         <StartGroupNightScreen

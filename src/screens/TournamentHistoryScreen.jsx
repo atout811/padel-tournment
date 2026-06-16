@@ -21,7 +21,7 @@ const filters = [
   { id: 'quick', label: 'Quick' },
 ];
 
-export default function TournamentHistoryScreen({ showAlert, setTournament, setScreen }) {
+export default function TournamentHistoryScreen({ showAlert, onOpenTournamentResult }) {
   const [tournaments, setTournaments] = useState([]);
   const [groupNames, setGroupNames] = useState(new Map());
   const [activeFilter, setActiveFilter] = useState('all');
@@ -67,8 +67,7 @@ export default function TournamentHistoryScreen({ showAlert, setTournament, setS
   );
 
   const openTournament = (tournament) => {
-    setTournament(tournament);
-    setScreen('tournament');
+    onOpenTournamentResult(tournament);
   };
 
   const confirmRemoveTournament = async () => {
@@ -212,7 +211,7 @@ function getTournamentSummary(tournament, groupName) {
     status,
     date,
     title,
-    detail: detailParts.join(' · '),
+    detail: detailParts.join(' - '),
     completedMatches,
     totalMatches,
   };
