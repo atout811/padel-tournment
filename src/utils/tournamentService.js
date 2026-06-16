@@ -1,5 +1,14 @@
 import { getCurrentOwnerId, supabase } from './supabaseClient';
-import { createUuid, deleteTournamentData as clearCachedTournament, isUuid, loadTournamentData as loadCachedTournament, saveTournamentData as cacheTournament } from './storage';
+import {
+  createUuid,
+  deleteTournamentData as clearCachedTournament,
+  deleteTournamentHistoryRecord,
+  isUuid,
+  loadTournamentData as loadCachedTournament,
+  loadTournamentHistory as loadCachedTournamentHistory,
+  saveTournamentData as cacheTournament,
+  saveTournamentHistoryRecord as cacheTournamentHistory,
+} from './storage';
 
 const generateTournamentId = () => createUuid();
 const SCORE_TOKEN_PARAM = 'scoreToken';
@@ -45,6 +54,24 @@ const attachAvailableScoreToken = (tournament) => {
   return scoreToken ? { ...tournament, scoreToken } : tournament;
 };
 
+const getTournamentDateValue = (tournament) => {
+  const timestamp = tournament?.createdAt || tournament?.updatedAt || tournament?.endedAt;
+  const date = timestamp ? new Date(timestamp) : null;
+  return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
+};
+
+const sortTournamentsByDate = (tournaments) =>
+  [...tournaments].sort((left, right) => getTournamentDateValue(right) - getTournamentDateValue(left));
+
+const mergeTournamentHistory = (tournaments) => {
+  const byId = new Map();
+  tournaments.filter((item) => item?.id).forEach((item) => {
+    const existing = byId.get(item.id);
+    byId.set(item.id, existing ? { ...item, scoreToken: existing.scoreToken || item.scoreToken } : item);
+  });
+  return sortTournamentsByDate([...byId.values()]);
+};
+
 const isPermissionError = (error) => {
   const message = String(error?.message || '').toLowerCase();
   return error?.code === '42501' || message.includes('row-level security') || message.includes('permission denied');
@@ -63,6 +90,7 @@ export const createTournamentRecord = async (tournament) => {
 
   if (!supabase) {
     cacheTournament(record);
+    cacheTournamentHistory(record);
     return record;
   }
 
@@ -87,6 +115,7 @@ export const createTournamentRecord = async (tournament) => {
   }
 
   cacheTournament(record);
+  cacheTournamentHistory(record);
   return record;
 };
 
@@ -99,6 +128,7 @@ export const updateTournamentRecord = async (tournament) => {
 
   if (!supabase) {
     cacheTournament(record);
+    cacheTournamentHistory(record);
     return record;
   }
 
@@ -133,6 +163,7 @@ export const updateTournamentRecord = async (tournament) => {
 
     const sharedRecord = attachAvailableScoreToken({ ...(data || publicRecord), id: record.id, scoreToken: record.scoreToken });
     cacheTournament(sharedRecord);
+    cacheTournamentHistory(sharedRecord);
     return sharedRecord;
   }
 
@@ -141,6 +172,7 @@ export const updateTournamentRecord = async (tournament) => {
   }
 
   cacheTournament(record);
+  cacheTournamentHistory(record);
   return record;
 };
 
@@ -168,14 +200,69 @@ export const fetchTournamentById = async (tournamentId) => {
 
   if (tournament) {
     cacheTournament(tournament);
+    cacheTournamentHistory(tournament);
   }
 
   return tournament;
 };
 
+export const fetchTournamentHistory = async () => {
+  const cachedTournament = loadCachedTournament();
+  const cachedHistory = loadCachedTournamentHistory();
+  const localHistory = [cachedTournament, ...cachedHistory].filter(Boolean);
+
+  if (!supabase) {
+    return mergeTournamentHistory(localHistory);
+  }
+
+  const ownerId = await getCurrentOwnerId();
+  const { data, error } = await supabase
+    .from('tournaments')
+    .select('id, data, owner_id, updated_at')
+    .eq('owner_id', ownerId)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to load tournament history: ${error.message}`);
+  }
+
+  const remoteTournaments = (data || [])
+    .map((row) => {
+      if (!row.data) return null;
+      return attachAvailableScoreToken({
+        ...row.data,
+        id: row.data.id || row.id,
+        ownerId: row.owner_id || row.data.ownerId,
+        updatedAt: row.data.updatedAt || row.updated_at,
+      });
+    })
+    .filter(Boolean);
+
+  const ownedLocalHistory = localHistory.filter((item) => !item.ownerId || item.ownerId === ownerId);
+  const history = mergeTournamentHistory([...remoteTournaments, ...ownedLocalHistory]);
+  history.forEach((item) => cacheTournamentHistory(item));
+  return history;
+};
+
+export const endTournamentRecord = async (tournament) => {
+  if (!tournament?.id) {
+    throw new Error('Tournament id is required to end.');
+  }
+
+  const timestamp = new Date().toISOString();
+  const endedTournament = {
+    ...tournament,
+    status: 'ended',
+    endedAt: tournament.endedAt || timestamp,
+  };
+
+  return updateTournamentRecord(endedTournament);
+};
+
 export const removeTournamentRecord = async (tournamentId) => {
   if (!tournamentId || !supabase || !isUuid(tournamentId)) {
     clearCachedTournament();
+    deleteTournamentHistoryRecord(tournamentId);
     return;
   }
 
@@ -191,6 +278,7 @@ export const removeTournamentRecord = async (tournamentId) => {
   }
 
   clearCachedTournament();
+  deleteTournamentHistoryRecord(tournamentId);
 };
 
 export const subscribeToTournament = (tournamentId, handler) => {

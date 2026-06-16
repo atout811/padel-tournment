@@ -9,11 +9,12 @@ import HomeScreen from './screens/HomeScreen.jsx';
 import PlayerSetupScreen from './screens/PlayerSetupScreen.jsx';
 import PlayersPoolScreen from './screens/PlayersPoolScreen.jsx';
 import StartGroupNightScreen from './screens/StartGroupNightScreen.jsx';
+import TournamentHistoryScreen from './screens/TournamentHistoryScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
 import { HomeIcon, ListIcon, TrophyIcon, UsersIcon } from './components/Icons.jsx';
 import { claimLegacyOwnerData, getAuthSession, isAuthAvailable, onAuthStateChanged, signOut } from './utils/authService';
 import { fetchGroups } from './utils/groupService';
-import { getOrCreateUserId } from './utils/storage';
+import { getOrCreateUserId, loadActiveTournamentId, loadTournamentData, saveActiveTournamentId } from './utils/storage';
 import { buildTournamentShareUrl, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
 
 export default function App() {
@@ -160,21 +161,54 @@ export default function App() {
         const params = new URLSearchParams(window.location.search);
         const tournamentIdFromUrl = params.get('tournamentId');
         getOrCreateUserId();
+        const cachedTournament = loadTournamentData();
+        const restoreTournament = (tournamentData) => {
+          setTournament(tournamentData);
+          setScreen('tournament');
+          saveActiveTournamentId(tournamentData.id);
+          window.history.replaceState({ screen: 'tournament', selectedGroup: null }, '', buildTournamentShareUrl(tournamentData));
+        };
 
         if (tournamentIdFromUrl) {
-          const remoteTournament = await fetchTournamentById(tournamentIdFromUrl);
+          let remoteTournament = null;
+          let loadError = null;
+          try {
+            remoteTournament = await fetchTournamentById(tournamentIdFromUrl);
+          } catch (error) {
+            loadError = error;
+            console.error('Error loading tournament from URL:', error);
+          }
+
           if (!active) {
             return;
           }
-          if (remoteTournament) {
-            setTournament(remoteTournament);
-            setScreen('tournament');
-            window.history.replaceState({ screen: 'tournament', selectedGroup: null }, '', window.location.href);
+
+          const cachedTournamentForUrl = cachedTournament?.id === tournamentIdFromUrl ? cachedTournament : null;
+          const tournamentToOpen = remoteTournament || cachedTournamentForUrl;
+          if (tournamentToOpen) {
+            restoreTournament(tournamentToOpen);
           } else {
-            showAlert('Tournament Not Found', 'This tournament link appears to be invalid or has been removed.');
-            setScreen(isAuthAvailable() && !authSession ? 'auth' : 'home');
-            window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.pathname);
+            showAlert(
+              loadError ? 'Tournament Sync Failed' : 'Tournament Not Found',
+              loadError
+                ? 'Could not load this tournament. Check your connection and try again.'
+                : 'This tournament link appears to be invalid or has been removed.'
+            );
+            const fallbackScreen = isAuthAvailable() && !authSession ? 'auth' : 'home';
+            setScreen(fallbackScreen);
+            saveActiveTournamentId(null);
+            window.history.replaceState({ screen: fallbackScreen, selectedGroup: null }, '', window.location.pathname);
           }
+          historyReady.current = true;
+          return;
+        }
+
+        const activeTournamentId = loadActiveTournamentId();
+        if (cachedTournament?.id && activeTournamentId === cachedTournament.id) {
+          if (!active) {
+            return;
+          }
+          restoreTournament(cachedTournament);
           historyReady.current = true;
           return;
         }
@@ -182,6 +216,7 @@ export default function App() {
         if (isAuthAvailable() && !authSession) {
           setTournament(null);
           setScreen('auth');
+          saveActiveTournamentId(null);
           window.history.replaceState({ screen: 'auth', selectedGroup: null }, '', window.location.pathname);
           historyReady.current = true;
           return;
@@ -193,6 +228,7 @@ export default function App() {
 
         setTournament(null);
         setScreen('home');
+        saveActiveTournamentId(null);
         window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
       } catch (error) {
         console.error('Error initializing app:', error);
@@ -201,6 +237,7 @@ export default function App() {
         }
         showAlert('Error', 'Could not load tournament data.');
         setScreen('home');
+        saveActiveTournamentId(null);
         window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
       }
       historyReady.current = true;
@@ -263,6 +300,7 @@ export default function App() {
   useEffect(() => {
     if (tournament?.id) {
       attachSubscription(tournament.id);
+      saveActiveTournamentId(tournament.id);
       const nextShareUrl = buildTournamentShareUrl({ id: tournament.id, scoreToken: tournament.scoreToken });
       setShareLink(nextShareUrl);
       if (window.location.href !== nextShareUrl) {
@@ -270,7 +308,10 @@ export default function App() {
       }
     } else {
       setShareLink('');
-      if (window.location.search.includes('tournamentId')) {
+      if (historyReady.current) {
+        saveActiveTournamentId(null);
+      }
+      if (historyReady.current && window.location.search.includes('tournamentId')) {
         window.history.replaceState({ screen, selectedGroup }, '', window.location.pathname);
       }
       detachSubscription();
@@ -291,6 +332,7 @@ export default function App() {
     if (screen === 'playersPool') return { label: 'Group', contextLabel: 'Players Pool', onBack: () => navigateToScreen(selectedGroup ? 'groupHome' : 'groups', { group: selectedGroup }) };
     if (screen === 'startGroupNight') return { label: 'Group', contextLabel: 'Start Night', onBack: () => navigateToScreen(selectedGroup ? 'groupHome' : 'groups', { group: selectedGroup }) };
     if (screen === 'setup') return { label: 'Home', contextLabel: 'Quick Start', onBack: () => navigateToScreen('home') };
+    if (screen === 'history') return { label: 'Home', contextLabel: 'History', onBack: () => navigateToScreen('home') };
     return { contextLabel: 'Match Day' };
   }, [leaveTournamentView, navigateToScreen, screen, selectedGroup, tournament]);
 
@@ -311,6 +353,8 @@ export default function App() {
       return <GroupHomeScreen group={selectedGroup} showAlert={showAlert} setScreen={navigateToScreen} />;
     if (screen === 'playersPool' && !tournament)
       return <PlayersPoolScreen group={selectedGroup} showAlert={showAlert} setScreen={navigateToScreen} />;
+    if (screen === 'history' && !tournament)
+      return <TournamentHistoryScreen showAlert={showAlert} setTournament={setTournament} setScreen={navigateToScreen} />;
     if (screen === 'startGroupNight' && !tournament)
       return (
         <StartGroupNightScreen
@@ -337,7 +381,7 @@ export default function App() {
     return <LoadingScreen />;
   };
 
-  const showBottomNav = !tournament && ['home', 'groups', 'groupHome', 'playersPool'].includes(screen);
+  const showBottomNav = !tournament && ['home', 'groups', 'groupHome', 'playersPool', 'history'].includes(screen);
   const bottomNavItems = [
     {
       id: 'home',
@@ -361,14 +405,11 @@ export default function App() {
       onClick: () => navigateToScreen('setup'),
     },
     {
-      id: 'pool',
-      label: 'Pool',
+      id: 'history',
+      label: 'History',
       icon: <ListIcon className="h-5 w-5" />,
-      active: screen === 'playersPool',
-      disabled: !selectedGroup,
-      onClick: () => {
-        if (selectedGroup) navigateToScreen('playersPool', { group: selectedGroup });
-      },
+      active: screen === 'history',
+      onClick: () => navigateToScreen('history', { group: selectedGroup }),
     },
   ];
   const isPublicTournamentRoute = Boolean(new URLSearchParams(window.location.search).get('tournamentId'));

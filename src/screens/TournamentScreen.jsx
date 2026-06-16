@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { removeTournamentRecord, updateTournamentRecord } from '../utils/tournamentService';
+import { endTournamentRecord, updateTournamentRecord } from '../utils/tournamentService';
 import { distributeMatchesFairly } from '../utils/scheduling';
 import { applyGroupSessionStats } from '../utils/playerProgressionService';
 import CurrentMatchCard from '../components/CurrentMatchCard';
@@ -290,7 +290,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     setShowEndConfirm(false);
     try {
       const finishedTournament = tournament;
-      await removeTournamentRecord(tournament.id);
+      await endTournamentRecord(tournament);
       if (onTournamentEnded) {
         await onTournamentEnded(finishedTournament, { replace: true });
       } else {
@@ -470,7 +470,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       {showEndConfirm && (
         <ConfirmationModal
           title="End Tournament?"
-          message={`This deletes the saved tournament from this device and Supabase if connected. You will return to ${tournament.groupId ? 'the group' : 'home'}.`}
+          message={`This closes the tournament and keeps it in your history. You will return to ${tournament.groupId ? 'the group' : 'home'}.`}
           onConfirm={confirmEndTournament}
           onCancel={() => setShowEndConfirm(false)}
         />
