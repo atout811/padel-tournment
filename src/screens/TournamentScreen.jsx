@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { endTournamentRecord, updateTournamentRecord } from '../utils/tournamentService';
+import { endTournamentRecord, reopenTournamentRecord, updateTournamentRecord } from '../utils/tournamentService';
 import { distributeMatchesFairly } from '../utils/scheduling';
 import { applyGroupSessionStats } from '../utils/playerProgressionService';
 import CurrentMatchCard from '../components/CurrentMatchCard';
@@ -12,8 +12,9 @@ import { CheckIcon, CourtIcon, ShareIcon, SparkIcon, TrashIcon, TrophyIcon, User
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function TournamentScreen({ tournament, setTournament, showAlert, setScreen, shareLink, onTournamentEnded, canManageTournament = true }) {
+export default function TournamentScreen({ tournament, setTournament, showAlert, setScreen, shareLink, onTournamentEnded, canManageTournament = true, isReadOnly = false }) {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [showEditTeams, setShowEditTeams] = useState(false);
   const [showGameHistory, setShowGameHistory] = useState(false);
   const [isCopyingLink, setIsCopyingLink] = useState(false);
@@ -45,6 +46,8 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     tournament.format === 'league'
       ? round2LeagueMatches.length > 0 && round2LeagueMatches.every((match) => match.status === 'completed')
       : Boolean(finalMatch);
+  const canEditTournament = canManageTournament && !isReadOnly;
+  const canReopenTournament = canManageTournament && isReadOnly;
   const champion =
     tournament.format === 'league'
       ? leaderboard[0]
@@ -127,6 +130,11 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   }, [isTournamentFinished, showAlert, tournament]);
 
   const handleDeclareWinner = async (match, result) => {
+    if (isReadOnly) {
+      showAlert('Tournament Closed', 'Reopen this tournament before changing results.');
+      return;
+    }
+
     const winnerId = typeof result === 'string' ? result : result?.winnerId;
     if (!winnerId) {
       showAlert('Winner Required', 'Choose which team won before saving the match.');
@@ -195,6 +203,11 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   };
 
   const setAsCurrentMatch = async (match) => {
+    if (isReadOnly) {
+      showAlert('Tournament Closed', 'Reopen this tournament before changing the court order.');
+      return;
+    }
+
     const updatedTournament = { ...tournament, currentMatchId: match.id };
     try {
       const savedTournament = await updateTournamentRecord(updatedTournament);
@@ -276,7 +289,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   );
 
   useEffect(() => {
-    if (tournament.currentRound === 2 && tournament.format !== 'league') {
+    if (!isReadOnly && tournament.currentRound === 2 && tournament.format !== 'league') {
       const semifinalMatches = tournament.matches.filter((match) => match.round === 2 && match.matchType === 'semifinal');
       const completedSemifinals = semifinalMatches.filter((match) => match.status === 'completed');
       const finalsExists = tournament.matches.some((match) => match.matchType === 'final');
@@ -284,7 +297,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         setTimeout(() => createFinals(tournament), 700);
       }
     }
-  }, [tournament, createFinals]);
+  }, [isReadOnly, tournament, createFinals]);
 
   const confirmEndTournament = async () => {
     setShowEndConfirm(false);
@@ -298,8 +311,20 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         setScreen('home');
       }
     } catch (error) {
-      console.error('Error deleting tournament:', error);
-      showAlert('Error', 'Could not delete tournament.');
+      console.error('Error ending tournament:', error);
+      showAlert('Error', 'Could not end tournament.');
+    }
+  };
+
+  const confirmReopenTournament = async () => {
+    setShowReopenConfirm(false);
+    try {
+      const savedTournament = await reopenTournamentRecord(tournament);
+      setTournament(savedTournament);
+      showAlert('Tournament Reopened', 'You can edit scores and teams again.');
+    } catch (error) {
+      console.error('Error reopening tournament:', error);
+      showAlert('Error', 'Could not reopen tournament.');
     }
   };
 
@@ -308,6 +333,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       <StageBar
         tournament={tournament}
         isFinished={isTournamentFinished}
+        isEnded={isReadOnly}
         completedInRound={completedInRound}
         currentRoundMatches={currentRoundMatches}
         pendingMatches={pendingMatches}
@@ -316,7 +342,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         roundProgress={roundProgress}
       />
 
-      {shareLink && (
+      {shareLink && !isReadOnly && (
         <section className="rounded-3xl border border-[#1F60D1] bg-[#1F60D1]/16 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1">
@@ -355,18 +381,20 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         </section>
       )}
 
-      {isTournamentFinished && (
+      {(isTournamentFinished || isReadOnly) && (
         <FinishedSummary
+          title={isReadOnly && !isTournamentFinished ? 'Tournament Ended' : 'Tournament Finished'}
           champion={champion}
           leaderboard={leaderboard}
           teamStats={teamStats}
           completedMatches={completedMatches}
           finalMatch={finalMatch}
-          onEndTournament={canManageTournament ? () => setShowEndConfirm(true) : null}
+          onEndTournament={canEditTournament ? () => setShowEndConfirm(true) : null}
+          onReopenTournament={canReopenTournament ? () => setShowReopenConfirm(true) : null}
         />
       )}
 
-      {!isTournamentFinished && (
+      {!isTournamentFinished && !isReadOnly && (
         <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-3">
           <div className="mb-2 flex items-center justify-between gap-3">
             <div>
@@ -377,7 +405,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
           </div>
           <div className="grid gap-2 md:grid-cols-2">
             {courtSlots.map((match, index) => (
-              <CourtCard key={match?.id || `empty-court-${index}`} courtNumber={index + 1} match={match} onDeclareWinner={handleDeclareWinner} disabled={isSavingResult} />
+              <CourtCard key={match?.id || `empty-court-${index}`} courtNumber={index + 1} match={match} onDeclareWinner={handleDeclareWinner} disabled={isSavingResult || isReadOnly} />
             ))}
           </div>
         </section>
@@ -413,7 +441,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         {activePanel === 'upcoming' && (
           <MatchPanel emptyText="No upcoming matches in this stage.">
             {upcomingMatches.map((match) => (
-              <MatchCard key={match.id} match={match} onSetCurrent={setAsCurrentMatch} isCurrent={false} />
+              <MatchCard key={match.id} match={match} onSetCurrent={canEditTournament ? setAsCurrentMatch : null} isCurrent={false} />
             ))}
           </MatchPanel>
         )}
@@ -427,8 +455,8 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         )}
       </section>
 
-      <section className={`hidden gap-3 sm:grid ${canManageTournament ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
-        {canManageTournament && (
+      <section className={`hidden gap-3 sm:grid ${canEditTournament ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
+        {canEditTournament && (
           <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 font-black text-[#F7F8F7] shadow-sm transition hover:bg-[#07111B]">
             <UsersIcon className="h-5 w-5 text-[#BEDC45]" />
             Edit Teams
@@ -440,7 +468,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         </button>
       </section>
 
-      {canManageTournament && (
+      {canEditTournament && (
         <button onClick={() => setShowEndConfirm(true)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 px-4 font-black text-[#DB4145] transition hover:bg-[#DB4145]/20">
           <TrashIcon className="h-5 w-5" />
           End Tournament
@@ -448,8 +476,8 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       )}
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 p-3 backdrop-blur sm:hidden">
-        <div className={`mx-auto grid max-w-6xl gap-2 ${canManageTournament ? 'grid-cols-[1fr_1fr_auto]' : 'grid-cols-1'}`}>
-          {canManageTournament && (
+        <div className={`mx-auto grid max-w-6xl gap-2 ${canEditTournament ? 'grid-cols-[1fr_1fr_auto]' : 'grid-cols-1'}`}>
+          {canEditTournament && (
             <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 text-sm font-black text-[#F7F8F7]">
               <UsersIcon className="h-4 w-4 text-[#BEDC45]" />
               Teams
@@ -459,7 +487,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
             <CheckIcon className="h-4 w-4 text-[#BEDC45]" />
             History
           </button>
-          {canManageTournament && (
+          {canEditTournament && (
             <button onClick={() => setShowEndConfirm(true)} aria-label="End Tournament" className="grid h-12 w-12 place-items-center rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 text-[#DB4145]">
               <TrashIcon className="h-5 w-5" />
             </button>
@@ -476,12 +504,21 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         />
       )}
 
-      {showEditTeams && (
+      {showReopenConfirm && (
+        <ConfirmationModal
+          title="Reopen Tournament?"
+          message="This makes score and team editing available again."
+          onConfirm={confirmReopenTournament}
+          onCancel={() => setShowReopenConfirm(false)}
+        />
+      )}
+
+      {showEditTeams && canEditTournament && (
         <EditTeamsModal tournament={tournament} setTournament={setTournament} onClose={() => setShowEditTeams(false)} showAlert={showAlert} />
       )}
 
       {showGameHistory && (
-        <GameHistoryModal tournament={tournament} setTournament={setTournament} onClose={() => setShowGameHistory(false)} showAlert={showAlert} />
+        <GameHistoryModal tournament={tournament} setTournament={setTournament} onClose={() => setShowGameHistory(false)} showAlert={showAlert} readOnly={isReadOnly} />
       )}
     </div>
   );
@@ -513,8 +550,8 @@ function getStandingLabel({ isLeader, isTop4, isChampion, format }) {
   return '';
 }
 
-function StageBar({ tournament, isFinished, completedInRound, currentRoundMatches, pendingMatches, completedMatches, courtCount, roundProgress }) {
-  const stageTitle = isFinished ? 'Finished' : getStageTitle(tournament);
+function StageBar({ tournament, isFinished, isEnded, completedInRound, currentRoundMatches, pendingMatches, completedMatches, courtCount, roundProgress }) {
+  const stageTitle = isEnded ? 'Ended' : isFinished ? 'Finished' : getStageTitle(tournament);
   const stageLabel = tournament.format === 'league' ? 'League' : 'Cup';
 
   return (
@@ -623,7 +660,7 @@ function StandingRow({ rank, team, stats, highlighted, label }) {
   );
 }
 
-function FinishedSummary({ champion, leaderboard, teamStats, completedMatches, finalMatch, onEndTournament }) {
+function FinishedSummary({ title, champion, leaderboard, teamStats, completedMatches, finalMatch, onEndTournament, onReopenTournament }) {
   const topTeams = leaderboard.slice(0, 3);
 
   return (
@@ -632,8 +669,8 @@ function FinishedSummary({ champion, leaderboard, teamStats, completedMatches, f
         <span className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-[#BEDC45] text-[#020D16] shadow-lg shadow-[#BEDC45]/20">
           <TrophyIcon className="h-9 w-9" />
         </span>
-        <p className="mt-4 text-xs font-black uppercase tracking-[0.22em] text-[#BEDC45]">Tournament Finished</p>
-        <h2 className="mt-2 text-4xl font-black text-[#F7F8F7]">Champion Moment</h2>
+        <p className="mt-4 text-xs font-black uppercase tracking-[0.22em] text-[#BEDC45]">{title}</p>
+        <h2 className="mt-2 text-4xl font-black text-[#F7F8F7]">{champion ? 'Champion Moment' : 'Results Locked'}</h2>
         <p className="mt-3 text-2xl font-black text-[#BEDC45]">{champion ? getTeamName(champion) : 'Champion pending'}</p>
         {finalMatch && (
           <p className="mt-2 text-sm font-bold text-[#8D99A6]">
@@ -675,6 +712,11 @@ function FinishedSummary({ champion, leaderboard, teamStats, completedMatches, f
           {onEndTournament && (
             <button onClick={onEndTournament} className="mt-4 min-h-11 w-full rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] transition hover:bg-[#D3F05A]">
               End Tournament
+            </button>
+          )}
+          {onReopenTournament && (
+            <button onClick={onReopenTournament} className="mt-4 min-h-11 w-full rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] transition hover:bg-[#D3F05A]">
+              Reopen Tournament
             </button>
           )}
         </div>

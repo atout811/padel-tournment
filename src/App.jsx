@@ -321,9 +321,10 @@ export default function App() {
   const navigation = useMemo(() => {
     if (screen === 'loading') return null;
     if (tournament) {
+      const formatLabel = tournament.format === 'league' ? 'League Night' : 'Cup Night';
       return {
         label: tournament.groupId ? 'Group' : 'Home',
-        contextLabel: tournament.format === 'league' ? 'League Night' : 'Cup Night',
+        contextLabel: tournament.status === 'ended' ? `Ended ${formatLabel}` : formatLabel,
         onBack: () => leaveTournamentView(tournament),
       };
     }
@@ -376,6 +377,7 @@ export default function App() {
           shareLink={shareLink}
           onTournamentEnded={leaveTournamentView}
           canManageTournament={!isAuthAvailable() || !tournament.ownerId || authSession?.user?.id === tournament.ownerId}
+          isReadOnly={tournament.status === 'ended'}
         />
       );
     return <LoadingScreen />;

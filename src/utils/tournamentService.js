@@ -55,7 +55,7 @@ const attachAvailableScoreToken = (tournament) => {
 };
 
 const getTournamentDateValue = (tournament) => {
-  const timestamp = tournament?.createdAt || tournament?.updatedAt || tournament?.endedAt;
+  const timestamp = tournament?.endedAt || tournament?.createdAt || tournament?.updatedAt;
   const date = timestamp ? new Date(timestamp) : null;
   return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
 };
@@ -259,9 +259,29 @@ export const endTournamentRecord = async (tournament) => {
   return updateTournamentRecord(endedTournament);
 };
 
+export const reopenTournamentRecord = async (tournament) => {
+  if (!tournament?.id) {
+    throw new Error('Tournament id is required to reopen.');
+  }
+
+  const tournamentData = { ...tournament };
+  delete tournamentData.endedAt;
+  return updateTournamentRecord({
+    ...tournamentData,
+    status: 'active',
+  });
+};
+
 export const removeTournamentRecord = async (tournamentId) => {
+  const cachedTournament = loadCachedTournament();
+  const clearCachedIfCurrent = () => {
+    if (cachedTournament?.id === tournamentId) {
+      clearCachedTournament();
+    }
+  };
+
   if (!tournamentId || !supabase || !isUuid(tournamentId)) {
-    clearCachedTournament();
+    clearCachedIfCurrent();
     deleteTournamentHistoryRecord(tournamentId);
     return;
   }
@@ -277,7 +297,7 @@ export const removeTournamentRecord = async (tournamentId) => {
     throw new Error(`Failed to delete tournament: ${error.message}`);
   }
 
-  clearCachedTournament();
+  clearCachedIfCurrent();
   deleteTournamentHistoryRecord(tournamentId);
 };
 

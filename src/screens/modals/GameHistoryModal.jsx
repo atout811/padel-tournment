@@ -5,11 +5,16 @@ import { reconcileCupProgression, syncTeamPointsFromMatches } from '../../utils/
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function GameHistoryModal({ tournament, setTournament, onClose, showAlert }) {
+export default function GameHistoryModal({ tournament, setTournament, onClose, showAlert, readOnly = false }) {
   const completedMatches = tournament.matches.filter((m) => m.status === 'completed');
   const [updatingMatchId, setUpdatingMatchId] = useState(null);
 
   const handleWinnerChange = async (match, newWinnerId) => {
+    if (readOnly) {
+      showAlert('Tournament Closed', 'Reopen this tournament before changing results.');
+      return;
+    }
+
     const updatedTournament = JSON.parse(JSON.stringify(tournament));
     const matchIndex = updatedTournament.matches.findIndex((m) => m.id === match.id);
     if (matchIndex === -1) return;
@@ -90,19 +95,25 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
                       )}
                     </div>
                   </div>
-                  <div className="border-t border-[rgba(255,255,255,0.08)] pt-3">
-                    <label className="mb-2 block text-sm font-black text-[#8D99A6]">Change Winner</label>
-                    <select
-                      value={match.winnerId || ''}
-                      onChange={(e) => handleWinnerChange(match, e.target.value)}
-                      disabled={updatingMatchId === match.id}
-                      className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-2 font-bold text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <option value="">No Winner</option>
-                      <option value={match.teamA.id}>{getTeamName(match.teamA)}</option>
-                      <option value={match.teamB.id}>{getTeamName(match.teamB)}</option>
-                    </select>
-                  </div>
+                  {readOnly ? (
+                    <p className="border-t border-[rgba(255,255,255,0.08)] pt-3 text-sm font-black text-[#BEDC45]">
+                      Winner: {getWinnerName(match)}
+                    </p>
+                  ) : (
+                    <div className="border-t border-[rgba(255,255,255,0.08)] pt-3">
+                      <label className="mb-2 block text-sm font-black text-[#8D99A6]">Change Winner</label>
+                      <select
+                        value={match.winnerId || ''}
+                        onChange={(e) => handleWinnerChange(match, e.target.value)}
+                        disabled={updatingMatchId === match.id}
+                        className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-2 font-bold text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <option value="">No Winner</option>
+                        <option value={match.teamA.id}>{getTeamName(match.teamA)}</option>
+                        <option value={match.teamB.id}>{getTeamName(match.teamB)}</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -111,4 +122,10 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
       </div>
     </div>
   );
+}
+
+function getWinnerName(match) {
+  if (match.winnerId === match.teamA.id) return getTeamName(match.teamA);
+  if (match.winnerId === match.teamB.id) return getTeamName(match.teamB);
+  return 'No winner';
 }
