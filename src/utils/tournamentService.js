@@ -210,12 +210,13 @@ export const fetchTournamentHistory = async () => {
   const cachedTournament = loadCachedTournament();
   const cachedHistory = loadCachedTournamentHistory();
   const localHistory = [cachedTournament, ...cachedHistory].filter(Boolean);
+  const ownerId = await getCurrentOwnerId();
+  const ownedLocalHistory = localHistory.filter((item) => item.ownerId === ownerId);
 
   if (!supabase) {
-    return mergeTournamentHistory(localHistory);
+    return mergeTournamentHistory(ownedLocalHistory);
   }
 
-  const ownerId = await getCurrentOwnerId();
   const { data, error } = await supabase
     .from('tournaments')
     .select('id, data, owner_id, updated_at')
@@ -238,7 +239,6 @@ export const fetchTournamentHistory = async () => {
     })
     .filter(Boolean);
 
-  const ownedLocalHistory = localHistory.filter((item) => !item.ownerId || item.ownerId === ownerId);
   const history = mergeTournamentHistory([...remoteTournaments, ...ownedLocalHistory]);
   history.forEach((item) => cacheTournamentHistory(item));
   return history;

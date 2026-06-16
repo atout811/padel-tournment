@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ListIcon, TrophyIcon } from '../components/Icons';
 import { fetchTournamentHistory } from '../utils/tournamentService';
 import { buildLeaderboard } from '../utils/tournamentRules';
@@ -37,11 +37,6 @@ export default function TournamentHistoryScreen({ showAlert, setTournament, setS
     };
   }, [showAlert]);
 
-  const totalMatches = useMemo(
-    () => tournaments.reduce((total, tournament) => total + (tournament.matches?.filter((match) => match.status === 'completed').length || 0), 0),
-    [tournaments]
-  );
-
   const openTournament = (tournament) => {
     setTournament(tournament);
     setScreen('tournament');
@@ -57,12 +52,6 @@ export default function TournamentHistoryScreen({ showAlert, setTournament, setS
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <SummaryTile label="Tournaments" value={tournaments.length} />
-        <SummaryTile label="Matches Done" value={totalMatches} />
-        <SummaryTile label="Sort" value="Newest" textValue />
-      </section>
-
       <section className="space-y-2">
         {isLoading ? (
           <HistoryState title="Loading history..." detail="Fetching your tournaments." />
@@ -72,15 +61,6 @@ export default function TournamentHistoryScreen({ showAlert, setTournament, setS
           <HistoryState title="No tournaments yet" detail="Started tournaments will appear here." />
         )}
       </section>
-    </div>
-  );
-}
-
-function SummaryTile({ label, value, textValue = false }) {
-  return (
-    <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 text-center">
-      <p className={`${textValue ? 'text-lg' : 'text-2xl'} font-black tabular-nums text-[#F7F8F7]`}>{value}</p>
-      <p className="mt-1 truncate text-[0.62rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
     </div>
   );
 }
