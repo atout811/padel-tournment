@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { addGroupPlayer, deactivateGroupPlayer, fetchGroupPlayers, updateGroupPlayer } from '../utils/groupPlayerService';
 import { getPlayerWinRate } from '../utils/playerProgressionService';
-import { CheckIcon, TrashIcon, UsersIcon } from '../components/Icons';
+import { CheckIcon, SparkIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
+
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  day: 'numeric',
+  month: 'short',
+});
 
 export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
   const [players, setPlayers] = useState([]);
@@ -83,11 +88,28 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
     );
   }
 
+  const rankedPlayers = sortPlayersForCards(players);
+  const totalMatches = players.reduce((sum, player) => sum + Number(player.matchesPlayed || 0), 0);
+  const bestStreak = players.reduce((max, player) => Math.max(max, Number(player.bestStreak || 0)), 0);
+  const averageWinRate = players.length
+    ? Math.round(players.reduce((sum, player) => sum + getPlayerWinRate(player), 0) / players.length)
+    : 0;
+
   return (
     <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
       <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
         <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">Players Pool</p>
-        <h2 className="mt-1 truncate text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{group?.name || 'Group'}</h2>
+        <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <h2 className="min-w-0 truncate text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{group?.name || 'Group'}</h2>
+          <span className="w-fit rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{players.length} cards</span>
+        </div>
+      </section>
+
+      <section className="grid gap-2 sm:grid-cols-4">
+        <PoolMetric label="Players" value={players.length} />
+        <PoolMetric label="Matches" value={totalMatches} />
+        <PoolMetric label="Avg Win" value={`${averageWinRate}%`} />
+        <PoolMetric label="Best Streak" value={bestStreak} />
       </section>
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
@@ -116,12 +138,12 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-lg font-black text-[#F7F8F7]">Active Players</h3>
+          <h3 className="text-lg font-black text-[#F7F8F7]">Friend Cards</h3>
           <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{players.length}</span>
         </div>
         {players.length ? (
-          <div className="space-y-2">
-            {players.map((player) => (
+          <div className="grid gap-3 md:grid-cols-2">
+            {rankedPlayers.map((player, index) => (
               <div key={player.id} className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-3">
                 {editingId === player.id ? (
                   <div className="grid gap-2 sm:grid-cols-[1fr_120px_auto_auto]">
@@ -135,24 +157,13 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="flex items-center gap-2 font-black text-[#F7F8F7]">
-                        <CheckIcon className="h-5 w-5 text-[#BEDC45]" />
-                        {player.name}
-                      </p>
-                      <PlayerStats player={player} />
-                    </div>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => startEdit(player)} className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 py-2 font-black text-[#F7F8F7] hover:bg-[#07111B]">
-                        Edit
-                      </button>
-                      <button type="button" onClick={() => handleDeactivate(player.id)} disabled={isSaving} className="inline-flex items-center gap-2 rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 px-4 py-2 font-black text-[#DB4145] disabled:opacity-60">
-                        <TrashIcon className="h-4 w-4" />
-                        Deactivate
-                      </button>
-                    </div>
-                  </div>
+                  <PlayerProfileCard
+                    player={player}
+                    rank={index + 1}
+                    onEdit={() => startEdit(player)}
+                    onDeactivate={() => handleDeactivate(player.id)}
+                    isSaving={isSaving}
+                  />
                 )}
               </div>
             ))}
@@ -165,26 +176,117 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
   );
 }
 
-function PlayerStats({ player }) {
+function PlayerProfileCard({ player, rank, onEdit, onDeactivate, isSaving }) {
   const matchesPlayed = Math.max(0, Number(player.matchesPlayed || 0));
   const wins = Math.max(0, Number(player.wins || 0));
   const losses = Math.max(0, Number(player.losses || 0));
   const winRate = getPlayerWinRate(player);
+  const currentStreak = Math.max(0, Number(player.currentStreak || 0));
+  const bestStreak = Math.max(0, Number(player.bestStreak || 0));
+  const cardTag = getPlayerCardTag(player, rank);
 
   return (
-    <div className="mt-1 space-y-0.5 text-sm font-bold text-[#8D99A6]">
-      <p>
-        Level {player.level} <span className="text-[#CFD2D3]">Rating {player.rating}</span>
-      </p>
-      {matchesPlayed ? (
-        <p>
-          {wins}W / {losses}L <span className="text-[#CFD2D3]">{winRate}% win rate</span> <span>{matchesPlayed} match{matchesPlayed === 1 ? '' : 'es'}</span>
+    <div>
+      <div className="flex items-start gap-3">
+        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#BEDC45] text-lg font-black text-[#020D16]">
+          {getInitials(player.name)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-[#07111B] px-2.5 py-1 text-[0.65rem] font-black uppercase tracking-wide text-[#BEDC45]">#{rank}</span>
+            <span className="rounded-full bg-[#1F60D1]/16 px-2.5 py-1 text-[0.65rem] font-black uppercase tracking-wide text-[#CFD2D3]">{cardTag}</span>
+          </div>
+          <h4 className="mt-2 break-words text-xl font-black leading-tight text-[#F7F8F7]">{player.name}</h4>
+          <p className="mt-1 text-sm font-bold text-[#8D99A6]">
+            Level {player.level} <span className="text-[#CFD2D3]">Rating {player.rating}</span>
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <CardStat label="Record" value={matchesPlayed ? `${wins}-${losses}` : '0-0'} />
+        <CardStat label="Win Rate" value={`${winRate}%`} />
+        <CardStat label="Matches" value={matchesPlayed} />
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <CardStat label="Current Streak" value={currentStreak} icon={<SparkIcon className="h-4 w-4" />} />
+        <CardStat label="Best Streak" value={bestStreak} icon={<TrophyIcon className="h-4 w-4" />} />
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#07111B] px-3 py-2">
+        <p className="min-w-0 truncate text-xs font-bold text-[#8D99A6]">
+          Last played <span className="text-[#CFD2D3]">{formatLastPlayed(player.lastPlayedAt)}</span>
         </p>
-      ) : (
-        <p>No matches yet</p>
-      )}
+        <CheckIcon className="h-4 w-4 shrink-0 text-[#BEDC45]" />
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button type="button" onClick={onEdit} className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 py-2 font-black text-[#F7F8F7] hover:bg-[#07111B]">
+          Edit
+        </button>
+        <button type="button" onClick={onDeactivate} disabled={isSaving} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 px-4 py-2 font-black text-[#DB4145] disabled:opacity-60">
+          <TrashIcon className="h-4 w-4" />
+          Deactivate
+        </button>
+      </div>
     </div>
   );
+}
+
+function PoolMetric({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 text-center">
+      <p className="text-2xl font-black tabular-nums text-[#F7F8F7]">{value}</p>
+      <p className="mt-1 truncate text-[0.62rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
+    </div>
+  );
+}
+
+function CardStat({ label, value, icon }) {
+  return (
+    <div className="rounded-2xl bg-[#07111B] p-2 text-center">
+      <p className="flex min-h-6 items-center justify-center gap-1 text-lg font-black tabular-nums text-[#F7F8F7]">
+        {icon}
+        {value}
+      </p>
+      <p className="mt-0.5 truncate text-[0.58rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
+    </div>
+  );
+}
+
+function sortPlayersForCards(players) {
+  return [...players].sort(
+    (left, right) =>
+      Number(right.level || 0) - Number(left.level || 0) ||
+      Number(right.rating || 0) - Number(left.rating || 0) ||
+      getPlayerWinRate(right) - getPlayerWinRate(left) ||
+      Number(right.wins || 0) - Number(left.wins || 0) ||
+      left.name.localeCompare(right.name)
+  );
+}
+
+function getPlayerCardTag(player, rank) {
+  if (rank === 1) return 'Top Seed';
+  if (Number(player.currentStreak || 0) >= 3) return 'Hot Streak';
+  if (Number(player.matchesPlayed || 0) === 0) return 'Fresh Signing';
+  if (getPlayerWinRate(player) >= 65) return 'Clutch Pick';
+  if (Number(player.matchesPlayed || 0) >= 10) return 'Court Regular';
+  return 'Rising Player';
+}
+
+function getInitials(name) {
+  return String(name || '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+}
+
+function formatLastPlayed(value) {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? dateFormatter.format(date) : 'not yet';
 }
 
 function LevelSelect({ value, onChange, disabled }) {

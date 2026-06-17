@@ -1,13 +1,21 @@
 import { supabase } from './supabaseClient';
 import { getOrCreateUserId } from './storage';
 
+const LOCAL_AUTH_BYPASS_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
+
+export const isLocalAuthBypassEnabled = () => {
+  if (import.meta.env.DEV) return true;
+  if (typeof window === 'undefined') return false;
+  return LOCAL_AUTH_BYPASS_HOSTS.has(window.location.hostname);
+};
+
 const getRedirectUrl = () => {
   const url = new URL(window.location.href);
   url.hash = '';
   return url.toString();
 };
 
-export const isAuthAvailable = () => Boolean(supabase);
+export const isAuthAvailable = () => Boolean(supabase) && !isLocalAuthBypassEnabled();
 
 export const getAuthSession = async () => {
   if (!supabase) return null;
