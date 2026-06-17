@@ -15,6 +15,7 @@ Use these docs as the source of truth before implementation.
 - [`organize-without-arguments`](organize-without-arguments.md): reduce disputes around teams, courts, and results.
 - [`share-the-story`](share-the-story.md): share the night in WhatsApp and social feeds.
 - [`build-season-habit`](build-season-habit.md): make weekly play repeatable.
+- [`weekly-competitive-season`](weekly-competitive-season.md): make every week count toward an ongoing friendly competition.
 
 ## Implementation Rule
 

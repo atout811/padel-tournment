@@ -67,6 +67,7 @@ These are the product intents the app should optimize around. Detailed intent sp
 | [`organize-without-arguments`](intents/organize-without-arguments.md) | Organizers And Clubs | I want fair teams and clear scheduling. | Team selection, court assignment, and standings feel explainable. |
 | [`share-the-story`](intents/share-the-story.md) | Community And Growth | I want to post the night's result. | Share output looks good in WhatsApp and social feeds. |
 | [`build-season-habit`](intents/build-season-habit.md) | Community And Growth | I want the group to come back next week. | The app shows season progress, upcoming nights, and reasons to return. |
+| [`weekly-competitive-season`](intents/weekly-competitive-season.md) | Community And Growth | I want every weekly padel night to count toward an ongoing friendly competition. | Friends come back next week because rankings, streaks, awards, and season stories are still alive. |
 
 ## Feature Decision Rule
 
@@ -115,6 +116,7 @@ Goal: make one group able to play, track, and share weekly.
 - Add explicit local-data import prompt instead of silent account claiming.
 - Add smart team balancing using player ratings.
 - Add season leaderboard and player profile details.
+- Add weekly competitive season dashboard on group home.
 
 ### Phase 2: Share And Growth Loop
 

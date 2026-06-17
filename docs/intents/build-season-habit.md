@@ -22,6 +22,7 @@ The app shows season progress, upcoming nights, and reasons to return.
 ## Feature Backlog
 
 - Season leaderboard.
+- Weekly competitive season dashboard.
 - Past nights timeline.
 - Monthly champion.
 - Most improved award.
