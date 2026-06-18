@@ -1,6 +1,8 @@
+import { createPortal } from 'react-dom';
+
 export function CustomAlert({ title, message, onClose }) {
   return (
-    <div className="fixed inset-0 z-[100] grid h-dvh place-items-center overflow-y-auto bg-[#020D16]/75 p-4 backdrop-blur-sm">
+    <ViewportPopup>
       <div className="w-full max-w-sm rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-5 text-center shadow-2xl">
         <h3 className="mb-2 text-2xl font-black text-[#F7F8F7]">{title}</h3>
         <p className="mb-5 text-sm font-semibold leading-relaxed text-[#8D99A6]">{message}</p>
@@ -8,13 +10,13 @@ export function CustomAlert({ title, message, onClose }) {
           OK
         </button>
       </div>
-    </div>
+    </ViewportPopup>
   );
 }
 
 export function ConfirmationModal({ title, message, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 z-[100] grid h-dvh place-items-center overflow-y-auto bg-[#020D16]/75 p-4 backdrop-blur-sm">
+    <ViewportPopup>
       <div className="w-full max-w-sm rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-5 text-center shadow-2xl">
         <h3 className="mb-2 text-2xl font-black text-[#F7F8F7]">{title}</h3>
         <p className="mb-5 text-sm font-semibold leading-relaxed text-[#8D99A6]">{message}</p>
@@ -23,8 +25,16 @@ export function ConfirmationModal({ title, message, onConfirm, onCancel }) {
           <button onClick={onConfirm} className="min-h-12 w-full rounded-2xl bg-[#DB4145] py-2 font-black text-white hover:bg-[#E04C50]">Confirm</button>
         </div>
       </div>
-    </div>
+    </ViewportPopup>
   );
 }
 
+function ViewportPopup({ children }) {
+  const popup = (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-[#020D16]/75 p-4 backdrop-blur-sm">
+      {children}
+    </div>
+  );
 
+  return typeof document === 'undefined' ? popup : createPortal(popup, document.body);
+}

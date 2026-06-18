@@ -21,8 +21,10 @@ Share output looks good in WhatsApp and social feeds.
 
 ## Feature Backlog
 
-- Share result image.
+- WhatsApp tournament summary PNG.
+- Downloadable tournament summary PNG fallback.
 - Weekly champion card.
+- MVP and player movement result card.
 - Player achievement card.
 - Season recap card.
 - QR result link.
@@ -30,12 +32,16 @@ Share output looks good in WhatsApp and social feeds.
 ## Data Notes
 
 - Current share card is generated with browser canvas in `TournamentResultScreen.jsx`.
+- Player movement can be derived from the tournament participant snapshot plus rating deltas.
 - Generated images should not include private tokens.
 - Text fallback should work where file sharing is unsupported.
+- Browsers cannot reliably force a PNG attachment directly into WhatsApp. Use native file sharing where supported, then fall back to downloading the PNG and opening WhatsApp with the summary text.
 
 ## Verification
 
-- Share button works on supported mobile browsers.
-- Clipboard fallback works on desktop.
+- WhatsApp action shares the PNG through the native share sheet where supported.
+- WhatsApp fallback downloads the PNG and opens a prefilled WhatsApp text share.
+- Download PNG button saves the tournament summary image.
 - Generated image handles long group and player names.
+- Shared result card shows MVP ties when multiple players gain the same top rating points.
 - No private score token is embedded in share output.

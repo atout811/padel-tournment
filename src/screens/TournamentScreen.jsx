@@ -7,8 +7,15 @@ import MatchCard from '../components/MatchCard';
 import { ConfirmationModal } from '../components/Alert';
 import EditTeamsModal from '../screens/modals/EditTeamsModal';
 import GameHistoryModal from '../screens/modals/GameHistoryModal';
+import { TournamentSummaryShareCard } from './TournamentResultScreen.jsx';
 import { buildLeaderboard, emptyTeamStats, selectActiveMatches, syncTeamPointsFromMatches } from '../utils/tournamentRules';
 import { CheckIcon, CourtIcon, ShareIcon, SparkIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
+
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
 
 const getTeamName = (team) => team.players.join(' & ');
 
@@ -29,6 +36,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   const currentRoundMatches = useMemo(() => tournament.matches.filter((match) => match.round === tournament.currentRound), [tournament.matches, tournament.currentRound]);
   const pendingMatches = useMemo(() => currentRoundMatches.filter((match) => match.status === 'pending'), [currentRoundMatches]);
   const completedMatches = useMemo(() => tournament.matches.filter((match) => match.status === 'completed'), [tournament.matches]);
+  const remainingMatches = useMemo(() => tournament.matches.filter((match) => match.status !== 'completed'), [tournament.matches]);
   const courtCount = useMemo(() => Math.max(1, Math.min(Number(tournament.courtCount || 1), 3)), [tournament.courtCount]);
   const activeMatches = useMemo(
     () => selectActiveMatches(pendingMatches, courtCount, tournament.currentMatchId),
@@ -54,6 +62,9 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       : finalMatch
         ? tournament.teams.find((team) => team.id === finalMatch.winnerId)
         : null;
+  const resultFormatLabel = tournament.format === 'league' ? 'League' : 'Cup';
+  const resultTitle = tournament.groupId ? 'Group night' : `Quick ${resultFormatLabel} night`;
+  const resultDateLabel = formatDate(tournament.endedAt || tournament.createdAt || tournament.updatedAt);
 
   const completedInRound = currentRoundMatches.filter((match) => match.status === 'completed').length;
   const roundProgress = currentRoundMatches.length ? Math.round((completedInRound / currentRoundMatches.length) * 100) : 0;
@@ -382,16 +393,30 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       )}
 
       {(isTournamentFinished || isReadOnly) && (
-        <FinishedSummary
-          title={isReadOnly && !isTournamentFinished ? 'Tournament Ended' : 'Tournament Finished'}
-          champion={champion}
-          leaderboard={leaderboard}
-          teamStats={teamStats}
-          completedMatches={completedMatches}
-          finalMatch={finalMatch}
-          onEndTournament={canEditTournament ? () => setShowEndConfirm(true) : null}
-          onReopenTournament={canReopenTournament ? () => setShowReopenConfirm(true) : null}
-        />
+        <>
+          <FinishedSummary
+            title={isReadOnly && !isTournamentFinished ? 'Tournament Ended' : 'Tournament Finished'}
+            champion={champion}
+            leaderboard={leaderboard}
+            teamStats={teamStats}
+            completedMatches={completedMatches}
+            finalMatch={finalMatch}
+            onEndTournament={canEditTournament ? () => setShowEndConfirm(true) : null}
+            onReopenTournament={canReopenTournament ? () => setShowReopenConfirm(true) : null}
+          />
+          <TournamentSummaryShareCard
+            title={resultTitle}
+            dateLabel={resultDateLabel}
+            formatLabel={resultFormatLabel}
+            champion={champion}
+            leaderboard={leaderboard}
+            teamStats={teamStats}
+            completedMatches={completedMatches}
+            pendingMatches={remainingMatches}
+            tournament={tournament}
+            showAlert={showAlert}
+          />
+        </>
       )}
 
       {!isTournamentFinished && !isReadOnly && (
@@ -723,4 +748,9 @@ function FinishedSummary({ title, champion, leaderboard, teamStats, completedMat
       </div>
     </section>
   );
+}
+
+function formatDate(value) {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? dateFormatter.format(date) : 'No date';
 }
