@@ -145,8 +145,11 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
               maxLength={28}
               className="min-h-14 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
               placeholder="Player name"
+              autoCapitalize="words"
+              autoComplete="name"
+              enterKeyHint="done"
             />
-            <LevelSelect value={level} onChange={(event) => setLevel(Number(event.target.value))} disabled={isSaving} />
+            <LevelSelect value={level} onChange={setLevel} disabled={isSaving} />
             <button type="button" onClick={handleAdd} disabled={isSaving} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#BEDC45] px-6 font-black text-[#020D16] disabled:opacity-60">
               Add
             </button>
@@ -165,8 +168,15 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
               <div key={player.id} className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-3">
                 {editingId === player.id ? (
                   <div className="grid gap-2 sm:grid-cols-[1fr_120px_auto_auto]">
-                    <input value={editName} onChange={(event) => setEditName(event.target.value)} className="min-h-12 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-3 font-semibold text-[#F7F8F7] outline-none focus:border-[#BEDC45]" />
-                    <LevelSelect value={editLevel} onChange={(event) => setEditLevel(Number(event.target.value))} disabled={isSaving} />
+                    <input
+                      value={editName}
+                      onChange={(event) => setEditName(event.target.value)}
+                      className="min-h-12 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-3 font-semibold text-[#F7F8F7] outline-none focus:border-[#BEDC45]"
+                      autoCapitalize="words"
+                      autoComplete="name"
+                      enterKeyHint="done"
+                    />
+                    <LevelSelect value={editLevel} onChange={setEditLevel} disabled={isSaving} />
                     <button type="button" onClick={saveEdit} disabled={isSaving} className="rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] disabled:opacity-60">
                       Save
                     </button>
@@ -310,12 +320,24 @@ function formatLastPlayed(value) {
 
 function LevelSelect({ value, onChange, disabled }) {
   return (
-    <select value={value} onChange={onChange} disabled={disabled} className="min-h-14 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-3 font-black text-[#F7F8F7] outline-none focus:border-[#BEDC45] disabled:opacity-60">
-      {[1, 2, 3, 4, 5].map((item) => (
-        <option key={item} value={item}>
-          Level {item}
-        </option>
-      ))}
-    </select>
+    <div>
+      <p className="mb-2 text-xs font-black uppercase tracking-wide text-[#8D99A6]">Level</p>
+      <div className="grid grid-cols-5 gap-1 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-1">
+        {[1, 2, 3, 4, 5].map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onChange(item)}
+            disabled={disabled}
+            aria-pressed={value === item}
+            className={`min-h-12 rounded-xl text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${
+            value === item ? 'motion-soft-pop bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
+          }`}
+          >
+            {item}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

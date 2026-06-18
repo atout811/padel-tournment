@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { SkeletonRows } from '../components/Skeleton.jsx';
 import { createGroup, fetchGroups, subscribeToGroups } from '../utils/groupService';
 import { CheckIcon, UsersIcon } from '../components/Icons';
 
@@ -83,6 +84,9 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
             maxLength={60}
             className="min-h-14 flex-1 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 text-base font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
             placeholder="Group name"
+            autoCapitalize="words"
+            autoComplete="organization"
+            enterKeyHint="done"
           />
           <button
             type="button"
@@ -102,7 +106,7 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
           <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{groups.length}</span>
         </div>
         {isLoading ? (
-          <p className="rounded-3xl bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">Loading groups...</p>
+          <SkeletonRows count={2} />
         ) : groups.length ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {groups.map((group) => (

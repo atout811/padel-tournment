@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { updateTournamentRecord } from '../../utils/tournamentService';
 
-export default function EditTeamsModal({ tournament, setTournament, onClose, showAlert }) {
+export default function EditTeamsModal({ tournament, setTournament, onClose, showAlert, showToast }) {
   const [editableTeams, setEditableTeams] = useState(tournament.teams.map((team) => ({ ...team, players: [...team.players] })));
   const [availablePlayers] = useState(tournament.players);
   const [isSaving, setIsSaving] = useState(false);
@@ -48,7 +48,11 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
       const savedTournament = await updateTournamentRecord(updatedTournament);
       setTournament(savedTournament);
       onClose();
-      showAlert('Success', 'Teams updated successfully!');
+      if (showToast) {
+        showToast('Teams updated', '', 'success');
+      } else {
+        showAlert('Success', 'Teams updated.');
+      }
     } catch (error) {
       console.error('Error saving team changes:', error);
       showAlert('Error', 'Could not save team changes. Please try again.');

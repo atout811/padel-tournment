@@ -78,7 +78,7 @@ function WinnerButton({ label, name, isWinner, onChoose, disabled }) {
       onClick={onChoose}
       disabled={disabled}
       className={`min-h-12 rounded-xl border px-2 py-2 text-center shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80 ${
-        isWinner ? 'border-[#BEDC45] bg-[#BEDC45] text-[#020D16]' : 'border-[#BEDC45]/45 bg-[#BEDC45]/14 text-[#BEDC45] hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B]'
+        isWinner ? 'motion-score-save border-[#BEDC45] bg-[#BEDC45] text-[#020D16]' : 'border-[#BEDC45]/45 bg-[#BEDC45]/14 text-[#BEDC45] hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B]'
       }`}
     >
       <span className="block truncate text-xs font-black uppercase tracking-wide">{label}</span>

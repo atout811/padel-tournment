@@ -19,7 +19,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
     <div
       className={`w-full rounded-2xl border p-3 text-left shadow-sm ${
         isCompleted
-          ? 'border-[#BEDC45] bg-[#BEDC45]/14'
+          ? 'motion-complete-glow border-[#BEDC45] bg-[#BEDC45]/14'
           : isCurrent
             ? 'border-[#1F60D1] bg-[#1F60D1]/16 shadow-[#1F60D1]/10'
             : 'border-[rgba(255,255,255,0.08)] bg-[#0A141E]'

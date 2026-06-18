@@ -9,7 +9,7 @@ import EditTeamsModal from '../screens/modals/EditTeamsModal';
 import GameHistoryModal from '../screens/modals/GameHistoryModal';
 import { TournamentSummaryShareCard } from './TournamentResultScreen.jsx';
 import { buildLeaderboard, emptyTeamStats, selectActiveMatches, syncTeamPointsFromMatches } from '../utils/tournamentRules';
-import { CheckIcon, CourtIcon, ShareIcon, SparkIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
+import { CheckIcon, CourtIcon, ShareIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   day: 'numeric',
@@ -19,14 +19,13 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function TournamentScreen({ tournament, setTournament, showAlert, setScreen, shareLink, onTournamentEnded, canManageTournament = true, isReadOnly = false }) {
+export default function TournamentScreen({ tournament, setTournament, showAlert, showToast, setScreen, shareLink, onTournamentEnded, canManageTournament = true, isReadOnly = false }) {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [showEditTeams, setShowEditTeams] = useState(false);
   const [showGameHistory, setShowGameHistory] = useState(false);
   const [isCopyingLink, setIsCopyingLink] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState('');
-  const [lastResult, setLastResult] = useState(null);
   const [activePanel, setActivePanel] = useState('standings');
   const [isSavingResult, setIsSavingResult] = useState(false);
   const isSavingResultRef = useRef(false);
@@ -113,32 +112,26 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       .then((result) => {
         if (!active) return;
         if (result.status === 'applied') {
-          setLastResult({
-            title: 'Player stats updated',
-            detail: result.updatedPlayers
-              ? `${result.updatedPlayers} player${result.updatedPlayers === 1 ? '' : 's'} updated from completed matches.`
-              : 'No group players needed stat changes.',
-          });
+          if (result.updatedPlayers) {
+            showToast?.('Player stats updated', `${result.updatedPlayers} player${result.updatedPlayers === 1 ? '' : 's'} updated.`, 'success');
+          }
           return;
         }
         if (result.status === 'already_applied') {
-          setLastResult({
-            title: 'Stats already applied',
-            detail: 'Group player records were not changed again.',
-          });
+          showToast?.('Stats already applied', '', 'info');
         }
       })
       .catch((error) => {
         console.error('Error applying player stats:', error);
         if (active) {
-          showAlert('Stats Not Updated', 'Tournament results were saved, but player stats could not be updated.');
+          showToast?.('Stats not updated', 'Results were saved. Player stats can sync later.', 'danger');
         }
       });
 
     return () => {
       active = false;
     };
-  }, [isTournamentFinished, showAlert, tournament]);
+  }, [isTournamentFinished, showToast, tournament]);
 
   const handleDeclareWinner = async (match, result) => {
     if (isReadOnly) {
@@ -189,13 +182,13 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     try {
       const savedTournament = await updateTournamentRecord(updatedTournament);
       setTournament(savedTournament);
-      setLastResult({
-        title: `${winnerTeam ? getTeamName(winnerTeam) : 'Winner'} saved`,
-        detail:
-          updatedCompletedInRound === updatedRoundMatches.length
-            ? `${getStageTitle(savedTournament)} complete. Preparing the next stage.`
-            : `${updatedRoundMatches.length - updatedCompletedInRound} match${updatedRoundMatches.length - updatedCompletedInRound === 1 ? '' : 'es'} left in this stage.`,
-      });
+      showToast?.(
+        `${winnerTeam ? getTeamName(winnerTeam) : 'Winner'} saved`,
+        updatedCompletedInRound === updatedRoundMatches.length
+          ? `${getStageTitle(savedTournament)} complete.`
+          : `${updatedRoundMatches.length - updatedCompletedInRound} match${updatedRoundMatches.length - updatedCompletedInRound === 1 ? '' : 'es'} left.`,
+        'success'
+      );
 
       if (updatedCompletedInRound === updatedRoundMatches.length && savedTournament.currentRound === 1) {
         if (savedTournament.format === 'league') {
@@ -250,7 +243,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     try {
       const savedTournament = await updateTournamentRecord(updatedTournament);
       setTournament(savedTournament);
-      setLastResult({ title: 'Semifinals are ready', detail: 'Top 4 teams advanced from the Cup group stage.' });
+      showToast?.('Semifinals ready', 'Top 4 teams advanced.', 'success');
     } catch (error) {
       console.error('Error advancing to Round 2:', error);
       showAlert('Error', 'Could not advance to semifinals. Please try again.');
@@ -265,7 +258,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     try {
       const savedTournament = await updateTournamentRecord(updatedTournament);
       setTournament(savedTournament);
-      setLastResult({ title: 'League Round 2 started', detail: 'Second-leg matches are now ready.' });
+      showToast?.('Round 2 started', 'Second-leg matches are ready.', 'success');
     } catch (error) {
       console.error('Error advancing to League Round 2:', error);
       showAlert('Error', 'Could not advance to Round 2. Please try again.');
@@ -290,13 +283,13 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       try {
         const savedTournament = await updateTournamentRecord(updatedTournament);
         setTournament(savedTournament);
-        setLastResult({ title: 'Final is ready', detail: 'The championship match is on court next.' });
+        showToast?.('Final ready', 'Championship match is next.', 'success');
       } catch (error) {
         console.error('Error creating finals:', error);
         showAlert('Error', 'Could not create the final. Please try again.');
       }
     },
-    [setTournament, showAlert]
+    [setTournament, showAlert, showToast]
   );
 
   useEffect(() => {
@@ -332,7 +325,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     try {
       const savedTournament = await reopenTournamentRecord(tournament);
       setTournament(savedTournament);
-      showAlert('Tournament Reopened', 'You can edit scores and teams again.');
+      showToast?.('Tournament reopened', 'Scores and teams can be edited.', 'success');
     } catch (error) {
       console.error('Error reopening tournament:', error);
       showAlert('Error', 'Could not reopen tournament.');
@@ -369,24 +362,6 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
             >
               <ShareIcon className="h-5 w-5" />
               {isCopyingLink ? 'Copying...' : copyFeedback || 'Copy Link'}
-            </button>
-          </div>
-        </section>
-      )}
-
-      {lastResult && (
-        <section className="rounded-3xl border border-[#BEDC45]/30 bg-[#BEDC45]/14 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-[#BEDC45]">
-                <SparkIcon className="h-5 w-5" />
-                Result updated
-              </p>
-              <h3 className="mt-1 text-xl font-black text-[#F7F8F7]">{lastResult.title}</h3>
-              <p className="mt-1 text-sm font-bold text-[#CFD2D3]">{lastResult.detail}</p>
-            </div>
-            <button type="button" onClick={() => setLastResult(null)} className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#0A141E] text-lg font-black text-[#BEDC45]">
-              x
             </button>
           </div>
         </section>
@@ -500,7 +475,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         </button>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 p-3 backdrop-blur sm:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
         <div className={`mx-auto grid max-w-6xl gap-2 ${canEditTournament ? 'grid-cols-[1fr_1fr_auto]' : 'grid-cols-1'}`}>
           {canEditTournament && (
             <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 text-sm font-black text-[#F7F8F7]">
@@ -534,11 +509,11 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       )}
 
       {showEditTeams && canEditTournament && (
-        <EditTeamsModal tournament={tournament} setTournament={setTournament} onClose={() => setShowEditTeams(false)} showAlert={showAlert} />
+        <EditTeamsModal tournament={tournament} setTournament={setTournament} onClose={() => setShowEditTeams(false)} showAlert={showAlert} showToast={showToast} />
       )}
 
       {showGameHistory && (
-        <GameHistoryModal tournament={tournament} setTournament={setTournament} onClose={() => setShowGameHistory(false)} showAlert={showAlert} readOnly={isReadOnly} />
+        <GameHistoryModal tournament={tournament} setTournament={setTournament} onClose={() => setShowGameHistory(false)} showAlert={showAlert} showToast={showToast} readOnly={isReadOnly} />
       )}
     </div>
   );
@@ -616,7 +591,7 @@ function TabButton({ active, onClick, children }) {
       type="button"
       onClick={onClick}
       className={`min-h-10 rounded-xl px-2 text-sm font-black transition ${
-        active ? 'bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
+        active ? 'motion-soft-pop bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
       }`}
     >
       {children}

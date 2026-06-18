@@ -5,7 +5,7 @@ import { reconcileCupProgression, syncTeamPointsFromMatches } from '../../utils/
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function GameHistoryModal({ tournament, setTournament, onClose, showAlert, readOnly = false }) {
+export default function GameHistoryModal({ tournament, setTournament, onClose, showAlert, showToast, readOnly = false }) {
   const completedMatches = tournament.matches.filter((m) => m.status === 'completed');
   const [updatingMatchId, setUpdatingMatchId] = useState(null);
 
@@ -42,7 +42,11 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
         updatedTournament.format === 'league' ? syncTeamPointsFromMatches(updatedTournament) : reconcileCupProgression(updatedTournament);
       const savedTournament = await updateTournamentRecord(reconciledTournament);
       setTournament(savedTournament);
-      showAlert('Success', 'Match result updated successfully.');
+      if (showToast) {
+        showToast('Result updated', '', 'success');
+      } else {
+        showAlert('Success', 'Result updated.');
+      }
     } catch (error) {
       console.error('Error updating match result:', error);
       showAlert('Error', 'Could not update match result. Please try again.');

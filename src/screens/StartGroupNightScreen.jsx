@@ -4,6 +4,7 @@ import { createGroupSession, linkGroupSessionTournament } from '../utils/groupSe
 import { createTournamentRecord } from '../utils/tournamentService';
 import { buildTournament } from '../utils/tournamentBuilder';
 import { getSetupStatus, validatePlayerName } from '../utils/tournamentRules';
+import SegmentedControl from '../components/SegmentedControl.jsx';
 import { CheckIcon, CourtIcon, ListIcon, TrophyIcon, UsersIcon, XIcon } from '../components/Icons';
 
 export default function StartGroupNightScreen({ group, showAlert, setTournament, setScreen }) {
@@ -154,8 +155,28 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2">
-        <FieldSelect id="groupFormat" label="Format" value={tournamentFormat} disabled={isSaving} onChange={(event) => setTournamentFormat(event.target.value)} options={[{ value: 'cup', label: 'Cup' }, { value: 'league', label: 'League' }]} />
-        <FieldSelect id="groupCourts" label="Courts" value={courtCount} disabled={isSaving} onChange={(event) => setCourtCount(Number(event.target.value))} options={[{ value: 1, label: '1 court' }, { value: 2, label: '2 courts' }, { value: 3, label: '3 courts' }]} />
+        <SegmentedControl
+          label="Format"
+          value={tournamentFormat}
+          disabled={isSaving}
+          onChange={setTournamentFormat}
+          options={[
+            { value: 'cup', label: 'Cup', icon: <TrophyIcon className="h-4 w-4" /> },
+            { value: 'league', label: 'League', icon: <ListIcon className="h-4 w-4" /> },
+          ]}
+        />
+        <SegmentedControl
+          label="Courts"
+          value={courtCount}
+          disabled={isSaving}
+          onChange={setCourtCount}
+          columns="grid-cols-3"
+          options={[
+            { value: 1, label: '1' },
+            { value: 2, label: '2' },
+            { value: 3, label: '3' },
+          ]}
+        />
       </section>
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
@@ -188,6 +209,9 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
             }}
             className="min-h-14 flex-1 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
             placeholder="Guest name"
+            autoCapitalize="words"
+            autoComplete="name"
+            enterKeyHint="done"
           />
           <button type="button" onClick={handleAddGuest} className="min-h-14 rounded-2xl bg-[#BEDC45] px-6 font-black text-[#020D16]">
             Add Guest
@@ -207,7 +231,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
         )}
       </section>
 
-      <div className="sticky bottom-3 z-10 rounded-3xl border border-white/10 bg-[#07111B]/95 p-3 shadow-2xl shadow-[#020D16]/15 backdrop-blur">
+      <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 rounded-3xl border border-white/10 bg-[#07111B]/95 p-3 shadow-2xl shadow-[#020D16]/15 backdrop-blur">
         <div className="grid gap-2">
           <button type="button" onClick={startNight} disabled={isSaving || !setupStatus.isValid} className="min-h-14 rounded-2xl bg-[#BEDC45] px-4 text-lg font-black text-[#020D16] disabled:cursor-not-allowed disabled:bg-[rgba(255,255,255,0.08)] disabled:text-[#8D99A6]">
             {isSaving ? 'Starting...' : setupStatus.isValid ? "Start Tonight's Games" : setupStatus.message}
@@ -259,20 +283,3 @@ function PlanMetric({ icon, label, value }) {
   );
 }
 
-
-function FieldSelect({ id, label, value, disabled, onChange, options }) {
-  return (
-    <div className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-      <label htmlFor={id} className="mb-2 block text-sm font-black uppercase tracking-wide text-[#8D99A6]">
-        {label}
-      </label>
-      <select id={id} value={value} onChange={onChange} disabled={disabled} className="min-h-14 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 text-base font-black text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20 disabled:opacity-60">
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}

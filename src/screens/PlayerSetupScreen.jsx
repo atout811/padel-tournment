@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { createTournamentRecord } from '../utils/tournamentService';
 import { getSetupStatus, validatePlayerName } from '../utils/tournamentRules';
 import { buildTournament } from '../utils/tournamentBuilder';
+import SegmentedControl from '../components/SegmentedControl.jsx';
 import { CheckIcon, ListIcon, TrophyIcon, UsersIcon, XIcon } from '../components/Icons';
 
 export default function PlayerSetupScreen({ showAlert, setTournament, setScreen }) {
@@ -116,6 +117,9 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
                   placeholder="Player name"
                   value={playerName}
                   maxLength={40}
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  enterKeyHint="done"
                   onChange={(event) => {
                     setPlayerName(event.target.value);
                     if (playerError) setPlayerError('');
@@ -197,22 +201,18 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
 
         {activePanel === 'rules' && (
           <div className="mt-3 space-y-3">
-            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-3">
-              <label htmlFor="courtCount" className="mb-2 block text-xs font-black uppercase tracking-wide text-[#8D99A6]">
-                Courts Available
-              </label>
-              <select
-                id="courtCount"
-                value={courtCount}
-                onChange={(event) => setCourtCount(Number(event.target.value))}
-                disabled={isSaving}
-                className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] px-4 text-base font-black text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value={1}>1 court</option>
-                <option value={2}>2 courts</option>
-                <option value={3}>3 courts</option>
-              </select>
-            </div>
+            <SegmentedControl
+              label="Courts Available"
+              value={courtCount}
+              disabled={isSaving}
+              onChange={setCourtCount}
+              columns="grid-cols-3"
+              options={[
+                { value: 1, label: '1' },
+                { value: 2, label: '2' },
+                { value: 3, label: '3' },
+              ]}
+            />
 
             <button
               type="button"
@@ -278,7 +278,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
         )}
       </section>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 p-3 shadow-2xl shadow-[#020D16]/15 backdrop-blur sm:sticky sm:bottom-3 sm:rounded-3xl sm:border">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl shadow-[#020D16]/15 backdrop-blur sm:sticky sm:bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:rounded-3xl sm:border">
         <button
           className="min-h-14 w-full rounded-2xl bg-[#BEDC45] px-4 text-lg font-black text-[#020D16] shadow-lg shadow-[#BEDC45]/20 transition hover:bg-[#D3F05A] disabled:cursor-not-allowed disabled:bg-[rgba(255,255,255,0.08)] disabled:text-[#8D99A6] disabled:shadow-none"
           onClick={handleCreateTournament}
@@ -326,7 +326,7 @@ function TabButton({ active, onClick, children }) {
       type="button"
       onClick={onClick}
       className={`min-h-10 rounded-xl px-2 text-sm font-black transition ${
-        active ? 'bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
+        active ? 'motion-soft-pop bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
       }`}
     >
       {children}

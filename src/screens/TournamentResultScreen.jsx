@@ -15,7 +15,7 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function TournamentResultScreen({ tournament, showAlert, onResumeTournament, canManageTournament = false }) {
+export default function TournamentResultScreen({ tournament, showAlert, showToast, onResumeTournament, canManageTournament = false }) {
   const [groupName, setGroupName] = useState('');
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
@@ -64,7 +64,11 @@ export default function TournamentResultScreen({ tournament, showAlert, onResume
       const savedTournament = await reopenTournamentRecord(tournament);
       setShowReopenConfirm(false);
       onResumeTournament(savedTournament);
-      showAlert('Tournament Reopened', 'You can edit scores and teams again.');
+      if (showToast) {
+        showToast('Tournament reopened', 'Scores and teams can be edited.', 'success');
+      } else {
+        showAlert('Tournament Reopened', 'Scores and teams can be edited.');
+      }
     } catch (error) {
       console.error('Error reopening tournament:', error);
       showAlert('Error', 'Could not reopen tournament.');

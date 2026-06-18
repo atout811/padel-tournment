@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Header from './components/Header.jsx';
 import InstallPrompt from './components/InstallPrompt.jsx';
-import { CustomAlert } from './components/Alert.jsx';
+import { CustomAlert, ToastViewport } from './components/Alert.jsx';
+import { SkeletonBlock } from './components/Skeleton.jsx';
 import AuthScreen from './screens/AuthScreen.jsx';
 import GroupHomeScreen from './screens/GroupHomeScreen.jsx';
 import GroupListScreen from './screens/GroupListScreen.jsx';
@@ -23,6 +24,7 @@ export default function App() {
   const [resultTournament, setResultTournament] = useState(null);
   const [screen, setScreen] = useState('loading');
   const [alert, setAlert] = useState({ show: false, title: '', message: '' });
+  const [toasts, setToasts] = useState([]);
   const [shareLink, setShareLink] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [authSession, setAuthSession] = useState(null);
@@ -30,8 +32,23 @@ export default function App() {
   const subscriptionCleanup = useRef(null);
   const historyReady = useRef(false);
   const claimedOwnerRef = useRef(null);
+  const toastIdRef = useRef(0);
 
   const showAlert = useCallback((title, message) => setAlert({ show: true, title, message }), []);
+  const dismissToast = useCallback((id) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  }, []);
+  const showToast = useCallback(
+    (title, message = '', tone = 'info') => {
+      toastIdRef.current += 1;
+      const id = `toast-${Date.now()}-${toastIdRef.current}`;
+      setToasts((current) => [...current.slice(-2), { id, title, message, tone }]);
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => dismissToast(id), 2600);
+      }
+    },
+    [dismissToast]
+  );
 
   const prepareAuthSession = useCallback(
     async (session) => {
@@ -387,6 +404,7 @@ export default function App() {
         <TournamentResultScreen
           tournament={resultTournament}
           showAlert={showAlert}
+          showToast={showToast}
           onResumeTournament={resumeTournament}
           canManageTournament={!isAuthAvailable() || !resultTournament.ownerId || authSession?.user?.id === resultTournament.ownerId}
         />
@@ -411,6 +429,7 @@ export default function App() {
           tournament={tournament}
           setTournament={setTournament}
           showAlert={showAlert}
+          showToast={showToast}
           setScreen={navigateToScreen}
           shareLink={shareLink}
           onTournamentEnded={leaveTournamentView}
@@ -447,6 +466,7 @@ export default function App() {
   ];
   const isPublicTournamentRoute = Boolean(new URLSearchParams(window.location.search).get('tournamentId'));
   const shouldShowAuth = isAuthAvailable() && !authSession && !isPublicTournamentRoute && !tournament;
+  const screenTransitionKey = `${screen}:${tournament?.id || resultTournament?.id || selectedGroup?.id || 'root'}`;
 
   return (
     <>
@@ -464,7 +484,11 @@ export default function App() {
           user={authSession?.user}
           onSignOut={isAuthAvailable() ? handleSignOut : undefined}
         />
-        <main className={showBottomNav ? 'pb-24 sm:pb-0' : ''}>{renderScreen()}</main>
+        <main className={showBottomNav ? 'pb-24 sm:pb-0' : ''}>
+          <div key={screenTransitionKey} className="app-screen-enter">
+            {renderScreen()}
+          </div>
+        </main>
         {showBottomNav && <BottomNavigation items={bottomNavItems} />}
       </div>
     </div>
@@ -472,6 +496,7 @@ export default function App() {
       {alert.show && (
         <CustomAlert title={alert.title} message={alert.message} onClose={() => setAlert({ show: false, title: '', message: '' })} />
       )}
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
       <InstallPrompt />
     </>
   );
@@ -479,8 +504,12 @@ export default function App() {
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-dvh items-center justify-center rounded-b-3xl border-x border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-10 shadow-xl shadow-[#020D16]/5">
-      <p className="text-lg font-black text-[#BEDC45]">Loading tournament...</p>
+    <div className="flex min-h-dvh items-center justify-center rounded-b-3xl border-x border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-6 shadow-xl shadow-[#020D16]/5">
+      <div className="w-full max-w-sm rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
+        <SkeletonBlock className="mx-auto h-12 w-12 rounded-3xl bg-[#BEDC45]/20" />
+        <SkeletonBlock className="mx-auto mt-4 h-5 w-40" />
+        <SkeletonBlock className="mx-auto mt-2 h-3 w-28" />
+      </div>
     </div>
   );
 }
@@ -498,7 +527,7 @@ function BottomNavigation({ items }) {
             disabled={item.disabled}
             className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-black transition ${
               item.active
-                ? 'bg-[#BEDC45] text-[#020D16]'
+                ? 'motion-soft-pop bg-[#BEDC45] text-[#020D16]'
                 : item.disabled
                   ? 'cursor-not-allowed text-[#4E5A66]'
                   : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'

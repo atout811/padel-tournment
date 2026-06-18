@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ConfirmationModal } from '../components/Alert';
 import { ListIcon, TrashIcon, TrophyIcon } from '../components/Icons';
+import { SkeletonRows } from '../components/Skeleton.jsx';
 import { fetchGroups } from '../utils/groupService';
 import { fetchTournamentHistory, removeTournamentRecord } from '../utils/tournamentService';
 import { buildLeaderboard } from '../utils/tournamentRules';
@@ -106,7 +107,7 @@ export default function TournamentHistoryScreen({ showAlert, onOpenTournamentRes
 
       <section className="space-y-2">
         {isLoading ? (
-          <HistoryState title="Loading history..." detail="Fetching your tournaments." />
+          <SkeletonRows count={4} />
         ) : filteredTournaments.length ? (
           filteredTournaments.map((tournament) => (
             <HistoryRow
