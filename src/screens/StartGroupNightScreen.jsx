@@ -6,8 +6,10 @@ import { buildTournament } from '../utils/tournamentBuilder';
 import { getSetupStatus, validatePlayerName } from '../utils/tournamentRules';
 import SegmentedControl from '../components/SegmentedControl.jsx';
 import { CheckIcon, CourtIcon, ListIcon, TrophyIcon, UsersIcon, XIcon } from '../components/Icons';
+import { useI18n } from '../i18n/useI18n.js';
 
 export default function StartGroupNightScreen({ group, showAlert, setTournament, setScreen }) {
+  const { t } = useI18n();
   const [players, setPlayers] = useState([]);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [guests, setGuests] = useState([]);
@@ -27,12 +29,12 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
       })
       .catch((error) => {
         console.error('Error loading players:', error);
-        showAlert('Error', 'Could not load group players.');
+        showAlert(t('alerts.error'), t('startNight.loadError'));
       });
     return () => {
       active = false;
     };
-  }, [group?.id, showAlert]);
+  }, [group?.id, showAlert, t]);
 
   useEffect(() => {
     if (!group?.id) return undefined;
@@ -64,7 +66,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
   const handleAddGuest = () => {
     const validation = validatePlayerName(guestName, participantNames);
     if (!validation.isValid) {
-      showAlert('Check Guest Name', validation.message);
+      showAlert(t('startNight.checkGuestTitle'), validation.message);
       return;
     }
     setGuests((current) => [...current, { id: `guest_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, name: validation.name }]);
@@ -77,7 +79,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
 
   const startNight = async () => {
     if (!setupStatus.isValid) {
-      showAlert('Night Not Ready', setupStatus.message);
+      showAlert(t('startNight.notReadyTitle'), setupStatus.message);
       return;
     }
 
@@ -118,7 +120,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
       setScreen('tournament');
     } catch (error) {
       console.error('Error starting group night:', error);
-      showAlert('Error', error.message || 'Could not start the group night.');
+      showAlert(t('alerts.error'), error.message || t('startNight.startError'));
     } finally {
       setIsSaving(false);
     }
@@ -128,7 +130,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
     return (
       <div className="rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-6">
         <button type="button" onClick={() => setScreen('groups')} className="rounded-2xl bg-[#BEDC45] px-5 py-3 font-black text-[#020D16]">
-          Back to Groups
+          {t('startNight.backToGroups')}
         </button>
       </div>
     );
@@ -139,34 +141,34 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
       <section className="overflow-hidden rounded-3xl border border-[#BEDC45]/30 bg-[#0A141E] shadow-lg shadow-[#020D16]/20">
         <div className="p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[#BEDC45] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#020D16]">Tonight</span>
-            <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{setupStatus.isValid ? 'Ready' : 'Need Players'}</span>
+            <span className="rounded-full bg-[#BEDC45] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#020D16]">{t('startNight.tonight')}</span>
+            <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{setupStatus.isValid ? t('common.ready') : t('common.needsPlayers')}</span>
           </div>
-          <h2 className="mt-3 min-w-0 truncate text-3xl font-black leading-tight text-[#F7F8F7] sm:text-4xl">{group?.name || 'Group Night'}</h2>
+          <h2 className="mt-3 min-w-0 truncate text-3xl font-black leading-tight text-[#F7F8F7] sm:text-4xl">{group?.name || t('startNight.groupNight')}</h2>
         </div>
       </section>
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 py-2">
         <div className="grid grid-cols-3 divide-x divide-[rgba(255,255,255,0.08)]">
-          <PlanMetric icon={<UsersIcon className="h-4 w-4" />} label="Players" value={participantNames.length} />
-          <PlanMetric icon={<CourtIcon className="h-4 w-4" />} label="Courts" value={courtCount} />
-          <PlanMetric icon={tournamentFormat === 'cup' ? <TrophyIcon className="h-4 w-4" /> : <ListIcon className="h-4 w-4" />} label="Format" value={tournamentFormat === 'cup' ? 'Cup' : 'League'} />
+          <PlanMetric icon={<UsersIcon className="h-4 w-4" />} label={t('common.players')} value={participantNames.length} />
+          <PlanMetric icon={<CourtIcon className="h-4 w-4" />} label={t('common.courts')} value={courtCount} />
+          <PlanMetric icon={tournamentFormat === 'cup' ? <TrophyIcon className="h-4 w-4" /> : <ListIcon className="h-4 w-4" />} label={t('common.format')} value={tournamentFormat === 'cup' ? t('common.cup') : t('common.league')} />
         </div>
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2">
         <SegmentedControl
-          label="Format"
+          label={t('common.format')}
           value={tournamentFormat}
           disabled={isSaving}
           onChange={setTournamentFormat}
           options={[
-            { value: 'cup', label: 'Cup', icon: <TrophyIcon className="h-4 w-4" /> },
-            { value: 'league', label: 'League', icon: <ListIcon className="h-4 w-4" /> },
+            { value: 'cup', label: t('common.cup'), icon: <TrophyIcon className="h-4 w-4" /> },
+            { value: 'league', label: t('common.league'), icon: <ListIcon className="h-4 w-4" /> },
           ]}
         />
         <SegmentedControl
-          label="Courts"
+          label={t('common.courts')}
           value={courtCount}
           disabled={isSaving}
           onChange={setCourtCount}
@@ -181,7 +183,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-lg font-black text-[#F7F8F7]">Playing Tonight</h3>
+          <h3 className="text-lg font-black text-[#F7F8F7]">{t('startNight.playingTonight')}</h3>
           <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{participantNames.length}</span>
         </div>
         {players.length ? (
@@ -191,12 +193,12 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
             ))}
           </div>
         ) : (
-          <p className="mt-3 rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">No saved players. Add guests or build the pool.</p>
+          <p className="mt-3 rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">{t('startNight.noSavedPlayers')}</p>
         )}
       </section>
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-        <h3 className="text-lg font-black text-[#F7F8F7]">Guests</h3>
+        <h3 className="text-lg font-black text-[#F7F8F7]">{t('startNight.guests')}</h3>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
             value={guestName}
@@ -208,13 +210,13 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
               }
             }}
             className="min-h-14 flex-1 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
-            placeholder="Guest name"
+            placeholder={t('startNight.guestName')}
             autoCapitalize="words"
             autoComplete="name"
             enterKeyHint="done"
           />
           <button type="button" onClick={handleAddGuest} className="min-h-14 rounded-2xl bg-[#BEDC45] px-6 font-black text-[#020D16]">
-            Add Guest
+            {t('startNight.addGuest')}
           </button>
         </div>
         {guests.length > 0 && (
@@ -234,7 +236,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
       <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 rounded-3xl border border-white/10 bg-[#07111B]/95 p-3 shadow-2xl shadow-[#020D16]/15 backdrop-blur">
         <div className="grid gap-2">
           <button type="button" onClick={startNight} disabled={isSaving || !setupStatus.isValid} className="min-h-14 rounded-2xl bg-[#BEDC45] px-4 text-lg font-black text-[#020D16] disabled:cursor-not-allowed disabled:bg-[rgba(255,255,255,0.08)] disabled:text-[#8D99A6]">
-            {isSaving ? 'Starting...' : setupStatus.isValid ? "Start Tonight's Games" : setupStatus.message}
+            {isSaving ? t('startNight.starting') : setupStatus.isValid ? t('startNight.startTonight') : setupStatus.message}
           </button>
         </div>
       </div>
@@ -282,4 +284,3 @@ function PlanMetric({ icon, label, value }) {
     </div>
   );
 }
-

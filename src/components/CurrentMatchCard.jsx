@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useI18n } from '../i18n/useI18n.js';
 
 const getTeamName = (team) => team.players.join(' & ');
 
 export default function CurrentMatchCard({ match, onDeclareWinner, disabled = false }) {
+  const { t } = useI18n();
   const [isSaving, setIsSaving] = useState(false);
   const [selectedWinnerId, setSelectedWinnerId] = useState('');
 
@@ -33,20 +35,20 @@ export default function CurrentMatchCard({ match, onDeclareWinner, disabled = fa
     <div className="space-y-2">
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl bg-[#07111B] px-3 py-2">
         <TeamName name={getTeamName(match.teamA)} align="right" />
-        <span className="rounded-full bg-[#0A141E] px-2 py-1 text-[0.65rem] font-black text-[#8D99A6]">VS</span>
+        <span className="rounded-full bg-[#0A141E] px-2 py-1 text-[0.65rem] font-black text-[#8D99A6]">{t('match.vs')}</span>
         <TeamName name={getTeamName(match.teamB)} />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <WinnerButton
-          label="Team A won"
+          label={t('match.teamAWon')}
           name={getTeamName(match.teamA)}
           isWinner={selectedWinnerId === match.teamA.id}
           onChoose={() => handleWinner('teamA')}
           disabled={isSaving || disabled}
         />
         <WinnerButton
-          label="Team B won"
+          label={t('match.teamBWon')}
           name={getTeamName(match.teamB)}
           isWinner={selectedWinnerId === match.teamB.id}
           onChoose={() => handleWinner('teamB')}
@@ -56,7 +58,7 @@ export default function CurrentMatchCard({ match, onDeclareWinner, disabled = fa
 
       {isSaving && (
         <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] px-3 py-2 text-center text-xs font-black text-[#8D99A6]">
-          Saving result...
+          {t('match.savingResult')}
         </div>
       )}
     </div>

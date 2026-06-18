@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { SkeletonRows } from '../components/Skeleton.jsx';
 import { createGroup, fetchGroups, subscribeToGroups } from '../utils/groupService';
 import { CheckIcon, UsersIcon } from '../components/Icons';
+import { useI18n } from '../i18n/useI18n.js';
 
 export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup }) {
+  const { t } = useI18n();
   const [groups, setGroups] = useState([]);
   const [groupName, setGroupName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -21,7 +23,7 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
       })
       .catch((error) => {
         console.error('Error loading groups:', error);
-        showAlert('Error', 'Could not load padel groups.');
+        showAlert(t('alerts.error'), t('groups.loadError'));
       })
       .finally(() => {
         if (active) setIsLoading(false);
@@ -29,7 +31,7 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
     return () => {
       active = false;
     };
-  }, [loadGroups, showAlert]);
+  }, [loadGroups, showAlert, t]);
 
   useEffect(() => {
     return subscribeToGroups((items) => setGroups(items));
@@ -38,7 +40,7 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
   const handleCreateGroup = async () => {
     const name = groupName.trim();
     if (!name) {
-      showAlert('Group Name Required', 'Enter a group name first.');
+      showAlert(t('groups.nameRequiredTitle'), t('groups.nameRequiredMessage'));
       return;
     }
 
@@ -51,7 +53,7 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
       setScreen('groupHome', { group });
     } catch (error) {
       console.error('Error creating group:', error);
-      showAlert('Error', error.message || 'Could not create the group.');
+      showAlert(t('alerts.error'), error.message || t('groups.createError'));
     } finally {
       setIsSaving(false);
     }
@@ -65,12 +67,12 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
   return (
     <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
       <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">Groups</p>
-        <h2 className="mt-1 text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">Player pools</h2>
+        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">{t('groups.eyebrow')}</p>
+        <h2 className="mt-1 text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{t('groups.title')}</h2>
       </section>
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-        <h3 className="text-lg font-black text-[#F7F8F7]">Create Group</h3>
+        <h3 className="text-lg font-black text-[#F7F8F7]">{t('groups.createTitle')}</h3>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
             value={groupName}
@@ -83,7 +85,7 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
             }}
             maxLength={60}
             className="min-h-14 flex-1 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 text-base font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
-            placeholder="Group name"
+            placeholder={t('groups.namePlaceholder')}
             autoCapitalize="words"
             autoComplete="organization"
             enterKeyHint="done"
@@ -95,14 +97,14 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
             className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#BEDC45] px-6 font-black text-[#020D16] transition hover:bg-[#D3F05A] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <UsersIcon className="h-5 w-5" />
-            Create
+            {t('common.create')}
           </button>
         </div>
       </section>
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-lg font-black text-[#F7F8F7]">Groups</h3>
+          <h3 className="text-lg font-black text-[#F7F8F7]">{t('groups.listTitle')}</h3>
           <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{groups.length}</span>
         </div>
         {isLoading ? (
@@ -113,14 +115,14 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
               <button key={group.id} type="button" onClick={() => openGroup(group)} className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-4 text-left transition hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B]">
                 <span className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#BEDC45]">
                   <CheckIcon className="h-4 w-4" />
-                  Group
+                  {t('groups.groupTag')}
                 </span>
                 <span className="mt-2 block text-xl font-black text-[#F7F8F7]">{group.name}</span>
               </button>
             ))}
           </div>
         ) : (
-          <p className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">No groups yet.</p>
+          <p className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">{t('groups.empty')}</p>
         )}
       </section>
     </div>

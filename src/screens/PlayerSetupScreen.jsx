@@ -4,8 +4,10 @@ import { getSetupStatus, validatePlayerName } from '../utils/tournamentRules';
 import { buildTournament } from '../utils/tournamentBuilder';
 import SegmentedControl from '../components/SegmentedControl.jsx';
 import { CheckIcon, ListIcon, TrophyIcon, UsersIcon, XIcon } from '../components/Icons';
+import { useI18n } from '../i18n/useI18n.js';
 
 export default function PlayerSetupScreen({ showAlert, setTournament, setScreen }) {
+  const { t } = useI18n();
   const [players, setPlayers] = useState([]);
   const [playerName, setPlayerName] = useState('');
   const [playerError, setPlayerError] = useState('');
@@ -36,7 +38,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
     const validation = validatePlayerName(playerName, players);
     if (!validation.isValid) {
       setPlayerError(validation.message);
-      showAlert('Check Player Name', validation.message);
+      showAlert(t('setup.checkPlayerTitle'), validation.message);
       return;
     }
 
@@ -53,7 +55,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   const handleCreateTournament = async () => {
     const currentStatus = getSetupStatus(players, tournamentFormat);
     if (!currentStatus.isValid) {
-      showAlert('Tournament Not Ready', currentStatus.message);
+      showAlert(t('setup.notReadyTitle'), currentStatus.message);
       return;
     }
 
@@ -74,7 +76,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
       setScreen('tournament');
     } catch (error) {
       console.error('Error creating tournament:', error);
-      showAlert('Error', 'Could not save the tournament. Please try again.');
+      showAlert(t('alerts.error'), t('setup.saveError'));
     } finally {
       setIsSaving(false);
     }
@@ -82,18 +84,18 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
 
   return (
     <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 pb-24 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6 sm:pb-6">
-      <SetupBar players={players} setupStatus={setupStatus} courtCount={courtCount} hasOddPlayer={hasOddPlayer} tournamentFormat={tournamentFormat} />
+      <SetupBar players={players} setupStatus={setupStatus} courtCount={courtCount} hasOddPlayer={hasOddPlayer} tournamentFormat={tournamentFormat} t={t} />
 
       <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 shadow-sm">
         <div className="grid grid-cols-3 gap-1 rounded-2xl bg-[#07111B] p-1">
           <TabButton active={activePanel === 'players'} onClick={() => setActivePanel('players')}>
-            Players
+            {t('setup.playersTab')}
           </TabButton>
           <TabButton active={activePanel === 'format'} onClick={() => setActivePanel('format')}>
-            Format
+            {t('setup.formatTab')}
           </TabButton>
           <TabButton active={activePanel === 'rules'} onClick={() => setActivePanel('rules')}>
-            Rules
+            {t('setup.rulesTab')}
           </TabButton>
         </div>
 
@@ -101,8 +103,8 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
           <div className="mt-3">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-black text-[#F7F8F7]">Players</h3>
-                <p className="text-xs font-medium text-[#8D99A6]">Add at least {setupStatus.minPlayers} players.</p>
+                <h3 className="text-base font-black text-[#F7F8F7]">{t('setup.playersTitle')}</h3>
+                <p className="text-xs font-medium text-[#8D99A6]">{t('setup.playersHint', { count: setupStatus.minPlayers })}</p>
               </div>
               <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black text-[#BEDC45]">{players.length}</span>
             </div>
@@ -114,7 +116,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
                   className={`min-h-12 w-full rounded-2xl border bg-[#07111B] px-4 text-base font-semibold text-[#F7F8F7] outline-none transition placeholder:text-[#8D99A6] focus:ring-4 ${
                     playerError ? 'border-[#DB4145]/50 focus:border-[#DB4145] focus:ring-[#DB4145]/20' : 'border-[rgba(255,255,255,0.08)] focus:border-[#BEDC45] focus:ring-[#BEDC45]/20'
                   }`}
-                  placeholder="Player name"
+                  placeholder={t('setup.playerName')}
                   value={playerName}
                   maxLength={40}
                   autoCapitalize="words"
@@ -139,7 +141,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
                 disabled={isSaving}
               >
                 <UsersIcon className="h-4 w-4" />
-                Add
+                {t('common.add')}
               </button>
             </div>
 
@@ -152,15 +154,15 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-6 text-center">
-                  <p className="text-base font-black text-[#F7F8F7]">No players yet</p>
-                  <p className="mt-1 text-xs font-medium text-[#8D99A6]">Add names to build teams.</p>
+                  <p className="text-base font-black text-[#F7F8F7]">{t('setup.noPlayers')}</p>
+                  <p className="mt-1 text-xs font-medium text-[#8D99A6]">{t('setup.addNames')}</p>
                 </div>
               )}
             </div>
 
             {hasOddPlayer && (
               <p className="mt-3 rounded-2xl bg-[#1F60D1]/16 px-3 py-2 text-xs font-bold text-[#CFD2D3]">
-                Odd player count: one random player will be paired with a substitute slot.
+                {t('setup.oddPlayer')}
               </p>
             )}
           </div>
@@ -170,27 +172,29 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
           <div className="mt-3 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-base font-black text-[#F7F8F7]">Tournament Format</h3>
-                <p className="mt-1 text-xs font-medium text-[#8D99A6]">Cup needs 8 players. League can start with 4.</p>
+                <h3 className="text-base font-black text-[#F7F8F7]">{t('setup.tournamentFormat')}</h3>
+                <p className="mt-1 text-xs font-medium text-[#8D99A6]">{t('setup.formatHint')}</p>
               </div>
               <StatusPill ready={setupStatus.isValid} text={setupStatus.isValid ? 'Ready' : 'Needs players'} />
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <ChoiceCard
-                title="Cup"
-                eyebrow="Group to final"
-                description="Top 4 teams qualify for semifinals."
+                title={t('common.cup')}
+                eyebrow={t('setup.cupEyebrow')}
+                description={t('setup.cupDescription')}
                 icon={<TrophyIcon />}
                 selected={tournamentFormat === 'cup'}
                 onClick={() => setTournamentFormat('cup')}
+                t={t}
               />
               <ChoiceCard
-                title="League"
-                eyebrow="Two legs"
-                description="Every team gets repeat matches."
+                title={t('common.league')}
+                eyebrow={t('setup.leagueEyebrow')}
+                description={t('setup.leagueDescription')}
                 icon={<ListIcon />}
                 selected={tournamentFormat === 'league'}
                 onClick={() => setTournamentFormat('league')}
+                t={t}
               />
             </div>
             <p className={`rounded-2xl px-3 py-2 text-xs font-bold ${setupStatus.isValid ? 'bg-[#BEDC45]/14 text-[#BEDC45]' : 'bg-[#19232B] text-[#BEDC45]'}`}>
@@ -202,7 +206,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
         {activePanel === 'rules' && (
           <div className="mt-3 space-y-3">
             <SegmentedControl
-              label="Courts Available"
+              label={t('setup.courtsAvailable')}
               value={courtCount}
               disabled={isSaving}
               onChange={setCourtCount}
@@ -219,32 +223,34 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
               onClick={() => setShowAdvanced((value) => !value)}
               className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 text-left text-sm font-black text-[#F7F8F7] transition hover:bg-[#0D1823]"
             >
-              {showAdvanced ? 'Hide scoring options' : 'Scoring options'}
+              {showAdvanced ? t('setup.hideScoringOptions') : t('setup.scoringOptions')}
             </button>
 
             {showAdvanced && (
               <div className="space-y-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-3">
                 <div className="grid gap-2 sm:grid-cols-2">
             <ChoiceCard
-              title="Classic"
-              eyebrow="Best of 3"
-              description="Casual sets with advantage at deuce."
+              title={t('setup.classic')}
+              eyebrow={t('setup.classicEyebrow')}
+              description={t('setup.classicDescription')}
               selected={scoringPreset === 'standard'}
               onClick={() => applyPreset('standard')}
+              t={t}
             />
             <ChoiceCard
-              title="Quick"
-              eyebrow="Best of 1"
-              description="Short match with golden point."
+              title={t('setup.quick')}
+              eyebrow={t('setup.quickEyebrow')}
+              description={t('setup.quickDescription')}
               selected={scoringPreset === 'fast'}
               onClick={() => applyPreset('fast')}
+              t={t}
             />
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <FieldSelect
                     id="maxSets"
-                    label="Match Length"
+                    label={t('setup.matchLength')}
                     value={maxSets}
                     disabled={isSaving}
                     onChange={(event) => {
@@ -259,7 +265,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
                   />
                   <FieldSelect
                     id="deuceMode"
-                    label="Deuce Rule"
+                    label={t('setup.deuceRule')}
                     value={deuceMode}
                     disabled={isSaving}
                     onChange={(event) => {
@@ -284,27 +290,27 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
           onClick={handleCreateTournament}
           disabled={isSaving || !setupStatus.isValid}
         >
-          {isSaving ? 'Creating...' : 'Start Tournament'}
+          {isSaving ? t('setup.creating') : t('setup.startTournament')}
         </button>
       </div>
     </div>
   );
 }
 
-function SetupBar({ players, setupStatus, courtCount, hasOddPlayer, tournamentFormat }) {
+function SetupBar({ players, setupStatus, courtCount, hasOddPlayer, tournamentFormat, t }) {
   return (
     <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">Create Tournament</p>
-          <h2 className="truncate text-lg font-black leading-tight text-[#F7F8F7]">{tournamentFormat === 'league' ? 'League Night' : 'Cup Night'}</h2>
+          <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">{t('setup.createTournament')}</p>
+          <h2 className="truncate text-lg font-black leading-tight text-[#F7F8F7]">{tournamentFormat === 'league' ? t('setup.leagueNight') : t('setup.cupNight')}</h2>
         </div>
-        <StatusPill ready={setupStatus.isValid} text={setupStatus.isValid ? 'Ready' : 'Needs players'} />
+        <StatusPill ready={setupStatus.isValid} text={setupStatus.isValid ? t('common.ready') : t('common.needsPlayers')} />
       </div>
       <div className="mt-3 grid grid-cols-3 gap-1.5">
-        <MiniStat label="Players" value={players.length} detail={`${setupStatus.minPlayers}+`} />
-        <MiniStat label="Teams" value={setupStatus.teamCount} detail={hasOddPlayer ? 'sub' : 'paired'} />
-        <MiniStat label="Courts" value={courtCount} detail={courtCount === 1 ? 'court' : 'courts'} />
+        <MiniStat label={t('common.players')} value={players.length} detail={`${setupStatus.minPlayers}+`} />
+        <MiniStat label={t('common.teams')} value={setupStatus.teamCount} detail={hasOddPlayer ? 'sub' : 'paired'} />
+        <MiniStat label={t('common.courts')} value={courtCount} detail={courtCount === 1 ? 'court' : 'courts'} />
       </div>
     </section>
   );
@@ -342,7 +348,7 @@ function StatusPill({ ready, text }) {
   );
 }
 
-function ChoiceCard({ title, eyebrow, description, icon, selected, onClick }) {
+function ChoiceCard({ title, eyebrow, description, icon, selected, onClick, t }) {
   return (
     <button
       type="button"
@@ -353,7 +359,7 @@ function ChoiceCard({ title, eyebrow, description, icon, selected, onClick }) {
     >
       <div className="flex items-center justify-between gap-3">
         <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wide ${selected ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#8D99A6]'}`}>
-          {selected ? 'Selected' : eyebrow}
+          {selected ? t('common.ready') : eyebrow}
         </span>
         {icon && <span className={`grid h-9 w-9 place-items-center rounded-xl ${selected ? 'bg-[#0A141E] text-[#BEDC45]' : 'bg-[#07111B] text-[#8D99A6]'}`}>{icon}</span>}
       </div>

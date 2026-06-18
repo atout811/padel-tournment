@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CourtIcon, SparkIcon, TrophyIcon, UsersIcon } from '../components/Icons';
 import { fetchGroups, subscribeToGroups } from '../utils/groupService';
 import { fetchTournamentHistory } from '../utils/tournamentService';
+import { useI18n } from '../i18n/useI18n.js';
 
 export default function HomeScreen({ setScreen, selectedGroup, onResumeTournament, showAlert }) {
+  const { t } = useI18n();
   const [resumeTournament, setResumeTournament] = useState(null);
   const [groupNames, setGroupNames] = useState(new Map());
 
@@ -31,13 +33,13 @@ export default function HomeScreen({ setScreen, selectedGroup, onResumeTournamen
       .catch((error) => {
         console.error('Error loading home data:', error);
         setResumeTournament(null);
-        showAlert?.('Home Not Updated', 'Could not check for an active tournament.');
+        showAlert?.(t('home.loadErrorTitle'), t('home.loadErrorMessage'));
       });
 
     return () => {
       active = false;
     };
-  }, [showAlert]);
+  }, [showAlert, t]);
 
   useEffect(() => {
     return subscribeToGroups((groups) => {
@@ -45,13 +47,13 @@ export default function HomeScreen({ setScreen, selectedGroup, onResumeTournamen
     });
   }, []);
 
-  const resumeSummary = useMemo(() => getResumeSummary(resumeTournament, groupNames), [groupNames, resumeTournament]);
+  const resumeSummary = useMemo(() => getResumeSummary(resumeTournament, groupNames, t), [groupNames, resumeTournament, t]);
 
   return (
     <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
       <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">Today</p>
-        <h2 className="mt-1 text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">Start a padel night</h2>
+        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">{t('home.eyebrow')}</p>
+        <h2 className="mt-1 text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{t('home.title')}</h2>
       </section>
 
       <section className="space-y-2">
@@ -67,31 +69,31 @@ export default function HomeScreen({ setScreen, selectedGroup, onResumeTournamen
           <HomeRow
             icon={<CourtIcon className="h-6 w-6" />}
             title={selectedGroup.name}
-            detail="Start night or open the player pool"
+            detail={t('home.selectedGroupDetail')}
             onClick={() => setScreen('groupHome', { group: selectedGroup })}
           />
         )}
-        <HomeRow icon={<UsersIcon className="h-6 w-6" />} title="Groups" detail="Saved player pools and ratings" onClick={() => setScreen('groups')} />
-        <HomeRow icon={<TrophyIcon className="h-6 w-6" />} title="Quick Tournament" detail="One-off cup or league" onClick={() => setScreen('setup')} />
+        <HomeRow icon={<UsersIcon className="h-6 w-6" />} title={t('home.groupsTitle')} detail={t('home.groupsDetail')} onClick={() => setScreen('groups')} />
+        <HomeRow icon={<TrophyIcon className="h-6 w-6" />} title={t('home.quickTitle')} detail={t('home.quickDetail')} onClick={() => setScreen('setup')} />
       </section>
     </div>
   );
 }
 
-function getResumeSummary(tournament, groupNames) {
+function getResumeSummary(tournament, groupNames, t) {
   if (!tournament) {
     return { title: '', detail: '' };
   }
 
-  const format = tournament.format === 'league' ? 'League' : 'Cup';
+  const format = tournament.format === 'league' ? t('common.league') : t('common.cup');
   const groupName = groupNames.get(tournament.groupId);
-  const label = groupName || (tournament.groupId ? 'Group night' : `Quick ${format} night`);
+  const label = groupName || (tournament.groupId ? t('format.groupNight') : tournament.format === 'league' ? t('format.quickLeagueNight') : t('format.quickCupNight'));
   const totalMatches = tournament.matches?.length || 0;
   const completedMatches = tournament.matches?.filter((match) => match.status === 'completed').length || 0;
 
   return {
-    title: `Resume ${label}`,
-    detail: `${format} - ${completedMatches}/${totalMatches} matches done`,
+    title: t('home.resumeTitle', { label }),
+    detail: t('home.resumeDetail', { format, completed: completedMatches, total: totalMatches }),
   };
 }
 

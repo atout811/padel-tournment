@@ -18,8 +18,10 @@ import { claimLegacyOwnerData, getAuthSession, isAuthAvailable, onAuthStateChang
 import { fetchGroups } from './utils/groupService';
 import { getOrCreateUserId, loadActiveTournamentId, loadTournamentData, saveActiveTournamentId } from './utils/storage';
 import { buildTournamentShareUrl, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
+import { useI18n } from './i18n/useI18n.js';
 
 export default function App() {
+  const { t } = useI18n();
   const [tournament, setTournament] = useState(null);
   const [resultTournament, setResultTournament] = useState(null);
   const [screen, setScreen] = useState('loading');
@@ -62,12 +64,12 @@ export default function App() {
         await claimLegacyOwnerData(authUserId);
       } catch (error) {
         console.error('Error claiming local owner data:', error);
-        showAlert('Data Migration Failed', 'You are signed in, but old local data could not be attached to your account.');
+        showAlert(t('alerts.dataMigrationFailed'), t('alerts.dataMigrationMessage'));
       }
 
       return session;
     },
-    [showAlert]
+    [showAlert, t]
   );
 
   useEffect(() => {
@@ -84,7 +86,7 @@ export default function App() {
       })
       .catch((error) => {
         console.error('Error loading auth session:', error);
-        showAlert('Login Error', 'Could not load your login session.');
+        showAlert(t('alerts.loginError'), t('alerts.loginErrorMessage'));
       })
       .finally(() => {
         if (active) setIsAuthLoading(false);
@@ -117,7 +119,7 @@ export default function App() {
       active = false;
       unsubscribe();
     };
-  }, [prepareAuthSession, showAlert]);
+  }, [prepareAuthSession, showAlert, t]);
 
   const navigateToScreen = useCallback((nextScreen, options = {}) => {
     const { group, replace = false } = options;
@@ -210,10 +212,10 @@ export default function App() {
             restoreTournament(tournamentToOpen);
           } else {
             showAlert(
-              loadError ? 'Tournament Sync Failed' : 'Tournament Not Found',
+              loadError ? t('alerts.tournamentSyncFailed') : t('alerts.tournamentNotFound'),
               loadError
-                ? 'Could not load this tournament. Check your connection and try again.'
-                : 'This tournament link appears to be invalid or has been removed.'
+                ? t('alerts.tournamentSyncFailedMessage')
+                : t('alerts.tournamentNotFoundMessage')
             );
             const fallbackScreen = isAuthAvailable() && !authSession ? 'auth' : 'home';
             setScreen(fallbackScreen);
@@ -258,7 +260,7 @@ export default function App() {
         if (!active) {
           return;
         }
-        showAlert('Error', 'Could not load tournament data.');
+        showAlert(t('alerts.error'), t('alerts.loadTournamentError'));
         setResultTournament(null);
         setScreen('home');
         saveActiveTournamentId(null);
@@ -273,7 +275,7 @@ export default function App() {
       active = false;
       detachSubscription();
     };
-  }, [authSession, detachSubscription, isAuthLoading, showAlert]);
+  }, [authSession, detachSubscription, isAuthLoading, showAlert, t]);
 
   useEffect(() => {
     const handlePopState = (event) => {
@@ -362,31 +364,31 @@ export default function App() {
   const navigation = useMemo(() => {
     if (screen === 'loading') return null;
     if (tournament) {
-      const formatLabel = tournament.format === 'league' ? 'League Night' : 'Cup Night';
+      const formatLabel = tournament.format === 'league' ? t('nav.leagueNight') : t('nav.cupNight');
       return {
-        label: tournament.groupId ? 'Group' : 'Home',
-        contextLabel: tournament.status === 'ended' ? `Ended ${formatLabel}` : formatLabel,
+        label: tournament.groupId ? t('nav.group') : t('nav.home'),
+        contextLabel: tournament.status === 'ended' ? t('nav.ended', { format: formatLabel }) : formatLabel,
         onBack: () => leaveTournamentView(tournament),
       };
     }
-    if (screen === 'groups') return { label: 'Home', contextLabel: 'Groups', onBack: () => navigateToScreen('home') };
-    if (screen === 'groupHome') return { label: 'Groups', contextLabel: selectedGroup?.name || 'Group', onBack: () => navigateToScreen('groups', { group: null }) };
-    if (screen === 'playersPool') return { label: 'Group', contextLabel: 'Players Pool', onBack: () => navigateToScreen(selectedGroup ? 'groupHome' : 'groups', { group: selectedGroup }) };
-    if (screen === 'startGroupNight') return { label: 'Group', contextLabel: 'Start Night', onBack: () => navigateToScreen(selectedGroup ? 'groupHome' : 'groups', { group: selectedGroup }) };
-    if (screen === 'setup') return { label: 'Home', contextLabel: 'Quick Start', onBack: () => navigateToScreen('home') };
-    if (screen === 'history') return { label: 'Home', contextLabel: 'History', onBack: () => navigateToScreen('home') };
-    if (screen === 'tournamentResult') return { label: 'History', contextLabel: 'Result', onBack: () => navigateToScreen('history') };
-    return { contextLabel: 'Match Day' };
-  }, [leaveTournamentView, navigateToScreen, screen, selectedGroup, tournament]);
+    if (screen === 'groups') return { label: t('nav.home'), contextLabel: t('nav.groups'), onBack: () => navigateToScreen('home') };
+    if (screen === 'groupHome') return { label: t('nav.groups'), contextLabel: selectedGroup?.name || t('nav.group'), onBack: () => navigateToScreen('groups', { group: null }) };
+    if (screen === 'playersPool') return { label: t('nav.group'), contextLabel: t('nav.playersPool'), onBack: () => navigateToScreen(selectedGroup ? 'groupHome' : 'groups', { group: selectedGroup }) };
+    if (screen === 'startGroupNight') return { label: t('nav.group'), contextLabel: t('nav.startNight'), onBack: () => navigateToScreen(selectedGroup ? 'groupHome' : 'groups', { group: selectedGroup }) };
+    if (screen === 'setup') return { label: t('nav.home'), contextLabel: t('nav.quickStart'), onBack: () => navigateToScreen('home') };
+    if (screen === 'history') return { label: t('nav.home'), contextLabel: t('nav.history'), onBack: () => navigateToScreen('home') };
+    if (screen === 'tournamentResult') return { label: t('nav.history'), contextLabel: t('nav.result'), onBack: () => navigateToScreen('history') };
+    return { contextLabel: t('nav.matchDay') };
+  }, [leaveTournamentView, navigateToScreen, screen, selectedGroup, t, tournament]);
 
   const handleSignOut = useCallback(async () => {
     try {
       await signOut();
     } catch (error) {
       console.error('Sign out error:', error);
-      showAlert('Sign Out Failed', error.message || 'Could not sign out.');
+      showAlert(t('alerts.signOutFailed'), error.message || t('alerts.signOutFailed'));
     }
-  }, [showAlert]);
+  }, [showAlert, t]);
 
   const renderScreen = () => {
     if (screen === 'loading') return <LoadingScreen />;
@@ -444,21 +446,21 @@ export default function App() {
   const bottomNavItems = [
     {
       id: 'home',
-      label: 'Home',
+      label: t('nav.home'),
       icon: <HomeIcon className="h-5 w-5" />,
       active: screen === 'home',
       onClick: () => navigateToScreen('home', { group: selectedGroup }),
     },
     {
       id: 'groups',
-      label: 'Groups',
+      label: t('nav.groups'),
       icon: <UsersIcon className="h-5 w-5" />,
       active: screen === 'groups' || screen === 'groupHome',
       onClick: () => navigateToScreen('groups', { group: null }),
     },
     {
       id: 'history',
-      label: 'History',
+      label: t('nav.history'),
       icon: <ListIcon className="h-5 w-5" />,
       active: screen === 'history',
       onClick: () => navigateToScreen('history', { group: selectedGroup }),

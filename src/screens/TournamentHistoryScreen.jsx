@@ -5,24 +5,20 @@ import { SkeletonRows } from '../components/Skeleton.jsx';
 import { fetchGroups } from '../utils/groupService';
 import { fetchTournamentHistory, removeTournamentRecord } from '../utils/tournamentService';
 import { buildLeaderboard } from '../utils/tournamentRules';
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-});
+import { useI18n } from '../i18n/useI18n.js';
 
 const filters = [
-  { id: 'all', label: 'All' },
-  { id: 'live', label: 'Live' },
-  { id: 'ended', label: 'Ended' },
-  { id: 'cup', label: 'Cup' },
-  { id: 'league', label: 'League' },
-  { id: 'group', label: 'Group' },
-  { id: 'quick', label: 'Quick' },
+  { id: 'all', labelKey: 'history.all' },
+  { id: 'live', labelKey: 'history.live' },
+  { id: 'ended', labelKey: 'history.ended' },
+  { id: 'cup', labelKey: 'history.cup' },
+  { id: 'league', labelKey: 'history.league' },
+  { id: 'group', labelKey: 'history.group' },
+  { id: 'quick', labelKey: 'history.quick' },
 ];
 
 export default function TournamentHistoryScreen({ showAlert, onOpenTournamentResult }) {
+  const { t, formatDate, isRtl } = useI18n();
   const [tournaments, setTournaments] = useState([]);
   const [groupNames, setGroupNames] = useState(new Map());
   const [activeFilter, setActiveFilter] = useState('all');
@@ -43,7 +39,7 @@ export default function TournamentHistoryScreen({ showAlert, onOpenTournamentRes
         } else {
           console.error('Error loading tournament history:', historyResult.reason);
           setTournaments([]);
-          showAlert('History Not Loaded', 'Could not load your tournament history.');
+          showAlert(t('history.loadErrorTitle'), t('history.loadErrorMessage'));
         }
 
         if (groupsResult.status === 'fulfilled') {
@@ -60,7 +56,7 @@ export default function TournamentHistoryScreen({ showAlert, onOpenTournamentRes
     return () => {
       active = false;
     };
-  }, [showAlert]);
+  }, [showAlert, t]);
 
   const filteredTournaments = useMemo(
     () => tournaments.filter((tournament) => matchesFilter(tournament, activeFilter)),
@@ -81,7 +77,7 @@ export default function TournamentHistoryScreen({ showAlert, onOpenTournamentRes
       setDeleteCandidate(null);
     } catch (error) {
       console.error('Error removing tournament:', error);
-      showAlert('Remove Failed', 'Could not remove this tournament from history.');
+      showAlert(t('history.removeErrorTitle'), t('history.removeErrorMessage'));
     } finally {
       setRemovingId(null);
     }
@@ -90,9 +86,9 @@ export default function TournamentHistoryScreen({ showAlert, onOpenTournamentRes
   return (
     <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 pb-24 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6 sm:pb-6">
       <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">History</p>
+        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">{t('history.eyebrow')}</p>
         <div className="mt-1 flex items-end justify-between gap-3">
-          <h2 className="min-w-0 truncate text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">Tournament history</h2>
+          <h2 className="min-w-0 truncate text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{t('history.title')}</h2>
           <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{filteredTournaments.length}</span>
         </div>
       </section>
@@ -100,7 +96,7 @@ export default function TournamentHistoryScreen({ showAlert, onOpenTournamentRes
       <section className="flex flex-wrap gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-2">
         {filters.map((filter) => (
           <FilterButton key={filter.id} active={activeFilter === filter.id} onClick={() => setActiveFilter(filter.id)}>
-            {filter.label}
+            {t(filter.labelKey)}
           </FilterButton>
         ))}
       </section>
@@ -114,20 +110,23 @@ export default function TournamentHistoryScreen({ showAlert, onOpenTournamentRes
               key={tournament.id}
               tournament={tournament}
               groupName={groupNames.get(tournament.groupId)}
+              t={t}
+              formatDate={formatDate}
+              isRtl={isRtl}
               isRemoving={removingId === tournament.id}
               onOpen={() => openTournament(tournament)}
               onRemove={() => setDeleteCandidate(tournament)}
             />
           ))
         ) : (
-          <HistoryState title={tournaments.length ? 'No tournaments match' : 'No tournaments yet'} detail={tournaments.length ? 'Choose another filter.' : 'Started tournaments will appear here.'} />
+          <HistoryState title={tournaments.length ? t('history.noMatch') : t('history.empty')} detail={tournaments.length ? t('history.noMatchDetail') : t('history.emptyDetail')} />
         )}
       </section>
 
       {deleteCandidate && (
         <ConfirmationModal
-          title="Remove Tournament?"
-          message="This removes the tournament from your history and deletes its saved record."
+          title={t('history.removeTitle')}
+          message={t('history.removeMessage')}
           onConfirm={confirmRemoveTournament}
           onCancel={() => setDeleteCandidate(null)}
         />
@@ -150,13 +149,13 @@ function FilterButton({ active, onClick, children }) {
   );
 }
 
-function HistoryRow({ tournament, groupName, isRemoving, onOpen, onRemove }) {
-  const summary = getTournamentSummary(tournament, groupName);
+function HistoryRow({ tournament, groupName, t, formatDate, isRtl, isRemoving, onOpen, onRemove }) {
+  const summary = getTournamentSummary(tournament, groupName, t, formatDate);
   const Icon = tournament.format === 'league' ? ListIcon : TrophyIcon;
 
   return (
     <div className="grid min-h-24 grid-cols-[1fr_auto] overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] shadow-sm transition hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B]">
-      <button type="button" onClick={onOpen} className="grid min-w-0 grid-cols-[48px_1fr_auto] items-center gap-3 p-3 text-left active:scale-[0.99]">
+      <button type="button" onClick={onOpen} className={`grid min-w-0 grid-cols-[48px_1fr_auto] items-center gap-3 p-3 active:scale-[0.99] ${isRtl ? 'text-right' : 'text-left'}`}>
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#BEDC45]/14 text-[#BEDC45]">
           <Icon className="h-6 w-6" />
         </span>
@@ -170,7 +169,7 @@ function HistoryRow({ tournament, groupName, isRemoving, onOpen, onRemove }) {
         </span>
         <span className="hidden text-right sm:block">
           <span className="block text-lg font-black tabular-nums text-[#F7F8F7]">{summary.completedMatches}/{summary.totalMatches}</span>
-          <span className="block text-xs font-bold uppercase tracking-wide text-[#8D99A6]">matches</span>
+          <span className="block text-xs font-bold uppercase tracking-wide text-[#8D99A6]">{t('common.matches')}</span>
         </span>
       </button>
       <button
@@ -195,18 +194,18 @@ function HistoryState({ title, detail }) {
   );
 }
 
-function getTournamentSummary(tournament, groupName) {
+function getTournamentSummary(tournament, groupName, t, formatDate) {
   const matches = tournament.matches || [];
   const completedMatches = matches.filter((match) => match.status === 'completed').length;
   const totalMatches = matches.length;
   const isComplete = totalMatches > 0 && completedMatches === totalMatches;
-  const status = tournament.status === 'ended' ? 'Ended' : isComplete ? 'Complete' : 'Live';
-  const format = tournament.format === 'league' ? 'League' : 'Cup';
+  const status = tournament.status === 'ended' ? t('history.ended') : isComplete ? t('history.complete') : t('history.live');
+  const format = tournament.format === 'league' ? t('common.league') : t('common.cup');
   const teamCount = tournament.teams?.length || 0;
-  const date = formatTournamentDate(tournament.endedAt || tournament.createdAt || tournament.updatedAt);
-  const winner = getWinnerName(tournament, isComplete);
-  const title = groupName || (tournament.groupId ? 'Group night' : `Quick ${format} night`);
-  const detailParts = [groupName ? `${format} night` : null, winner || `${teamCount} team${teamCount === 1 ? '' : 's'}`].filter(Boolean);
+  const date = formatDate(tournament.endedAt || tournament.createdAt || tournament.updatedAt, { day: 'numeric', month: 'short', year: 'numeric' });
+  const winner = getWinnerName(tournament, isComplete, t);
+  const title = groupName || (tournament.groupId ? t('format.groupNight') : tournament.format === 'league' ? t('format.quickLeagueNight') : t('format.quickCupNight'));
+  const detailParts = [groupName ? `${format} ${t('format.groupNight')}` : null, winner || `${teamCount} ${t('common.teams')}`].filter(Boolean);
 
   return {
     status,
@@ -229,24 +228,19 @@ function matchesFilter(tournament, activeFilter) {
   return true;
 }
 
-function getWinnerName(tournament, isComplete) {
+function getWinnerName(tournament, isComplete, t) {
   if (!isComplete && tournament.status !== 'ended') return '';
 
   if (tournament.format === 'league') {
     const { leaderboard } = buildLeaderboard(tournament);
-    return leaderboard[0] ? `Leader: ${getTeamName(leaderboard[0])}` : '';
+    return leaderboard[0] ? t('history.leader', { team: getTeamName(leaderboard[0]) }) : '';
   }
 
   const finalMatch = tournament.matches?.find((match) => match.matchType === 'final' && match.status === 'completed');
   const winner = finalMatch ? tournament.teams?.find((team) => team.id === finalMatch.winnerId) : null;
-  return winner ? `Winner: ${getTeamName(winner)}` : '';
+  return winner ? t('history.winner', { team: getTeamName(winner) }) : '';
 }
 
 function getTeamName(team) {
   return team.players.join(' & ');
-}
-
-function formatTournamentDate(value) {
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date.getTime()) ? dateFormatter.format(date) : 'No date';
 }

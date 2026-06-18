@@ -1,8 +1,10 @@
 import { summarizePadelScore } from '../utils/padelScoring';
+import { useI18n } from '../i18n/useI18n.js';
 
 const getTeamName = (team) => team.players.join(' & ');
 
 export default function MatchCard({ match, onSetCurrent, isCurrent }) {
+  const { t } = useI18n();
   const isCompleted = match.status === 'completed';
   const teamAWon = isCompleted && match.winnerId === match.teamA.id;
   const teamBWon = isCompleted && match.winnerId === match.teamB.id;
@@ -10,9 +12,9 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
   const padelScoreSummary = summarizePadelScore(match.score, match.teamA.id, match.teamB.id);
 
   const getMatchTypeLabel = () => {
-    if (match.matchType === 'final') return 'Final';
-    if (match.matchType === 'semifinal') return 'Semifinal';
-    return `Round ${match.round}`;
+    if (match.matchType === 'final') return t('match.final');
+    if (match.matchType === 'semifinal') return t('match.semifinal');
+    return t('match.round', { round: match.round });
   };
 
   return (
@@ -28,22 +30,22 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={match.matchType === 'final' ? 'gold' : match.matchType === 'semifinal' ? 'emerald' : 'slate'}>{getMatchTypeLabel()}</Badge>
-          {isCurrent && <Badge tone="cyan">Current</Badge>}
-          {isCompleted && <Badge tone="emerald">Completed</Badge>}
+          {isCurrent && <Badge tone="cyan">{t('match.current')}</Badge>}
+          {isCompleted && <Badge tone="emerald">{t('match.completed')}</Badge>}
         </div>
         {!isCompleted && onSetCurrent && !isCurrent && (
           <button
             onClick={() => onSetCurrent(match)}
             className="min-h-9 shrink-0 rounded-xl bg-[#1F60D1] px-3 py-1.5 text-xs font-black text-white transition hover:bg-[#2F73E6]"
           >
-            Court
+            {t('match.court')}
           </button>
         )}
       </div>
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="min-w-0">
-          <TeamLine name={getTeamName(match.teamA)} won={teamAWon} align="right" />
+          <TeamLine name={getTeamName(match.teamA)} won={teamAWon} align="right" t={t} />
         </div>
         <div className="grid min-w-12 content-center gap-1 text-center">
           {padelScoreSummary ? (
@@ -56,30 +58,30 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
               <ScorePill active={teamBWon}>{match.score.teamB}</ScorePill>
             </>
           ) : (
-            <span className="self-center rounded-full bg-[#07111B] px-2 py-1 text-[0.65rem] font-black text-[#8D99A6]">VS</span>
+            <span className="self-center rounded-full bg-[#07111B] px-2 py-1 text-[0.65rem] font-black text-[#8D99A6]">{t('match.vs')}</span>
           )}
         </div>
         <div className="min-w-0">
-          <TeamLine name={getTeamName(match.teamB)} won={teamBWon} />
+          <TeamLine name={getTeamName(match.teamB)} won={teamBWon} t={t} />
         </div>
       </div>
 
       {isCompleted && (
         <p className="mt-2 rounded-xl bg-[#0A141E] p-2 text-center text-xs font-black text-[#BEDC45]">
-          Winner: {teamAWon ? getTeamName(match.teamA) : getTeamName(match.teamB)}
+          {t('match.winner', { team: teamAWon ? getTeamName(match.teamA) : getTeamName(match.teamB) })}
         </p>
       )}
     </div>
   );
 }
 
-function TeamLine({ name, won, align = 'left' }) {
+function TeamLine({ name, won, align = 'left', t }) {
   return (
     <div className={`min-w-0 ${align === 'right' ? 'text-right' : ''}`}>
       <p className={`truncate text-sm font-black leading-tight ${won ? 'text-[#BEDC45]' : 'text-[#F7F8F7]'}`} title={name}>
         {name}
       </p>
-      {won && <p className="mt-0.5 text-[0.62rem] font-black uppercase tracking-wide text-[#BEDC45]">Winner</p>}
+      {won && <p className="mt-0.5 text-[0.62rem] font-black uppercase tracking-wide text-[#BEDC45]">{t('common.winner')}</p>}
     </div>
   );
 }

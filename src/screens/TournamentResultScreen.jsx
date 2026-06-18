@@ -6,6 +6,7 @@ import { fetchGroups } from '../utils/groupService';
 import { calculatePlayerMatchDeltas } from '../utils/playerProgressionService';
 import { reopenTournamentRecord } from '../utils/tournamentService';
 import { buildLeaderboard, emptyTeamStats } from '../utils/tournamentRules';
+import { useI18n } from '../i18n/useI18n.js';
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   day: 'numeric',
@@ -16,6 +17,7 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 const getTeamName = (team) => team.players.join(' & ');
 
 export default function TournamentResultScreen({ tournament, showAlert, showToast, onResumeTournament, canManageTournament = false }) {
+  const { language } = useI18n();
   const [groupName, setGroupName] = useState('');
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
@@ -88,6 +90,7 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
       completedMatches,
       pendingMatches,
       tournament,
+      language,
     });
 
   const handleShareWhatsApp = async () => {
@@ -412,6 +415,7 @@ export function TournamentSummaryShareCard({
   tournament,
   showAlert,
 }) {
+  const { language } = useI18n();
   const [isSharingResult, setIsSharingResult] = useState(false);
   const [isDownloadingPng, setIsDownloadingPng] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
@@ -427,6 +431,7 @@ export function TournamentSummaryShareCard({
       completedMatches,
       pendingMatches,
       tournament,
+      language,
     });
 
   const handleShareWhatsApp = async () => {
@@ -532,7 +537,7 @@ function formatDate(value) {
   return date && !Number.isNaN(date.getTime()) ? dateFormatter.format(date) : 'No date';
 }
 
-function buildResultSharePayload({ title, dateLabel, formatLabel, champion, leaderboard, teamStats, completedMatches, pendingMatches, tournament }) {
+function buildResultSharePayload({ title, dateLabel, formatLabel, champion, leaderboard, teamStats, completedMatches, pendingMatches, tournament, language = 'en' }) {
   const topTeams = leaderboard.slice(0, 3).map((team, index) => {
     const stats = teamStats.get(team.id) || emptyTeamStats();
     return {
@@ -563,6 +568,7 @@ function buildResultSharePayload({ title, dateLabel, formatLabel, champion, lead
 
   return {
     title,
+    language,
     dateLabel,
     formatLabel,
     championName: champion ? getTeamName(champion) : 'Pending',
@@ -787,6 +793,11 @@ function createResultCardBlob(payload) {
 }
 
 function drawResultCanvas(ctx, payload, width, height) {
+  if (payload.language !== 'ar-EG') {
+    drawEnglishResultCanvas(ctx, payload, width, height);
+    return;
+  }
+
   ctx.fillStyle = '#BEDC45';
   ctx.fillRect(0, 0, width, height);
 
@@ -900,6 +911,120 @@ function drawResultCanvas(ctx, payload, width, height) {
   ctx.textAlign = 'center';
   ctx.fillText(
     `${payload.matchesPlayed} ماتش / ${payload.teamCount} فرق / ${payload.courtCount} ملعب`,
+    width / 2,
+    1850
+  );
+  ctx.textAlign = 'left';
+}
+
+function drawEnglishResultCanvas(ctx, payload, width, height) {
+  ctx.fillStyle = '#BEDC45';
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = '#020D16';
+  ctx.beginPath();
+  ctx.moveTo(0, 580);
+  ctx.lineTo(width, 420);
+  ctx.lineTo(width, height);
+  ctx.lineTo(0, height);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(2, 13, 22, 0.12)';
+  ctx.beginPath();
+  ctx.arc(width - 120, 170, 300, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#020D16';
+  ctx.font = '900 34px Arial';
+  ctx.fillText('PADEL NIGHT', 72, 110);
+
+  ctx.fillStyle = 'rgba(2, 13, 22, 0.72)';
+  ctx.font = '900 26px Arial';
+  ctx.textAlign = 'right';
+  ctx.fillText(`${payload.formatLabel} / ${payload.dateLabel}`, width - 72, 110);
+  ctx.textAlign = 'left';
+
+  ctx.fillStyle = '#020D16';
+  ctx.font = '900 42px Arial';
+  ctx.fillText('CHAMPIONS OF THE NIGHT', 72, 250);
+
+  ctx.font = '900 92px Arial';
+  drawCanvasText(ctx, payload.championName, 72, 375, width - 144, 104, 2);
+
+  drawCanvasPanel(ctx, 72, 570, width - 144, 112, 32, '#020D16', '#020D16');
+  ctx.fillStyle = '#BEDC45';
+  ctx.font = '900 28px Arial';
+  drawCanvasText(ctx, payload.title, 112, 635, width - 224, 32, 1);
+
+  const statY = 735;
+  const statWidth = 280;
+  [
+    ['MATCHES', payload.matchesPlayed],
+    ['TEAMS', payload.teamCount],
+    ['COURTS', payload.courtCount],
+  ].forEach(([label, value], index) => {
+    const x = 72 + index * (statWidth + 48);
+    drawCanvasPanel(ctx, x, statY, statWidth, 130, 28, index === 0 ? '#BEDC45' : '#0A141E', index === 0 ? '#BEDC45' : 'rgba(255,255,255,0.12)');
+    ctx.fillStyle = index === 0 ? '#020D16' : '#F7F8F7';
+    ctx.font = '900 50px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(value), x + statWidth / 2, statY + 60);
+    ctx.fillStyle = index === 0 ? 'rgba(2,13,22,0.68)' : '#8D99A6';
+    ctx.font = '900 20px Arial';
+    ctx.fillText(label, x + statWidth / 2, statY + 100);
+    ctx.textAlign = 'left';
+  });
+
+  ctx.fillStyle = '#F7F8F7';
+  ctx.font = '900 34px Arial';
+  ctx.fillText('NIGHT HIGHLIGHTS', 72, 975);
+
+  if (payload.awards.length) {
+    payload.awards.slice(0, 3).forEach((award, index) => {
+      const y = 1035 + index * 160;
+      const isMainAward = index === 0;
+      drawCanvasPanel(ctx, 72, y, width - 144, 118, 30, isMainAward ? '#BEDC45' : '#0A141E', isMainAward ? '#BEDC45' : 'rgba(255,255,255,0.12)');
+      ctx.fillStyle = isMainAward ? '#020D16' : '#BEDC45';
+      ctx.font = '900 24px Arial';
+      ctx.fillText(award.label.toUpperCase(), 116, y + 42);
+      ctx.fillStyle = isMainAward ? '#020D16' : '#F7F8F7';
+      ctx.font = '900 34px Arial';
+      ctx.fillText(trimCanvasText(ctx, award.value, 520), 116, y + 86);
+      if (award.detail) {
+        ctx.fillStyle = isMainAward ? 'rgba(2,13,22,0.72)' : '#8D99A6';
+        ctx.font = '900 24px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(trimCanvasText(ctx, award.detail, 260), width - 116, y + 72);
+        ctx.textAlign = 'left';
+      }
+    });
+  } else {
+    ctx.fillStyle = '#8D99A6';
+    ctx.font = '800 28px Arial';
+    drawCanvasText(ctx, 'Highlights appear after group results.', 72, 1060, width - 144, 34, 2);
+  }
+
+  drawCanvasPanel(ctx, 72, 1550, width - 144, 230, 36, '#07111B', 'rgba(255,255,255,0.12)');
+  ctx.fillStyle = '#BEDC45';
+  ctx.font = '900 28px Arial';
+  ctx.fillText('RUNNERS UP', 116, 1618);
+
+  payload.topTeams.slice(1, 3).forEach((team, index) => {
+    const y = 1650 + index * 64;
+    ctx.fillStyle = '#BEDC45';
+    ctx.font = '900 26px Arial';
+    ctx.fillText(`#${team.rank}`, 116, y + 42);
+    ctx.fillStyle = '#F7F8F7';
+    ctx.font = '900 26px Arial';
+    ctx.fillText(trimCanvasText(ctx, team.name, 660), 190, y + 42);
+  });
+
+  ctx.fillStyle = '#8D99A6';
+  ctx.font = '900 22px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(
+    `${payload.matchesPlayed} matches / ${payload.teamCount} teams / ${payload.courtCount} court${payload.courtCount === 1 ? '' : 's'}`,
     width / 2,
     1850
   );
