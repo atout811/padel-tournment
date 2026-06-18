@@ -90,3 +90,75 @@ export const deleteGroup = async (groupId) => {
   const { error } = await supabase.from('padel_groups').delete().eq('id', groupId).select('id').single();
   if (error) throw new Error(`Failed to delete group: ${error.message}`);
 };
+
+export const subscribeToGroups = (handler) => {
+  let disposed = false;
+  let cleanup = () => {};
+
+  const start = async () => {
+    const ownerId = await getCurrentOwnerId();
+    if (disposed) return;
+
+    let pollTimer = null;
+
+    const notify = async () => {
+      try {
+        handler(await fetchGroups());
+      } catch (error) {
+        console.error('Error syncing groups:', error);
+      }
+    };
+
+    const startPolling = () => {
+      if (pollTimer) return;
+      pollTimer = setInterval(notify, 5000);
+    };
+
+    const stopPolling = () => {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    };
+
+    if (!supabase) {
+      startPolling();
+      cleanup = stopPolling;
+      return;
+    }
+
+    const channel = supabase
+      .channel(`public:padel_groups:owner_id=eq.${ownerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'padel_groups',
+          filter: `owner_id=eq.${ownerId}`,
+        },
+        notify
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          stopPolling();
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          startPolling();
+        }
+      });
+
+    startPolling();
+
+    cleanup = () => {
+      stopPolling();
+      supabase.removeChannel(channel);
+    };
+  };
+
+  start();
+
+  return () => {
+    disposed = true;
+    cleanup();
+  };
+};

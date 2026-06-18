@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CourtIcon, SparkIcon, TrophyIcon, UsersIcon } from '../components/Icons';
-import { fetchGroups } from '../utils/groupService';
+import { fetchGroups, subscribeToGroups } from '../utils/groupService';
 import { fetchTournamentHistory } from '../utils/tournamentService';
 
 export default function HomeScreen({ setScreen, selectedGroup, onResumeTournament, showAlert }) {
@@ -38,6 +38,12 @@ export default function HomeScreen({ setScreen, selectedGroup, onResumeTournamen
       active = false;
     };
   }, [showAlert]);
+
+  useEffect(() => {
+    return subscribeToGroups((groups) => {
+      setGroupNames(new Map(groups.map((group) => [group.id, group.name])));
+    });
+  }, []);
 
   const resumeSummary = useMemo(() => getResumeSummary(resumeTournament, groupNames), [groupNames, resumeTournament]);
 

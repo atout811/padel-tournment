@@ -25,6 +25,7 @@ Results are clear, trusted, and easy to share.
 - Final standings.
 - Match history.
 - MVP or best team highlight.
+- Lightweight night awards derived from standings, rating movement, streaks, and match scores.
 - Biggest upset and best comeback.
 - Result correction flow.
 
@@ -32,6 +33,7 @@ Results are clear, trusted, and easy to share.
 
 - Tournament results are stored in tournament JSON.
 - Group sessions link nights to group progression.
+- Bragging and award labels should be explainable from stored match, team, and participant snapshot data.
 - Share tokens allow controlled shared score updates.
 
 ## Verification

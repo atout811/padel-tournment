@@ -512,11 +512,6 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
             <CheckIcon className="h-4 w-4 text-[#BEDC45]" />
             History
           </button>
-          {canEditTournament && (
-            <button onClick={() => setShowEndConfirm(true)} aria-label="End Tournament" className="grid h-12 w-12 place-items-center rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 text-[#DB4145]">
-              <TrashIcon className="h-5 w-5" />
-            </button>
-          )}
         </div>
       </div>
 

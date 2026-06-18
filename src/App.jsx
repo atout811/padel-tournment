@@ -12,7 +12,7 @@ import StartGroupNightScreen from './screens/StartGroupNightScreen.jsx';
 import TournamentHistoryScreen from './screens/TournamentHistoryScreen.jsx';
 import TournamentResultScreen from './screens/TournamentResultScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
-import { HomeIcon, ListIcon, TrophyIcon, UsersIcon } from './components/Icons.jsx';
+import { HomeIcon, ListIcon, UsersIcon } from './components/Icons.jsx';
 import { claimLegacyOwnerData, getAuthSession, isAuthAvailable, onAuthStateChanged, signOut } from './utils/authService';
 import { fetchGroups } from './utils/groupService';
 import { getOrCreateUserId, loadActiveTournamentId, loadTournamentData, saveActiveTournamentId } from './utils/storage';
@@ -438,13 +438,6 @@ export default function App() {
       onClick: () => navigateToScreen('groups', { group: null }),
     },
     {
-      id: 'quick',
-      label: 'Quick',
-      icon: <TrophyIcon className="h-5 w-5" />,
-      active: screen === 'setup',
-      onClick: () => navigateToScreen('setup'),
-    },
-    {
       id: 'history',
       label: 'History',
       icon: <ListIcon className="h-5 w-5" />,
@@ -493,9 +486,10 @@ function LoadingScreen() {
 }
 
 function BottomNavigation({ items }) {
+  const gridClass = items.length === 3 ? 'grid-cols-3' : 'grid-cols-4';
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-2xl shadow-[#020D16]/30 backdrop-blur sm:hidden">
-      <div className="mx-auto grid max-w-6xl grid-cols-4 gap-1">
+      <div className={`mx-auto grid max-w-6xl ${gridClass} gap-1`}>
         {items.map((item) => (
           <button
             key={item.id}

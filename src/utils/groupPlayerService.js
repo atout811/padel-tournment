@@ -233,3 +233,71 @@ export const updateGroupPlayer = async (playerId, updates) => {
 export const deactivateGroupPlayer = async (playerId) => {
   return updateGroupPlayer(playerId, { active: false });
 };
+
+export const subscribeToGroupPlayers = (groupId, handler, options = {}) => {
+  if (!groupId) return () => {};
+
+  let disposed = false;
+  let cleanup = () => {};
+  const includeInactive = Boolean(options.includeInactive);
+
+  const notify = async () => {
+    try {
+      handler(await fetchGroupPlayers(groupId, { includeInactive }));
+    } catch (error) {
+      console.error('Error syncing group players:', error);
+    }
+  };
+
+  let pollTimer = null;
+
+  const startPolling = () => {
+    if (pollTimer) return;
+    pollTimer = setInterval(notify, 5000);
+  };
+
+  const stopPolling = () => {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  };
+
+  if (!supabase) {
+    startPolling();
+    return stopPolling;
+  }
+
+  const channel = supabase
+    .channel(`public:group_players:group_id=eq.${groupId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'group_players',
+        filter: `group_id=eq.${groupId}`,
+      },
+      notify
+    )
+    .subscribe((status) => {
+      if (disposed) return;
+      if (status === 'SUBSCRIBED') {
+        stopPolling();
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        startPolling();
+      }
+    });
+
+  startPolling();
+
+  cleanup = () => {
+    stopPolling();
+    supabase.removeChannel(channel);
+  };
+
+  return () => {
+    disposed = true;
+    cleanup();
+  };
+};

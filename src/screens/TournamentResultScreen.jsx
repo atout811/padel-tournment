@@ -22,6 +22,8 @@ export default function TournamentResultScreen({ tournament, showAlert, onResume
   const [isSharingResult, setIsSharingResult] = useState(false);
   const [isDownloadingPng, setIsDownloadingPng] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
+  const [showStandings, setShowStandings] = useState(false);
+  const [showMatches, setShowMatches] = useState(false);
 
   const { leaderboard, teamStats } = useMemo(() => buildLeaderboard(tournament), [tournament]);
   const completedMatches = useMemo(() => tournament.matches.filter((match) => match.status === 'completed'), [tournament.matches]);
@@ -142,34 +144,20 @@ export default function TournamentResultScreen({ tournament, showAlert, onResume
 
   return (
     <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 pb-24 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6 sm:pb-6">
-      <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[#BEDC45]/14 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-[#BEDC45]">{statusLabel}</span>
-          <span className="rounded-full bg-[#07111B] px-2.5 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{formatLabel}</span>
-          <span className="text-xs font-bold text-[#8D99A6]">{dateLabel}</span>
-        </div>
-        <h2 className="mt-3 text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{title}</h2>
-        <p className="mt-1 text-sm font-semibold text-[#8D99A6]">
-          {completedMatches.length}/{tournament.matches.length} matches completed
-        </p>
-      </section>
-
-      <section className="grid gap-2 sm:grid-cols-4">
-        <ResultStat label="Teams" value={tournament.teams.length} />
-        <ResultStat label="Done" value={completedMatches.length} />
-        <ResultStat label="Waiting" value={pendingMatches.length} />
-        <ResultStat label="Courts" value={Math.max(1, Number(tournament.courtCount || 1))} />
-      </section>
-
-      <section className="rounded-3xl border border-[#BEDC45]/30 bg-[#0A141E] p-4">
-        <div className="flex items-start justify-between gap-3">
+      <section className="rounded-3xl border border-[#BEDC45]/30 bg-[#0A141E] p-4 shadow-lg shadow-[#020D16]/20">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <p className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-[#BEDC45]">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-[#BEDC45] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#020D16]">{statusLabel}</span>
+              <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{formatLabel}</span>
+              <span className="text-xs font-bold text-[#8D99A6]">{dateLabel}</span>
+            </div>
+            <p className="mt-4 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-[#BEDC45]">
               <TrophyIcon className="h-5 w-5" />
-              Result
+              Champions
             </p>
-            <h3 className="mt-2 truncate text-2xl font-black text-[#F7F8F7]">{champion ? getTeamName(champion) : 'Result pending'}</h3>
-            <p className="mt-1 text-sm font-semibold text-[#8D99A6]">{champion ? 'Top team by the current standings.' : 'No winner is available yet.'}</p>
+            <h2 className="mt-2 break-words text-3xl font-black leading-tight text-[#F7F8F7] sm:text-4xl">{champion ? getTeamName(champion) : 'Pending'}</h2>
+            <p className="mt-2 text-sm font-semibold text-[#8D99A6]">{title}</p>
           </div>
           {!isEnded ? (
             <button
@@ -190,6 +178,13 @@ export default function TournamentResultScreen({ tournament, showAlert, onResume
             </button>
           ) : null}
         </div>
+
+        <div className="mt-4 grid grid-cols-4 divide-x divide-[rgba(255,255,255,0.08)] rounded-2xl bg-[#07111B] px-2 py-2">
+          <ResultMini label="Teams" value={tournament.teams.length} />
+          <ResultMini label="Done" value={completedMatches.length} />
+          <ResultMini label="Waiting" value={pendingMatches.length} />
+          <ResultMini label="Courts" value={Math.max(1, Number(tournament.courtCount || 1))} />
+        </div>
       </section>
 
       <ShareResultCard
@@ -209,30 +204,34 @@ export default function TournamentResultScreen({ tournament, showAlert, onResume
         onDownloadPng={handleDownloadResultPng}
       />
 
-      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-[#8D99A6]">
-          <ListIcon className="h-5 w-5 text-[#BEDC45]" />
-          Final Ranking
-        </h3>
+      <DetailSection
+        icon={<ListIcon className="h-5 w-5 text-[#BEDC45]" />}
+        title="Final Ranking"
+        count={leaderboard.length}
+        open={showStandings}
+        onToggle={() => setShowStandings((current) => !current)}
+      >
         <div className="space-y-2">
           {leaderboard.map((team, index) => {
             const stats = teamStats.get(team.id) || emptyTeamStats();
             return <RankingRow key={team.id} team={team} rank={index + 1} stats={stats} />;
           })}
         </div>
-      </section>
+      </DetailSection>
 
-      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-[#8D99A6]">
-          <CheckIcon className="h-5 w-5 text-[#BEDC45]" />
-          Matches
-        </h3>
+      <DetailSection
+        icon={<CheckIcon className="h-5 w-5 text-[#BEDC45]" />}
+        title="Matches"
+        count={tournament.matches.length}
+        open={showMatches}
+        onToggle={() => setShowMatches((current) => !current)}
+      >
         <div className="space-y-2">
           {tournament.matches.map((match) => (
             <MatchCard key={match.id} match={match} isCurrent={false} />
           ))}
         </div>
-      </section>
+      </DetailSection>
 
       {showReopenConfirm && (
         <ConfirmationModal
@@ -243,6 +242,32 @@ export default function TournamentResultScreen({ tournament, showAlert, onResume
         />
       )}
     </div>
+  );
+}
+
+function ResultMini({ label, value }) {
+  return (
+    <div className="px-2 text-center">
+      <p className="text-lg font-black tabular-nums text-[#F7F8F7]">{value}</p>
+      <p className="mt-0.5 truncate text-[0.56rem] font-black uppercase tracking-wide text-[#8D99A6]">{label}</p>
+    </div>
+  );
+}
+
+function DetailSection({ icon, title, count, open, onToggle, children }) {
+  return (
+    <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3">
+      <button type="button" onClick={onToggle} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl px-1 text-left">
+        <span className="flex min-w-0 items-center gap-2">
+          {icon}
+          <span className="truncate text-sm font-black uppercase tracking-wide text-[#F7F8F7]">{title}</span>
+        </span>
+        <span className="shrink-0 rounded-full bg-[#07111B] px-3 py-1 text-xs font-black tabular-nums text-[#BEDC45]">
+          {open ? 'Hide' : count}
+        </span>
+      </button>
+      {open && <div className="mt-3">{children}</div>}
+    </section>
   );
 }
 
@@ -279,26 +304,23 @@ function ShareResultCard({
       <div className="bg-[#1F60D1]/16 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-black uppercase tracking-wide text-[#BEDC45]">Tournament Summary PNG</p>
-            <h3 className="mt-1 text-2xl font-black text-[#F7F8F7]">Share to WhatsApp</h3>
-            <p className="mt-1 max-w-xl text-sm font-semibold text-[#CFD2D3]">
-              Includes winner, standings, MVP, player rating points, and rank movement.
-            </p>
+            <p className="text-sm font-black uppercase tracking-wide text-[#BEDC45]">Social Brag</p>
+            <h3 className="mt-1 text-2xl font-black text-[#F7F8F7]">Share the Night</h3>
           </div>
           <div className="grid gap-2 sm:grid-cols-[auto_auto]">
             <button
               type="button"
               onClick={onShareWhatsApp}
-              disabled={isSharing || isDownloading || completedMatches.length === 0}
+              disabled={isSharing || isDownloading}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-5 font-black text-[#020D16] transition hover:bg-[#41E37D] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <ShareIcon className="h-5 w-5" />
-              {isSharing ? 'Preparing...' : feedback || 'WhatsApp'}
+              {isSharing ? 'Preparing...' : feedback || 'WhatsApp PNG'}
             </button>
             <button
               type="button"
               onClick={onDownloadPng}
-              disabled={isSharing || isDownloading || completedMatches.length === 0}
+              disabled={isSharing || isDownloading}
               className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-5 font-black text-[#F7F8F7] transition hover:bg-[#0D1823] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isDownloading ? 'Preparing...' : 'Download PNG'}
@@ -317,7 +339,7 @@ function ShareResultCard({
 
           <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
             <div className="min-w-0">
-              <p className="text-sm font-black uppercase tracking-wide text-[#BEDC45]">Winner</p>
+              <p className="text-sm font-black uppercase tracking-wide text-[#BEDC45]">Champions of the Night</p>
               <h4 className="mt-1 break-words text-3xl font-black leading-tight text-[#F7F8F7]">{payload.championName}</h4>
               <p className="mt-2 text-sm font-bold text-[#8D99A6]">{title}</p>
             </div>
@@ -328,51 +350,22 @@ function ShareResultCard({
             </div>
           </div>
 
-          <div className="mt-5 space-y-2">
-            {payload.topTeams.map((team) => (
-              <div key={`${team.rank}-${team.name}`} className="grid grid-cols-[36px_1fr_auto] items-center gap-3 rounded-2xl bg-[#0A141E] p-3">
-                <span className={`grid h-9 w-9 place-items-center rounded-2xl text-sm font-black ${team.rank === 1 ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#8D99A6]'}`}>
-                  {team.rank}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate font-black text-[#F7F8F7]">{team.name}</p>
-                  <p className="text-xs font-bold text-[#8D99A6]">
-                    {team.wins}-{team.losses} / {team.diff > 0 ? '+' : ''}
-                    {team.diff}
-                  </p>
-                </div>
-                <p className="text-lg font-black tabular-nums text-[#BEDC45]">{team.points}</p>
-              </div>
-            ))}
-          </div>
+          {payload.awards.length > 0 && (
+            <div className="mt-5 grid gap-2 sm:grid-cols-3">
+              {payload.awards.slice(0, 3).map((award) => (
+                <AwardTile key={award.label} award={award} />
+              ))}
+            </div>
+          )}
 
-          {payload.playerMovement.length > 0 && (
-            <div className="mt-5 rounded-3xl border border-[#1F60D1]/45 bg-[#07111B] p-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-sm font-black uppercase tracking-wide text-[#BEDC45]">MVP</p>
-                  <h4 className="mt-1 text-xl font-black text-[#F7F8F7]">{payload.mvpNames.join(', ')}</h4>
-                </div>
-                <span className="w-fit rounded-full bg-[#1F60D1]/20 px-3 py-1 text-sm font-black text-[#CFD2D3]">
-                  {formatSignedNumber(payload.mvpRatingDelta)} pts
-                </span>
-              </div>
-
-              <div className="mt-3 space-y-2">
-                {payload.playerMovement.map((player) => (
-                  <div key={player.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-2xl bg-[#0A141E] p-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-black text-[#F7F8F7]">{player.name}</p>
-                      <p className="text-xs font-bold text-[#8D99A6]">
-                        #{player.previousRank} to #{player.nextRank}
-                      </p>
-                    </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-black ${getMovementPillClass(player.rankMovement)}`}>
-                      {formatRankMovement(player.rankMovement)}
-                    </span>
-                    <span className={`text-sm font-black tabular-nums ${player.ratingDelta >= 0 ? 'text-[#BEDC45]' : 'text-[#DB4145]'}`}>
-                      {formatSignedNumber(player.ratingDelta)}
-                    </span>
+          {payload.topTeams.length > 1 && (
+            <div className="mt-5 rounded-2xl bg-[#0A141E] p-3">
+              <p className="text-[0.62rem] font-black uppercase tracking-wide text-[#8D99A6]">Runner Up</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {payload.topTeams.slice(1, 3).map((team) => (
+                  <div key={`${team.rank}-${team.name}`} className="flex min-w-0 items-center gap-2 rounded-2xl bg-[#07111B] px-3 py-2">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#0A141E] text-sm font-black text-[#BEDC45]">#{team.rank}</span>
+                    <p className="truncate text-sm font-black text-[#F7F8F7]">{team.name}</p>
                   </div>
                 ))}
               </div>
@@ -384,20 +377,21 @@ function ShareResultCard({
   );
 }
 
+function AwardTile({ award }) {
+  return (
+    <div className="rounded-2xl bg-[#07111B] p-3">
+      <p className="truncate text-[0.62rem] font-black uppercase tracking-wide text-[#8D99A6]">{award.label}</p>
+      <p className="mt-1 truncate text-sm font-black text-[#F7F8F7]">{award.value}</p>
+      {award.detail && <p className="mt-1 truncate text-xs font-bold text-[#BEDC45]">{award.detail}</p>}
+    </div>
+  );
+}
+
 function ResultCardMiniStat({ label, value }) {
   return (
     <div className="rounded-2xl bg-[#0A141E] p-2 text-center">
       <p className="text-xl font-black tabular-nums text-[#F7F8F7]">{value}</p>
       <p className="mt-0.5 truncate text-[0.58rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
-    </div>
-  );
-}
-
-function ResultStat({ label, value }) {
-  return (
-    <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 text-center">
-      <p className="text-2xl font-black tabular-nums text-[#F7F8F7]">{value}</p>
-      <p className="mt-1 truncate text-[0.62rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
     </div>
   );
 }
@@ -549,17 +543,35 @@ function buildResultSharePayload({ title, dateLabel, formatLabel, champion, lead
   const playerMovement = buildPlayerMovement(tournament);
   const mvpRatingDelta = playerMovement.length ? Math.max(...playerMovement.map((player) => player.ratingDelta)) : 0;
   const mvps = playerMovement.filter((player) => player.ratingDelta === mvpRatingDelta && mvpRatingDelta > 0);
+  const biggestRankMove = playerMovement.length ? Math.max(...playerMovement.map((player) => player.rankMovement)) : 0;
+  const biggestClimbers = playerMovement.filter((player) => player.rankMovement === biggestRankMove && biggestRankMove > 0);
+  const streakBreaker = buildStreakBreakerAward(tournament);
+  const tightestWin = buildTightestWinAward(tournament);
+  const awards = buildAwards({
+    championName: champion ? getTeamName(champion) : 'Pending',
+    mvps,
+    mvpRatingDelta,
+    biggestClimbers,
+    biggestRankMove,
+    streakBreaker,
+    tightestWin,
+  });
 
   return {
     title,
     dateLabel,
     formatLabel,
-    championName: champion ? getTeamName(champion) : 'Result pending',
+    championName: champion ? getTeamName(champion) : 'Pending',
     topTeams,
     playerMovement,
     mvps,
     mvpNames: mvps.length ? mvps.map((player) => player.name) : ['No MVP yet'],
     mvpRatingDelta,
+    biggestClimbers,
+    biggestRankMove,
+    streakBreaker,
+    tightestWin,
+    awards,
     matchesPlayed: completedMatches.length,
     pendingMatches: pendingMatches.length,
     teamCount: tournament.teams.length,
@@ -571,27 +583,121 @@ function buildResultShareText(payload) {
   const rankingText = payload.topTeams
     .map((team) => `${team.rank}. ${team.name} - ${team.points} pts (${team.wins}-${team.losses}, ${team.diff > 0 ? '+' : ''}${team.diff})`)
     .join('\n');
-  const playerMovementText = payload.playerMovement
-    .map(
-      (player) =>
-        `${player.name}: ${formatSignedNumber(player.ratingDelta)} pts, #${player.previousRank} to #${player.nextRank} (${formatRankMovement(player.rankMovement)})`
-    )
+  const awardsText = payload.awards
+    .map((award) => `${award.label}: ${award.value}${award.detail ? ` (${award.detail})` : ''}`)
     .join('\n');
 
   return [
-    `${payload.title} ${payload.formatLabel} result`,
+    `${payload.title} ${payload.formatLabel} night`,
     payload.dateLabel,
-    `Winner: ${payload.championName}`,
-    payload.playerMovement.length ? `MVP: ${payload.mvpNames.join(', ')} (${formatSignedNumber(payload.mvpRatingDelta)} pts)` : '',
+    `Champions: ${payload.championName}`,
+    awardsText,
     '',
     rankingText,
-    payload.playerMovement.length ? '\nPlayer movement' : '',
-    playerMovementText,
     '',
     `${payload.matchesPlayed} matches played, ${payload.teamCount} teams, ${payload.courtCount} court${payload.courtCount === 1 ? '' : 's'}.`,
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+function buildAwards({ championName, mvps, mvpRatingDelta, biggestClimbers, biggestRankMove, streakBreaker, tightestWin }) {
+  const awards = [{ label: 'Champions', value: championName, detail: 'night winners' }];
+
+  if (mvps.length) {
+    awards.push({
+      label: 'MVP',
+      value: mvps.map((player) => player.name).join(', '),
+      detail: `${formatSignedNumber(mvpRatingDelta)} rating pts`,
+    });
+  }
+
+  if (biggestClimbers.length) {
+    awards.push({
+      label: 'Most Improved',
+      value: biggestClimbers.map((player) => player.name).join(', '),
+      detail: formatRankMovement(biggestRankMove),
+    });
+  }
+
+  if (streakBreaker) {
+    awards.push({
+      label: 'Streak Breaker',
+      value: streakBreaker.teamName,
+      detail: `stopped ${streakBreaker.streak}-win run`,
+    });
+  } else if (tightestWin) {
+    awards.push({
+      label: 'Tightest Win',
+      value: tightestWin.teamName,
+      detail: `won by ${tightestWin.margin}`,
+    });
+  }
+
+  return awards.slice(0, 4);
+}
+
+function buildStreakBreakerAward(tournament) {
+  const participantByName = buildParticipantLookup(tournament);
+  let bestAward = null;
+
+  (tournament.matches || [])
+    .filter((match) => match.status === 'completed' && match.winnerId)
+    .forEach((match) => {
+      const winnerTeam = (tournament.teams || []).find((team) => team.id === match.winnerId);
+      const losingTeams = [match.teamAId, match.teamBId]
+        .filter((teamId) => teamId && teamId !== match.winnerId)
+        .map((teamId) => (tournament.teams || []).find((team) => team.id === teamId))
+        .filter(Boolean);
+
+      losingTeams.forEach((team) => {
+        team.players.forEach((playerName) => {
+          const participant = participantByName.get(normalizeName(playerName));
+          const streak = Number(participant?.currentStreak || 0);
+          if (streak >= 2 && (!bestAward || streak > bestAward.streak)) {
+            bestAward = {
+              teamName: winnerTeam ? getTeamName(winnerTeam) : 'Winning team',
+              brokenPlayerName: playerName,
+              streak,
+            };
+          }
+        });
+      });
+    });
+
+  return bestAward;
+}
+
+function buildTightestWinAward(tournament) {
+  let tightest = null;
+
+  (tournament.matches || [])
+    .filter((match) => match.status === 'completed' && match.winnerId)
+    .forEach((match) => {
+      const scoreA = Number(match.score?.teamA ?? match.scoreA ?? match.teamAScore ?? 0);
+      const scoreB = Number(match.score?.teamB ?? match.scoreB ?? match.teamBScore ?? 0);
+      if (!scoreA && !scoreB) return;
+      const margin = Math.abs(scoreA - scoreB);
+      if (margin <= 0) return;
+      if (!tightest || margin < tightest.margin) {
+        const team = (tournament.teams || []).find((item) => item.id === match.winnerId);
+        tightest = {
+          teamName: team ? getTeamName(team) : 'Winning team',
+          margin,
+        };
+      }
+    });
+
+  return tightest;
+}
+
+function buildParticipantLookup(tournament) {
+  const participantMeta = Array.isArray(tournament?.participantMeta) ? tournament.participantMeta : [];
+  return new Map(participantMeta.map((participant) => [normalizeName(participant.name), participant]));
+}
+
+function normalizeName(value) {
+  return String(value || '').trim().toLowerCase();
 }
 
 function buildPlayerMovement(tournament) {
@@ -656,13 +762,6 @@ function formatRankMovement(value) {
   return 'same';
 }
 
-function getMovementPillClass(value) {
-  const movement = Number(value || 0);
-  if (movement > 0) return 'bg-[#BEDC45] text-[#020D16]';
-  if (movement < 0) return 'bg-[#DB4145]/15 text-[#DB4145]';
-  return 'bg-[#07111B] text-[#8D99A6]';
-}
-
 function createResultCardBlob(payload) {
   if (typeof document === 'undefined') return Promise.resolve(null);
 
@@ -684,113 +783,148 @@ function createResultCardBlob(payload) {
 }
 
 function drawResultCanvas(ctx, payload, width, height) {
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, '#020D16');
-  gradient.addColorStop(0.42, '#0A141E');
-  gradient.addColorStop(1, '#12202B');
-  ctx.fillStyle = gradient;
+  ctx.fillStyle = '#BEDC45';
   ctx.fillRect(0, 0, width, height);
 
-  ctx.fillStyle = 'rgba(190, 220, 69, 0.1)';
+  ctx.fillStyle = '#020D16';
   ctx.beginPath();
-  ctx.arc(width - 120, 150, 260, 0, Math.PI * 2);
+  ctx.moveTo(0, 580);
+  ctx.lineTo(width, 420);
+  ctx.lineTo(width, height);
+  ctx.lineTo(0, height);
+  ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = 'rgba(31, 96, 209, 0.14)';
+
+  ctx.fillStyle = 'rgba(2, 13, 22, 0.12)';
   ctx.beginPath();
-  ctx.arc(90, height - 140, 260, 0, Math.PI * 2);
+  ctx.arc(width - 120, 170, 300, 0, Math.PI * 2);
   ctx.fill();
 
-  drawCanvasPanel(ctx, 64, 64, width - 128, height - 128, 44, 'rgba(10, 20, 30, 0.88)', '#BEDC45');
+  ctx.fillStyle = '#020D16';
+  ctx.font = '900 34px Arial';
+  ctx.fillText('الملعب ولّع', 72, 110);
 
-  ctx.fillStyle = '#BEDC45';
-  ctx.font = '900 32px Arial';
-  ctx.fillText('PADEL NIGHT RESULT', 108, 150);
-
-  ctx.fillStyle = '#8D99A6';
-  ctx.font = '800 28px Arial';
+  ctx.fillStyle = 'rgba(2, 13, 22, 0.72)';
+  ctx.font = '900 26px Arial';
   ctx.textAlign = 'right';
-  ctx.fillText(`${payload.formatLabel} - ${payload.dateLabel}`, width - 108, 150);
+  ctx.fillText(`${getArabicFormatLabel(payload.formatLabel)} / ${payload.dateLabel}`, width - 72, 110);
   ctx.textAlign = 'left';
 
-  drawCanvasPanel(ctx, 108, 220, width - 216, 430, 38, '#020D16', '#BEDC45');
+  ctx.fillStyle = '#020D16';
+  ctx.font = '900 42px Arial';
+  ctx.fillText('ملوك الليلة', 72, 250);
+
+  ctx.font = '900 92px Arial';
+  drawCanvasText(ctx, payload.championName, 72, 375, width - 144, 104, 2);
+
+  drawCanvasPanel(ctx, 72, 570, width - 144, 112, 32, '#020D16', '#020D16');
   ctx.fillStyle = '#BEDC45';
-  ctx.font = '900 30px Arial';
-  ctx.fillText('WINNER', 156, 310);
+  ctx.font = '900 28px Arial';
+  drawCanvasText(ctx, payload.title, 112, 635, width - 224, 32, 1);
 
-  ctx.fillStyle = '#F7F8F7';
-  ctx.font = '900 72px Arial';
-  drawCanvasText(ctx, payload.championName, 156, 425, width - 312, 80, 2);
-
-  ctx.fillStyle = '#8D99A6';
-  ctx.font = '800 30px Arial';
-  drawCanvasText(ctx, payload.title, 156, 585, width - 312, 36, 1);
-
-  const statY = 720;
-  const statWidth = 260;
-  const statGap = 42;
+  const statY = 735;
+  const statWidth = 280;
   [
-    ['MATCHES', payload.matchesPlayed],
-    ['TEAMS', payload.teamCount],
-    ['COURTS', payload.courtCount],
+    ['ماتشات', payload.matchesPlayed],
+    ['فرق', payload.teamCount],
+    ['ملاعب', payload.courtCount],
   ].forEach(([label, value], index) => {
-    const x = 108 + index * (statWidth + statGap);
-    drawCanvasPanel(ctx, x, statY, statWidth, 150, 26, '#07111B', index === 0 ? '#BEDC45' : 'rgba(255,255,255,0.08)');
-    ctx.fillStyle = '#F7F8F7';
-    ctx.font = '900 52px Arial';
+    const x = 72 + index * (statWidth + 48);
+    drawCanvasPanel(ctx, x, statY, statWidth, 130, 28, index === 0 ? '#BEDC45' : '#0A141E', index === 0 ? '#BEDC45' : 'rgba(255,255,255,0.12)');
+    ctx.fillStyle = index === 0 ? '#020D16' : '#F7F8F7';
+    ctx.font = '900 50px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(String(value), x + statWidth / 2, statY + 70);
-    ctx.fillStyle = '#8D99A6';
-    ctx.font = '800 22px Arial';
-    ctx.fillText(label, x + statWidth / 2, statY + 112);
+    ctx.fillText(String(value), x + statWidth / 2, statY + 60);
+    ctx.fillStyle = index === 0 ? 'rgba(2,13,22,0.68)' : '#8D99A6';
+    ctx.font = '900 20px Arial';
+    ctx.fillText(label, x + statWidth / 2, statY + 100);
     ctx.textAlign = 'left';
   });
-
-  drawCanvasPanel(ctx, 108, 950, width - 216, 420, 32, '#07111B', '#1F60D1');
-  ctx.fillStyle = '#BEDC45';
-  ctx.font = '900 30px Arial';
-  ctx.fillText('FINAL TOP 3', 148, 1020);
-
-  payload.topTeams.forEach((team, index) => {
-    const y = 1060 + index * 94;
-    drawCanvasPanel(ctx, 148, y, width - 296, 74, 24, index === 0 ? '#19232B' : '#0A141E', index === 0 ? '#BEDC45' : 'rgba(255,255,255,0.08)');
-
-    ctx.fillStyle = index === 0 ? '#BEDC45' : '#8D99A6';
-    ctx.font = '900 34px Arial';
-    ctx.fillText(`#${team.rank}`, 188, y + 49);
-
-    ctx.fillStyle = '#F7F8F7';
-    ctx.font = '900 30px Arial';
-    ctx.fillText(trimCanvasText(ctx, team.name, 500), 270, y + 49);
-
-    ctx.fillStyle = '#BEDC45';
-    ctx.font = '900 30px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${team.points} pts`, width - 188, y + 49);
-    ctx.textAlign = 'left';
-  });
-
-  const mvpTop = 1480;
-  drawCanvasPanel(ctx, 108, mvpTop, width - 216, 300, 38, '#020D16', '#BEDC45');
-
-  ctx.fillStyle = '#BEDC45';
-  ctx.font = '900 30px Arial';
-  ctx.fillText(payload.mvpNames.length > 1 ? 'MVPS OF THE NIGHT' : 'MVP OF THE NIGHT', 156, mvpTop + 70);
 
   ctx.fillStyle = '#F7F8F7';
-  ctx.font = '900 48px Arial';
-  drawCanvasText(ctx, payload.mvpNames.join(', '), 156, mvpTop + 150, width - 312, 56, 2);
+  ctx.font = '900 34px Arial';
+  ctx.fillText('لقطات الليلة', 72, 975);
 
-  if (payload.mvpRatingDelta > 0) {
+  if (payload.awards.length) {
+    payload.awards.slice(0, 3).forEach((award, index) => {
+      const y = 1035 + index * 160;
+      const isMainAward = index === 0;
+      drawCanvasPanel(ctx, 72, y, width - 144, 118, 30, isMainAward ? '#BEDC45' : '#0A141E', isMainAward ? '#BEDC45' : 'rgba(255,255,255,0.12)');
+      ctx.fillStyle = isMainAward ? '#020D16' : '#BEDC45';
+      ctx.font = '900 24px Arial';
+      ctx.fillText(getArabicAwardLabel(award.label), 116, y + 42);
+      ctx.fillStyle = isMainAward ? '#020D16' : '#F7F8F7';
+      ctx.font = '900 34px Arial';
+      ctx.fillText(trimCanvasText(ctx, award.value, 520), 116, y + 86);
+      if (award.detail) {
+        ctx.fillStyle = isMainAward ? 'rgba(2,13,22,0.72)' : '#8D99A6';
+        ctx.font = '900 24px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(trimCanvasText(ctx, getArabicAwardDetail(award), 260), width - 116, y + 72);
+        ctx.textAlign = 'left';
+      }
+    });
+  } else if (payload.mvpRatingDelta > 0) {
     ctx.fillStyle = '#BEDC45';
     ctx.font = '900 34px Arial';
     ctx.textAlign = 'right';
-    ctx.fillText(`${formatSignedNumber(payload.mvpRatingDelta)} rating pts`, width - 156, mvpTop + 256);
+    ctx.fillText(`${formatSignedNumber(payload.mvpRatingDelta)} rating pts`, width - 156, 1140);
     ctx.textAlign = 'left';
   } else {
     ctx.fillStyle = '#8D99A6';
     ctx.font = '800 28px Arial';
-    drawCanvasText(ctx, 'Player movement appears when group player ratings are available.', 156, mvpTop + 244, width - 312, 34, 2);
+    drawCanvasText(ctx, 'الجوائز بتظهر بعد نتيجة الجروب.', 72, 1060, width - 144, 34, 2);
   }
+
+  drawCanvasPanel(ctx, 72, 1550, width - 144, 230, 36, '#07111B', 'rgba(255,255,255,0.12)');
+  ctx.fillStyle = '#BEDC45';
+  ctx.font = '900 28px Arial';
+  ctx.fillText('قريبين أوي', 116, 1618);
+
+  payload.topTeams.slice(1, 3).forEach((team, index) => {
+    const y = 1650 + index * 64;
+    ctx.fillStyle = '#BEDC45';
+    ctx.font = '900 26px Arial';
+    ctx.fillText(`#${team.rank}`, 116, y + 42);
+    ctx.fillStyle = '#F7F8F7';
+    ctx.font = '900 26px Arial';
+    ctx.fillText(trimCanvasText(ctx, team.name, 660), 190, y + 42);
+  });
+
+  ctx.fillStyle = '#8D99A6';
+  ctx.font = '900 22px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(
+    `${payload.matchesPlayed} ماتش / ${payload.teamCount} فرق / ${payload.courtCount} ملعب`,
+    width / 2,
+    1850
+  );
+  ctx.textAlign = 'left';
+}
+
+function getArabicFormatLabel(value) {
+  return value === 'League' ? 'دوري' : 'كأس';
+}
+
+function getArabicAwardLabel(label) {
+  const labels = {
+    Champions: 'ملوك الليلة',
+    MVP: 'نجم القعدة',
+    'Most Improved': 'طالع جامد',
+    'Streak Breaker': 'بوّظ السلسلة',
+    'Tightest Win': 'فوز بالعافية',
+  };
+  return labels[label] || label;
+}
+
+function getArabicAwardDetail(award) {
+  const detail = String(award?.detail || '');
+  if (award.label === 'Champions') return 'عملوها';
+  if (award.label === 'MVP') return detail.replace('rating pts', 'نقطة');
+  if (award.label === 'Most Improved') return detail.replace('up ', 'طلع ').replace('down ', 'نزل ');
+  if (award.label === 'Streak Breaker') return detail.replace(/^stopped (\d+)-win run$/, 'وقف سلسلة $1');
+  if (award.label === 'Tightest Win') return detail.replace(/^won by (\d+)$/, 'فرق $1');
+  return detail;
 }
 
 function drawCanvasPanel(ctx, x, y, width, height, radius, fill, stroke) {

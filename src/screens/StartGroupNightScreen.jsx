@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchGroupPlayers } from '../utils/groupPlayerService';
+import { fetchGroupPlayers, subscribeToGroupPlayers } from '../utils/groupPlayerService';
 import { createGroupSession, linkGroupSessionTournament } from '../utils/groupSessionService';
 import { createTournamentRecord } from '../utils/tournamentService';
 import { buildTournament } from '../utils/tournamentBuilder';
@@ -32,6 +32,20 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
       active = false;
     };
   }, [group?.id, showAlert]);
+
+  useEffect(() => {
+    if (!group?.id) return undefined;
+    return subscribeToGroupPlayers(group.id, (items) => {
+      setPlayers((currentPlayers) => {
+        const currentIds = new Set(currentPlayers.map((player) => player.id));
+        const newIds = items.filter((player) => !currentIds.has(player.id)).map((player) => player.id);
+        if (newIds.length) {
+          setSelectedIds((current) => new Set([...current, ...newIds]));
+        }
+        return items;
+      });
+    });
+  }, [group?.id]);
 
   const selectedPlayers = useMemo(() => players.filter((player) => selectedIds.has(player.id)), [players, selectedIds]);
   const participantNames = useMemo(() => [...selectedPlayers.map((player) => player.name), ...guests.map((guest) => guest.name)], [selectedPlayers, guests]);
@@ -68,7 +82,19 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
 
     // TODO Smart Shuffle: use group player rating/level here before names are paired into teams.
     const participantMeta = [
-      ...selectedPlayers.map((player) => ({ name: player.name, groupPlayerId: player.id, level: player.level, rating: player.rating, source: 'group' })),
+      ...selectedPlayers.map((player) => ({
+        name: player.name,
+        groupPlayerId: player.id,
+        level: player.level,
+        initialLevel: player.initialLevel || player.level,
+        rating: player.rating,
+        matchesPlayed: player.matchesPlayed || 0,
+        wins: player.wins || 0,
+        losses: player.losses || 0,
+        currentStreak: player.currentStreak || 0,
+        bestStreak: player.bestStreak || 0,
+        source: 'group',
+      })),
       ...guests.map((guest) => ({ name: guest.name, level: 3, source: 'guest' })),
     ];
 
@@ -109,22 +135,34 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
 
   return (
     <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
-      <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">Start New Night</p>
-        <div className="mt-1 flex items-end justify-between gap-3">
-          <h2 className="min-w-0 truncate text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{group?.name || 'Group Night'}</h2>
-          <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{participantNames.length}</span>
+      <section className="overflow-hidden rounded-3xl border border-[#BEDC45]/30 bg-[#0A141E] shadow-lg shadow-[#020D16]/20">
+        <div className="p-4 sm:p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-[#BEDC45] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#020D16]">Tonight</span>
+            <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{setupStatus.isValid ? 'Ready' : 'Need Players'}</span>
+          </div>
+          <h2 className="mt-3 min-w-0 truncate text-3xl font-black leading-tight text-[#F7F8F7] sm:text-4xl">{group?.name || 'Group Night'}</h2>
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <SummaryTile icon={<UsersIcon />} label="Players" value={participantNames.length} detail={setupStatus.message} />
-        <SummaryTile icon={<CourtIcon />} label="Courts" value={courtCount} detail={courtCount === 1 ? 'single court' : `${courtCount} active courts`} />
-        <SummaryTile icon={tournamentFormat === 'cup' ? <TrophyIcon /> : <ListIcon />} label="Format" value={tournamentFormat === 'cup' ? 'Cup' : 'League'} detail={`${setupStatus.minPlayers}+ needed`} />
+      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 py-2">
+        <div className="grid grid-cols-3 divide-x divide-[rgba(255,255,255,0.08)]">
+          <PlanMetric icon={<UsersIcon className="h-4 w-4" />} label="Players" value={participantNames.length} />
+          <PlanMetric icon={<CourtIcon className="h-4 w-4" />} label="Courts" value={courtCount} />
+          <PlanMetric icon={tournamentFormat === 'cup' ? <TrophyIcon className="h-4 w-4" /> : <ListIcon className="h-4 w-4" />} label="Format" value={tournamentFormat === 'cup' ? 'Cup' : 'League'} />
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2">
+        <FieldSelect id="groupFormat" label="Format" value={tournamentFormat} disabled={isSaving} onChange={(event) => setTournamentFormat(event.target.value)} options={[{ value: 'cup', label: 'Cup' }, { value: 'league', label: 'League' }]} />
+        <FieldSelect id="groupCourts" label="Courts" value={courtCount} disabled={isSaving} onChange={(event) => setCourtCount(Number(event.target.value))} options={[{ value: 1, label: '1 court' }, { value: 2, label: '2 courts' }, { value: 3, label: '3 courts' }]} />
       </section>
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-        <h3 className="text-lg font-black text-[#F7F8F7]">Group Players</h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-lg font-black text-[#F7F8F7]">Playing Tonight</h3>
+          <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{participantNames.length}</span>
+        </div>
         {players.length ? (
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {players.map((player) => (
@@ -132,7 +170,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
             ))}
           </div>
         ) : (
-          <p className="mt-3 rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">No active group players. Add guests or update the pool.</p>
+          <p className="mt-3 rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">No saved players. Add guests or build the pool.</p>
         )}
       </section>
 
@@ -169,15 +207,10 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
         )}
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <FieldSelect id="groupFormat" label="Tournament Format" value={tournamentFormat} disabled={isSaving} onChange={(event) => setTournamentFormat(event.target.value)} options={[{ value: 'cup', label: 'Cup' }, { value: 'league', label: 'League' }]} />
-        <FieldSelect id="groupCourts" label="Courts Available" value={courtCount} disabled={isSaving} onChange={(event) => setCourtCount(Number(event.target.value))} options={[{ value: 1, label: '1 court' }, { value: 2, label: '2 courts' }, { value: 3, label: '3 courts' }]} />
-      </section>
-
       <div className="sticky bottom-3 z-10 rounded-3xl border border-white/10 bg-[#07111B]/95 p-3 shadow-2xl shadow-[#020D16]/15 backdrop-blur">
         <div className="grid gap-2">
           <button type="button" onClick={startNight} disabled={isSaving || !setupStatus.isValid} className="min-h-14 rounded-2xl bg-[#BEDC45] px-4 text-lg font-black text-[#020D16] disabled:cursor-not-allowed disabled:bg-[rgba(255,255,255,0.08)] disabled:text-[#8D99A6]">
-            {isSaving ? 'Starting...' : setupStatus.isValid ? 'Start Group Night' : setupStatus.message}
+            {isSaving ? 'Starting...' : setupStatus.isValid ? "Start Tonight's Games" : setupStatus.message}
           </button>
         </div>
       </div>
@@ -214,18 +247,18 @@ function PlayerSelectCard({ player, selected, onClick }) {
   );
 }
 
-function SummaryTile({ icon, label, value, detail }) {
+function PlanMetric({ icon, label, value }) {
   return (
-    <div className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-      <div className="flex items-center gap-2 text-[#8D99A6]">
-        {icon}
-        <p className="text-sm font-bold">{label}</p>
+    <div className="flex min-h-14 items-center justify-center gap-2 px-2 py-2">
+      <div className="text-[#BEDC45]">{icon}</div>
+      <div className="min-w-0">
+        <p className="truncate text-[0.58rem] font-black uppercase tracking-wide text-[#8D99A6]">{label}</p>
+        <p className="truncate text-sm font-black text-[#F7F8F7]">{value}</p>
       </div>
-      <p className="mt-1 truncate text-3xl font-black tabular-nums text-[#F7F8F7]">{value}</p>
-      <p className="mt-1 line-clamp-2 text-xs font-bold uppercase tracking-wide text-[#8D99A6]">{detail}</p>
     </div>
   );
 }
+
 
 function FieldSelect({ id, label, value, disabled, onChange, options }) {
   return (

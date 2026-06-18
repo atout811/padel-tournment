@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { createGroup, fetchGroups } from '../utils/groupService';
+import React, { useCallback, useEffect, useState } from 'react';
+import { createGroup, fetchGroups, subscribeToGroups } from '../utils/groupService';
 import { CheckIcon, UsersIcon } from '../components/Icons';
 
 export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup }) {
@@ -8,9 +8,13 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  const loadGroups = useCallback(async () => {
+    return fetchGroups();
+  }, []);
+
   useEffect(() => {
     let active = true;
-    fetchGroups()
+    loadGroups()
       .then((items) => {
         if (active) setGroups(items);
       })
@@ -24,7 +28,11 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
     return () => {
       active = false;
     };
-  }, [showAlert]);
+  }, [loadGroups, showAlert]);
+
+  useEffect(() => {
+    return subscribeToGroups((items) => setGroups(items));
+  }, []);
 
   const handleCreateGroup = async () => {
     const name = groupName.trim();

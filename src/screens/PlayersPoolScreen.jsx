@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { addGroupPlayer, deactivateGroupPlayer, fetchGroupPlayers, updateGroupPlayer } from '../utils/groupPlayerService';
+import { addGroupPlayer, deactivateGroupPlayer, fetchGroupPlayers, subscribeToGroupPlayers, updateGroupPlayer } from '../utils/groupPlayerService';
 import { getPlayerWinRate } from '../utils/playerProgressionService';
 import { CheckIcon, SparkIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
 
@@ -16,6 +16,7 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
   const [editName, setEditName] = useState('');
   const [editLevel, setEditLevel] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
 
   const loadPlayers = useCallback(async () => {
     if (!group?.id) return;
@@ -30,12 +31,18 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
     });
   }, [loadPlayers, showAlert]);
 
+  useEffect(() => {
+    if (!group?.id) return undefined;
+    return subscribeToGroupPlayers(group.id, (items) => setPlayers(items));
+  }, [group?.id]);
+
   const handleAdd = async () => {
     try {
       setIsSaving(true);
       await addGroupPlayer({ groupId: group.id, name, level });
       setName('');
       setLevel(1);
+      setShowAddPlayer(false);
       await loadPlayers();
     } catch (error) {
       console.error('Error adding player:', error);
@@ -97,43 +104,54 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
 
   return (
     <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
-      <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">Players Pool</p>
-        <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <h2 className="min-w-0 truncate text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{group?.name || 'Group'}</h2>
-          <span className="w-fit rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{players.length} cards</span>
+      <section className="overflow-hidden rounded-3xl border border-[#BEDC45]/30 bg-[#0A141E] shadow-lg shadow-[#020D16]/20">
+        <div className="p-4 sm:p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-[#BEDC45] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#020D16]">Squad Board</span>
+            <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">Friend Cards</span>
+          </div>
+          <h2 className="mt-3 min-w-0 truncate text-3xl font-black leading-tight text-[#F7F8F7] sm:text-4xl">{group?.name || 'Group'}</h2>
         </div>
       </section>
 
-      <section className="grid gap-2 sm:grid-cols-4">
-        <PoolMetric label="Players" value={players.length} />
-        <PoolMetric label="Matches" value={totalMatches} />
-        <PoolMetric label="Avg Win" value={`${averageWinRate}%`} />
-        <PoolMetric label="Best Streak" value={bestStreak} />
+      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 py-2">
+        <div className="grid grid-cols-2 divide-y divide-[rgba(255,255,255,0.08)] sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+          <PoolMetric label="Players" value={players.length} />
+          <PoolMetric label="Matches" value={totalMatches} />
+          <PoolMetric label="Avg Win" value={`${averageWinRate}%`} />
+          <PoolMetric label="Best Streak" value={bestStreak} />
+        </div>
       </section>
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-        <h3 className="text-lg font-black text-[#F7F8F7]">Add Player</h3>
-        <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_140px_auto]">
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                handleAdd();
-              }
-            }}
-            maxLength={28}
-            className="min-h-14 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
-            placeholder="Player name"
-          />
-          <LevelSelect value={level} onChange={(event) => setLevel(Number(event.target.value))} disabled={isSaving} />
-          <button type="button" onClick={handleAdd} disabled={isSaving} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#BEDC45] px-6 font-black text-[#020D16] disabled:opacity-60">
+        <button type="button" onClick={() => setShowAddPlayer((current) => !current)} className="flex min-h-12 w-full items-center justify-between gap-3 text-left">
+          <span className="inline-flex items-center gap-2 text-lg font-black text-[#F7F8F7]">
             <UsersIcon className="h-5 w-5" />
-            Add
-          </button>
-        </div>
+            Add Player
+          </span>
+          <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#BEDC45]">{showAddPlayer ? 'Hide' : 'Open'}</span>
+        </button>
+        {showAddPlayer && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_140px_auto]">
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  handleAdd();
+                }
+              }}
+              maxLength={28}
+              className="min-h-14 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
+              placeholder="Player name"
+            />
+            <LevelSelect value={level} onChange={(event) => setLevel(Number(event.target.value))} disabled={isSaving} />
+            <button type="button" onClick={handleAdd} disabled={isSaving} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#BEDC45] px-6 font-black text-[#020D16] disabled:opacity-60">
+              Add
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
@@ -169,7 +187,7 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
             ))}
           </div>
         ) : (
-          <p className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">No active players yet.</p>
+          <p className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">Add the first player.</p>
         )}
       </section>
     </div>
@@ -236,9 +254,9 @@ function PlayerProfileCard({ player, rank, onEdit, onDeactivate, isSaving }) {
 
 function PoolMetric({ label, value }) {
   return (
-    <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 text-center">
-      <p className="text-2xl font-black tabular-nums text-[#F7F8F7]">{value}</p>
-      <p className="mt-1 truncate text-[0.62rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
+    <div className="flex min-h-14 items-center justify-between gap-3 px-3 py-2 sm:justify-center sm:px-4">
+      <p className="truncate text-[0.62rem] font-black uppercase tracking-wide text-[#8D99A6] sm:order-2">{label}</p>
+      <p className="text-lg font-black tabular-nums text-[#F7F8F7] sm:order-1">{value}</p>
     </div>
   );
 }
@@ -267,12 +285,13 @@ function sortPlayersForCards(players) {
 }
 
 function getPlayerCardTag(player, rank) {
-  if (rank === 1) return 'Top Seed';
+  if (rank === 1) return 'Current #1';
   if (Number(player.currentStreak || 0) >= 3) return 'Hot Streak';
+  if (rank === 2) return 'Next Threat';
   if (Number(player.matchesPlayed || 0) === 0) return 'Fresh Signing';
   if (getPlayerWinRate(player) >= 65) return 'Clutch Pick';
   if (Number(player.matchesPlayed || 0) >= 10) return 'Court Regular';
-  return 'Rising Player';
+  return 'Rising';
 }
 
 function getInitials(name) {

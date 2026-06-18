@@ -1,6 +1,8 @@
 const CACHE_NAME = 'padel-night-v2';
 
 const getScopePath = () => new URL(self.registration.scope).pathname;
+const isLocalDevHost = () => ['localhost', '127.0.0.1', '::1'].includes(self.location.hostname);
+const clearAppCaches = () => caches.keys().then((cacheNames) => Promise.all(cacheNames.filter((name) => name.startsWith('padel-night')).map((name) => caches.delete(name))));
 
 const coreAssets = () => {
   const scopePath = getScopePath();
@@ -15,6 +17,11 @@ const coreAssets = () => {
 };
 
 self.addEventListener('install', (event) => {
+  if (isLocalDevHost()) {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
+
   event.waitUntil(
     caches
       .open(CACHE_NAME)
@@ -26,6 +33,11 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  if (isLocalDevHost()) {
+    event.waitUntil(clearAppCaches().then(() => self.registration.unregister()).then(() => self.clients.claim()));
+    return;
+  }
+
   event.waitUntil(
     caches
       .keys()
@@ -40,6 +52,11 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  if (isLocalDevHost()) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   if (request.mode === 'navigate') {
     event.respondWith(
