@@ -1,5 +1,6 @@
 import { buildScoringSettings } from './padelScoring';
 import { generateLeagueMatches, generateRoundRobinRounds } from './scheduling';
+import { reconcileTournamentCourts } from './tournamentRules';
 
 const shufflePlayers = (players) => {
   const shuffledPlayers = [...players];
@@ -48,7 +49,7 @@ export const buildTournament = ({
   const matches = format === 'league' ? generateLeagueMatches(teams) : generateCupMatches(teams);
   const scoringSettings = buildScoringSettings({ maxSets, deuceMode });
 
-  return {
+  return reconcileTournamentCourts({
     players,
     teams,
     matches,
@@ -63,5 +64,5 @@ export const buildTournament = ({
     createdAt: new Date().toISOString(),
     currentMatchId: matches.find((match) => match.round === 1 && match.status === 'pending')?.id || null,
     ...metadata,
-  };
+  });
 };

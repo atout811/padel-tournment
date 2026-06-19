@@ -8,7 +8,7 @@ import { ConfirmationModal } from '../components/Alert';
 import EditTeamsModal from '../screens/modals/EditTeamsModal';
 import GameHistoryModal from '../screens/modals/GameHistoryModal';
 import { TournamentSummaryShareCard } from './TournamentResultScreen.jsx';
-import { buildLeaderboard, emptyTeamStats, selectActiveMatches, syncTeamPointsFromMatches } from '../utils/tournamentRules';
+import { buildCourtAssignments, buildLeaderboard, emptyTeamStats, reconcileTournamentCourts, syncTeamPointsFromMatches } from '../utils/tournamentRules';
 import { CheckIcon, CourtIcon, ShareIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
 import { useI18n } from '../i18n/useI18n.js';
 
@@ -39,15 +39,24 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   const completedMatches = useMemo(() => tournament.matches.filter((match) => match.status === 'completed'), [tournament.matches]);
   const remainingMatches = useMemo(() => tournament.matches.filter((match) => match.status !== 'completed'), [tournament.matches]);
   const courtCount = useMemo(() => Math.max(1, Math.min(Number(tournament.courtCount || 1), 3)), [tournament.courtCount]);
-  const activeMatches = useMemo(
-    () => selectActiveMatches(pendingMatches, courtCount, tournament.currentMatchId),
-    [courtCount, pendingMatches, tournament.currentMatchId]
+  const pendingMatchMap = useMemo(() => new Map(pendingMatches.map((match) => [match.id, match])), [pendingMatches]);
+  const resolvedCourtAssignments = useMemo(
+    () =>
+      buildCourtAssignments({
+        pendingMatches,
+        courtCount,
+        preferredMatchId: tournament.currentMatchId,
+        courtAssignments: tournament.courtAssignments,
+      }),
+    [courtCount, pendingMatches, tournament.courtAssignments, tournament.currentMatchId]
   );
-  const activeMatchIds = useMemo(() => new Set(activeMatches.map((match) => match.id)), [activeMatches]);
-  const courtSlots = useMemo(() => Array.from({ length: courtCount }, (_, index) => activeMatches[index] || null), [activeMatches, courtCount]);
+  const activeMatchIds = useMemo(() => new Set(resolvedCourtAssignments.filter(Boolean)), [resolvedCourtAssignments]);
+  const activeMatches = useMemo(() => resolvedCourtAssignments.map((matchId) => pendingMatchMap.get(matchId)).filter(Boolean), [pendingMatchMap, resolvedCourtAssignments]);
+  const courtSlots = useMemo(() => resolvedCourtAssignments.map((matchId) => pendingMatchMap.get(matchId) || null), [pendingMatchMap, resolvedCourtAssignments]);
   const upcomingMatches = useMemo(() => {
     return distributeMatchesFairly(pendingMatches.filter((match) => !activeMatchIds.has(match.id)));
   }, [activeMatchIds, pendingMatches]);
+  const waitingMatchesCount = upcomingMatches.length;
 
   const finalMatch = useMemo(() => tournament.matches.find((match) => match.matchType === 'final' && match.status === 'completed'), [tournament.matches]);
   const round2LeagueMatches = useMemo(() => tournament.matches.filter((match) => match.round === 2), [tournament.matches]);
@@ -55,7 +64,9 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     tournament.format === 'league'
       ? round2LeagueMatches.length > 0 && round2LeagueMatches.every((match) => match.status === 'completed')
       : Boolean(finalMatch);
-  const canEditTournament = canManageTournament && !isReadOnly;
+  const hasSharedWriteAccess = Boolean(tournament.scoreToken);
+  const canEditTournament = (canManageTournament || hasSharedWriteAccess) && !isReadOnly;
+  const canEndTournament = canManageTournament;
   const canReopenTournament = canManageTournament && isReadOnly;
   const champion =
     tournament.format === 'league'
@@ -153,6 +164,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     }
 
     let updatedTournament = JSON.parse(JSON.stringify(tournament));
+    updatedTournament.courtAssignments = [...resolvedCourtAssignments];
     const matchIndex = updatedTournament.matches.findIndex((item) => item.id === match.id);
     if (matchIndex === -1) {
       showAlert(t('alerts.error'), t('tournament.saveError'));
@@ -169,13 +181,9 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       teamB: winnerId === match.teamB.id ? 1 : 0,
     };
     updatedTournament = syncTeamPointsFromMatches(updatedTournament);
-
-    if (updatedTournament.currentMatchId === match.id) {
-      const nextPendingInRound = updatedTournament.matches.find(
-        (item) => item.round === updatedTournament.currentRound && item.status === 'pending' && item.id !== match.id
-      );
-      updatedTournament.currentMatchId = nextPendingInRound ? nextPendingInRound.id : null;
-    }
+    updatedTournament = reconcileTournamentCourts(updatedTournament, {
+      courtAssignments: updatedTournament.courtAssignments,
+    });
 
     const updatedRoundMatches = updatedTournament.matches.filter((item) => item.round === updatedTournament.currentRound);
     const updatedCompletedInRound = updatedRoundMatches.filter((item) => item.status === 'completed').length;
@@ -214,7 +222,16 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       return;
     }
 
-    const updatedTournament = { ...tournament, currentMatchId: match.id };
+    const updatedTournament = reconcileTournamentCourts(
+      {
+        ...tournament,
+        currentMatchId: match.id,
+      },
+      {
+        preferredMatchId: match.id,
+        courtAssignments: resolvedCourtAssignments,
+      }
+    );
     try {
       const savedTournament = await updateTournamentRecord(updatedTournament);
       setTournament(savedTournament);
@@ -241,6 +258,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     updatedTournament.matches.push(semifinal1, semifinal2);
     updatedTournament.currentRound = 2;
     updatedTournament.currentMatchId = semifinal1.id;
+    updatedTournament = reconcileTournamentCourts(updatedTournament, { courtAssignments: [], preferredMatchId: semifinal1.id });
 
     try {
       const savedTournament = await updateTournamentRecord(updatedTournament);
@@ -253,10 +271,11 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   };
 
   const advanceToLeagueRound2 = async (tournamentData) => {
-    const updatedTournament = JSON.parse(JSON.stringify(tournamentData));
+    let updatedTournament = JSON.parse(JSON.stringify(tournamentData));
     updatedTournament.currentRound = 2;
     const firstPendingRound2 = updatedTournament.matches.find((match) => match.round === 2 && match.status === 'pending');
     updatedTournament.currentMatchId = firstPendingRound2 ? firstPendingRound2.id : null;
+    updatedTournament = reconcileTournamentCourts(updatedTournament, { courtAssignments: [], preferredMatchId: updatedTournament.currentMatchId });
     try {
       const savedTournament = await updateTournamentRecord(updatedTournament);
       setTournament(savedTournament);
@@ -281,9 +300,10 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       const finals = { id: 'round2_finals', round: 2, matchType: 'final', teamA: semifinal1Winner, teamB: semifinal2Winner, winnerId: null, status: 'pending' };
       updatedTournament.matches.push(finals);
       updatedTournament.currentMatchId = finals.id;
+      const nextTournament = reconcileTournamentCourts(updatedTournament, { courtAssignments: [], preferredMatchId: finals.id });
 
       try {
-        const savedTournament = await updateTournamentRecord(updatedTournament);
+        const savedTournament = await updateTournamentRecord(nextTournament);
         setTournament(savedTournament);
         showToast?.(t('tournament.finalReady'), t('tournament.finalReadyDetail'), 'success');
       } catch (error) {
@@ -338,6 +358,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     <div className="space-y-3 rounded-b-3xl border-x border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-3 pb-24 shadow-xl shadow-[#020D16]/5 backdrop-blur sm:p-6 sm:pb-6">
       <StageBar
         tournament={tournament}
+        activeCourtAssignments={resolvedCourtAssignments}
         isFinished={isTournamentFinished}
         isEnded={isReadOnly}
         completedInRound={completedInRound}
@@ -379,7 +400,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
             teamStats={teamStats}
             completedMatches={completedMatches}
             finalMatch={finalMatch}
-            onEndTournament={canEditTournament ? () => setShowEndConfirm(true) : null}
+            onEndTournament={canEndTournament ? () => setShowEndConfirm(true) : null}
             onReopenTournament={canReopenTournament ? () => setShowReopenConfirm(true) : null}
           />
           <TournamentSummaryShareCard
@@ -404,7 +425,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
               <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">{t('tournament.activeCourts')}</p>
               <h2 className="text-base font-black text-[#F7F8F7]">{t('tournament.playing', { active: activeMatches.length, total: courtCount })}</h2>
             </div>
-            <p className="rounded-full bg-[#0A141E] px-3 py-1 text-xs font-black text-[#8D99A6]">{t('tournament.waiting', { count: pendingMatches.length })}</p>
+            <p className="rounded-full bg-[#0A141E] px-3 py-1 text-xs font-black text-[#8D99A6]">{t('tournament.waiting', { count: waitingMatchesCount })}</p>
           </div>
           <div className="grid gap-2 md:grid-cols-2">
             {courtSlots.map((match, index) => (
@@ -444,7 +465,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         {activePanel === 'upcoming' && (
           <MatchPanel emptyText={t('tournament.upcomingEmpty')}>
             {upcomingMatches.map((match) => (
-              <MatchCard key={match.id} match={match} onSetCurrent={canEditTournament ? setAsCurrentMatch : null} isCurrent={false} />
+              <MatchCard key={match.id} match={match} onSetCurrent={canEditTournament ? setAsCurrentMatch : null} isCurrent={match.id === tournament.currentMatchId} />
             ))}
           </MatchPanel>
         )}
@@ -471,7 +492,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         </button>
       </section>
 
-      {canEditTournament && (
+      {canEndTournament && (
         <button onClick={() => setShowEndConfirm(true)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 px-4 font-black text-[#DB4145] transition hover:bg-[#DB4145]/20">
           <TrashIcon className="h-5 w-5" />
           {t('tournament.endTournament')}
@@ -516,7 +537,15 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       )}
 
       {showGameHistory && (
-        <GameHistoryModal tournament={tournament} setTournament={setTournament} onClose={() => setShowGameHistory(false)} showAlert={showAlert} showToast={showToast} readOnly={isReadOnly} />
+        <GameHistoryModal
+          tournament={tournament}
+          courtAssignments={resolvedCourtAssignments}
+          setTournament={setTournament}
+          onClose={() => setShowGameHistory(false)}
+          showAlert={showAlert}
+          showToast={showToast}
+          readOnly={isReadOnly}
+        />
       )}
     </div>
   );
@@ -548,9 +577,11 @@ function getStandingLabel({ isLeader, isTop4, isChampion, format }) {
   return '';
 }
 
-function StageBar({ tournament, isFinished, isEnded, completedInRound, currentRoundMatches, pendingMatches, completedMatches, courtCount, roundProgress, t }) {
+function StageBar({ tournament, activeCourtAssignments, isFinished, isEnded, completedInRound, currentRoundMatches, pendingMatches, completedMatches, courtCount, roundProgress, t }) {
   const stageTitle = isEnded ? t('history.ended') : isFinished ? t('history.complete') : getStageTitle(tournament, t);
   const stageLabel = tournament.format === 'league' ? t('common.league') : t('common.cup');
+  const activeCourtIds = new Set((activeCourtAssignments || []).filter(Boolean));
+  const waitingCount = pendingMatches.filter((match) => !activeCourtIds.has(match.id)).length;
 
   return (
     <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3">
@@ -572,7 +603,7 @@ function StageBar({ tournament, isFinished, isEnded, completedInRound, currentRo
       <div className="mt-3 grid grid-cols-4 gap-1.5">
         <MiniStat label={t('common.teams')} value={tournament.teams.length} />
         <MiniStat label={t('common.courts')} value={courtCount} />
-        <MiniStat label={t('common.waiting')} value={pendingMatches.length} />
+        <MiniStat label={t('common.waiting')} value={waitingCount} />
         <MiniStat label={t('common.done')} value={completedMatches.length} />
       </div>
     </section>

@@ -64,8 +64,19 @@ export const getSetupStatus = (players, format) => {
 
 const getMatchTeamIds = (match) => [match?.teamA?.id, match?.teamB?.id].filter(Boolean);
 
-export const selectActiveMatches = (pendingMatches, courtCount, preferredMatchId) => {
-  const safeCourtCount = Math.max(1, Math.min(Number(courtCount || 1), 3));
+export const getSafeCourtCount = (courtCount) => Math.max(1, Math.min(Number(courtCount || 1), 3));
+
+const normalizeCourtAssignments = (courtAssignments, courtCount) =>
+  Array.from({ length: getSafeCourtCount(courtCount) }, (_, index) => {
+    const matchId = courtAssignments?.[index];
+    return typeof matchId === 'string' ? matchId : null;
+  });
+
+const canActivateMatch = (match, usedTeamIds) => !getMatchTeamIds(match).some((teamId) => usedTeamIds.has(teamId));
+
+const pickAdditionalActiveMatches = (pendingMatches, slotCount, usedTeamIds, preferredMatchId) => {
+  if (slotCount <= 0 || pendingMatches.length === 0) return [];
+
   const preferredMatch = pendingMatches.find((match) => match.id === preferredMatchId);
   const rest = pendingMatches.filter((match) => match.id !== preferredMatchId);
   const orderedMatches = [...(preferredMatch ? [preferredMatch] : []), ...distributeMatchesFairly(rest)];
@@ -89,23 +100,92 @@ export const selectActiveMatches = (pendingMatches, courtCount, preferredMatchId
       bestOrderScore = orderScore;
     }
 
-    if (candidate.length >= safeCourtCount) return;
+    if (candidate.length >= slotCount) return;
 
     for (let index = startIndex; index < orderedMatches.length; index++) {
       const match = orderedMatches[index];
-      const teamIds = getMatchTeamIds(match);
-      const hasConflict = teamIds.some((teamId) => usedTeamIds.has(teamId));
-      if (hasConflict) continue;
+      if (!canActivateMatch(match, usedTeamIds)) continue;
 
+      const teamIds = getMatchTeamIds(match);
       const nextUsedTeamIds = new Set(usedTeamIds);
       teamIds.forEach((teamId) => nextUsedTeamIds.add(teamId));
       search(index + 1, [...candidate, match], nextUsedTeamIds, orderScore + index);
     }
   };
 
-  search(0, [], new Set(), 0);
+  search(0, [], new Set(usedTeamIds), 0);
 
   return bestBatch;
+};
+
+export const buildCourtAssignments = ({ pendingMatches, courtCount, preferredMatchId = null, courtAssignments = [] }) => {
+  const normalizedAssignments = normalizeCourtAssignments(courtAssignments, courtCount);
+  const pendingMatchMap = new Map(pendingMatches.map((match) => [match.id, match]));
+  const usedTeamIds = new Set();
+
+  const preservedAssignments = normalizedAssignments.map((matchId) => {
+    const match = pendingMatchMap.get(matchId);
+    if (!match || !canActivateMatch(match, usedTeamIds)) {
+      return null;
+    }
+
+    getMatchTeamIds(match).forEach((teamId) => usedTeamIds.add(teamId));
+    return matchId;
+  });
+
+  const assignedIds = new Set(preservedAssignments.filter(Boolean));
+  const preservedCount = assignedIds.size;
+  const remainingMatches = pendingMatches.filter((match) => !assignedIds.has(match.id));
+  const additionalMatches = pickAdditionalActiveMatches(
+    remainingMatches,
+    preservedCount < normalizedAssignments.length ? normalizedAssignments.length - preservedCount : 0,
+    usedTeamIds,
+    preferredMatchId
+  );
+
+  let additionalIndex = 0;
+  return preservedAssignments.map((matchId) => matchId || additionalMatches[additionalIndex++]?.id || null);
+};
+
+const resolveQueuedMatchId = ({ pendingMatches, courtAssignments, preferredMatchId = null }) => {
+  const activeMatchIds = new Set(courtAssignments.filter(Boolean));
+  const preferredMatch = pendingMatches.find((match) => match.id === preferredMatchId && !activeMatchIds.has(match.id));
+  if (preferredMatch) return preferredMatch.id;
+  return pendingMatches.find((match) => !activeMatchIds.has(match.id))?.id || null;
+};
+
+export const reconcileTournamentCourts = (tournament, options = {}) => {
+  if (!tournament) return tournament;
+
+  const pendingMatches = (tournament.matches || []).filter((match) => match.round === tournament.currentRound && match.status === 'pending');
+  const preferredMatchId = Object.prototype.hasOwnProperty.call(options, 'preferredMatchId') ? options.preferredMatchId : tournament.currentMatchId;
+  const nextCourtAssignments = buildCourtAssignments({
+    pendingMatches,
+    courtCount: tournament.courtCount,
+    preferredMatchId,
+    courtAssignments: Object.prototype.hasOwnProperty.call(options, 'courtAssignments') ? options.courtAssignments : tournament.courtAssignments,
+  });
+
+  return {
+    ...tournament,
+    courtAssignments: nextCourtAssignments,
+    currentMatchId: resolveQueuedMatchId({
+      pendingMatches,
+      courtAssignments: nextCourtAssignments,
+      preferredMatchId,
+    }),
+  };
+};
+
+export const selectActiveMatches = (pendingMatches, courtCount, preferredMatchId, courtAssignments = []) => {
+  const nextCourtAssignments = buildCourtAssignments({
+    pendingMatches,
+    courtCount,
+    preferredMatchId,
+    courtAssignments,
+  });
+  const pendingMatchMap = new Map(pendingMatches.map((match) => [match.id, match]));
+  return nextCourtAssignments.map((matchId) => pendingMatchMap.get(matchId)).filter(Boolean);
 };
 
 export const emptyTeamStats = () => ({
@@ -230,10 +310,10 @@ export const reconcileCupProgression = (tournament) => {
       matches: round1Matches,
       currentRound: 1,
     });
-    return {
+    return reconcileTournamentCourts({
       ...nextTournament,
       currentMatchId: round1Matches.find((match) => match.status === 'pending')?.id || null,
-    };
+    });
   }
 
   const groupStageTournament = syncTeamPointsFromMatches({
@@ -269,8 +349,8 @@ export const reconcileCupProgression = (tournament) => {
     currentRound,
   });
 
-  return {
+  return reconcileTournamentCourts({
     ...nextTournament,
     currentMatchId: currentMatchStillPending?.id || firstPendingMatch?.id || null,
-  };
+  });
 };

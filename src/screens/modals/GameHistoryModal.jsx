@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { updateTournamentRecord } from '../../utils/tournamentService';
 import { summarizePadelScore } from '../../utils/padelScoring';
-import { reconcileCupProgression, syncTeamPointsFromMatches } from '../../utils/tournamentRules';
+import { reconcileCupProgression, reconcileTournamentCourts, syncTeamPointsFromMatches } from '../../utils/tournamentRules';
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function GameHistoryModal({ tournament, setTournament, onClose, showAlert, showToast, readOnly = false }) {
+export default function GameHistoryModal({ tournament, courtAssignments = [], setTournament, onClose, showAlert, showToast, readOnly = false }) {
   const completedMatches = tournament.matches.filter((m) => m.status === 'completed');
   const [updatingMatchId, setUpdatingMatchId] = useState(null);
 
@@ -16,6 +16,9 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
     }
 
     const updatedTournament = JSON.parse(JSON.stringify(tournament));
+    if (!Array.isArray(updatedTournament.courtAssignments) || updatedTournament.courtAssignments.length === 0) {
+      updatedTournament.courtAssignments = [...courtAssignments];
+    }
     const matchIndex = updatedTournament.matches.findIndex((m) => m.id === match.id);
     if (matchIndex === -1) return;
 
@@ -39,7 +42,11 @@ export default function GameHistoryModal({ tournament, setTournament, onClose, s
     }
     try {
       const reconciledTournament =
-        updatedTournament.format === 'league' ? syncTeamPointsFromMatches(updatedTournament) : reconcileCupProgression(updatedTournament);
+        updatedTournament.format === 'league'
+          ? reconcileTournamentCourts(syncTeamPointsFromMatches(updatedTournament), {
+              courtAssignments: updatedTournament.courtAssignments,
+            })
+          : reconcileCupProgression(updatedTournament);
       const savedTournament = await updateTournamentRecord(reconciledTournament);
       setTournament(savedTournament);
       if (showToast) {
