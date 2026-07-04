@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/padel-tournment/padel-icon.svg" />
+    <link rel="manifest" href="/padel-tournment/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/padel-tournment/apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Padel Night" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Padel Night</title>
+    <meta name="description" content="Organize and manage your padel tournaments with ease. Create teams, track matches, and crown champions!" />
+    <meta name="keywords" content="padel, tournament, sports, matches, teams, competition, racket sport" />
+    <meta name="author" content="Padel Night" />
+    <meta name="theme-color" content="#050607" />
+    <script>
+      (() => {
+        try {
+          const theme = localStorage.getItem('padel-night-theme') === 'light' ? 'light' : 'dark';
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#F4F7F3' : '#050607');
+          document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', theme === 'light' ? 'default' : 'black-translucent');
+        } catch {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
+    <meta property="og:title" content="Padel Night" />
+    <meta property="og:description" content="Organize casual padel nights and share live scoring links with friends." />
+    <meta property="og:type" content="website" />
+    <script type="module" crossorigin src="/padel-tournment/assets/index-JZAR6-4D.js"></script>
+    <link rel="stylesheet" crossorigin href="/padel-tournment/assets/index-rQsq5BgT.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

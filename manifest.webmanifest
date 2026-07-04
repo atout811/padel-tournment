@@ -1,0 +1,80 @@
+{
+  "name": "Padel Night",
+  "short_name": "Padel Night",
+  "description": "Organize casual padel nights, track live matches, and share scoring links with friends.",
+  "id": "/padel-tournment/",
+  "start_url": "/padel-tournment/",
+  "scope": "/padel-tournment/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050607",
+  "theme_color": "#050607",
+  "categories": ["sports", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Start Night",
+      "short_name": "Start",
+      "description": "Open quick night setup.",
+      "url": "/padel-tournment/?shortcut=start",
+      "icons": [
+        {
+          "src": "/padel-tournment/pwa-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Groups",
+      "short_name": "Groups",
+      "description": "Open your padel groups.",
+      "url": "/padel-tournment/?shortcut=groups",
+      "icons": [
+        {
+          "src": "/padel-tournment/pwa-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "History",
+      "short_name": "History",
+      "description": "Open past nights.",
+      "url": "/padel-tournment/?shortcut=history",
+      "icons": [
+        {
+          "src": "/padel-tournment/pwa-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "src": "/padel-tournment/padel-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/padel-tournment/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/padel-tournment/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/padel-tournment/pwa-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
