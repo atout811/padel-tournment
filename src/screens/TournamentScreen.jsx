@@ -8,7 +8,7 @@ import { ConfirmationModal } from '../components/Alert';
 import EditTeamsModal from '../screens/modals/EditTeamsModal';
 import GameHistoryModal from '../screens/modals/GameHistoryModal';
 import { TournamentSummaryShareCard } from './TournamentResultScreen.jsx';
-import { buildCourtAssignments, buildLeaderboard, emptyTeamStats, promoteMatchToActiveCourt, reconcileTournamentCourts, syncTeamPointsFromMatches } from '../utils/tournamentRules';
+import { buildCourtAssignments, buildLeaderboard, emptyTeamStats, getMatchPromotionPlan, promoteMatchToActiveCourt, reconcileTournamentCourts, syncTeamPointsFromMatches } from '../utils/tournamentRules';
 import { CheckIcon, CourtIcon, ShareIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
 import { BottomActionBar, Button, EmptyState, Panel, Pill, ScreenShell, SectionHeading } from '../components/Ui.jsx';
 import { useI18n } from '../i18n/useI18n.js';
@@ -460,9 +460,20 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
 
         {activePanel === 'upcoming' && (
           <MatchPanel emptyText={t('tournament.upcomingEmpty')}>
-            {upcomingMatches.map((match) => (
-              <MatchCard key={match.id} match={match} onSetCurrent={canUpdateScores ? setAsActiveMatch : null} isCurrent={false} />
-            ))}
+            {upcomingMatches.map((match) => {
+              const promotionPlan = getMatchPromotionPlan({
+                tournament,
+                matchId: match.id,
+                courtAssignments: resolvedCourtAssignments,
+              });
+              const setActiveHint = promotionPlan?.replacedMatchId
+                ? t('match.replaceCourt', { court: promotionPlan.courtNumber })
+                : promotionPlan
+                  ? t('match.openCourt', { court: promotionPlan.courtNumber })
+                  : '';
+
+              return <MatchCard key={match.id} match={match} onSetCurrent={canUpdateScores ? setAsActiveMatch : null} isCurrent={false} setActiveHint={setActiveHint} />;
+            })}
           </MatchPanel>
         )}
 

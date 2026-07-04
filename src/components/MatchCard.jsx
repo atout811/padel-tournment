@@ -3,7 +3,7 @@ import { useI18n } from '../i18n/useI18n.js';
 
 const getTeamName = (team) => team.players.join(' & ');
 
-export default function MatchCard({ match, onSetCurrent, isCurrent }) {
+export default function MatchCard({ match, onSetCurrent, isCurrent, setActiveHint = '' }) {
   const { t } = useI18n();
   const isCompleted = match.status === 'completed';
   const teamAWon = isCompleted && match.winnerId === match.teamA.id;
@@ -36,9 +36,10 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
         {!isCompleted && onSetCurrent && !isCurrent && (
           <button
             onClick={() => onSetCurrent(match)}
-            className="min-h-9 shrink-0 rounded-md border border-club-border bg-club-soft px-3 py-1.5 text-xs font-black text-club-ink transition hover:border-club-borderStrong hover:bg-white/[0.06]"
+            className="min-h-10 shrink-0 rounded-md border border-club-border bg-club-soft px-3 py-1.5 text-center text-xs font-black text-club-ink transition hover:border-club-borderStrong hover:bg-white/[0.06]"
           >
-            {t('match.setActive')}
+            <span className="block">{t('match.setActive')}</span>
+            {setActiveHint && <span className="mt-0.5 block text-[0.62rem] font-bold uppercase tracking-wide text-club-muted">{setActiveHint}</span>}
           </button>
         )}
       </div>

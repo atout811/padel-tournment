@@ -177,13 +177,13 @@ export const reconcileTournamentCourts = (tournament, options = {}) => {
   };
 };
 
-export const promoteMatchToActiveCourt = ({ tournament, matchId, courtAssignments } = {}) => {
-  if (!tournament || !matchId) return reconcileTournamentCourts(tournament);
+export const getMatchPromotionPlan = ({ tournament, matchId, courtAssignments } = {}) => {
+  if (!tournament || !matchId) return null;
 
   const pendingMatches = (tournament.matches || []).filter((match) => match.round === tournament.currentRound && match.status === 'pending');
   const targetMatch = pendingMatches.find((match) => match.id === matchId);
   if (!targetMatch) {
-    return reconcileTournamentCourts(tournament, { courtAssignments });
+    return null;
   }
 
   const courtCount = getSafeCourtCount(tournament.courtCount);
@@ -195,10 +195,14 @@ export const promoteMatchToActiveCourt = ({ tournament, matchId, courtAssignment
   });
 
   if (currentCourtAssignments.includes(matchId)) {
-    return reconcileTournamentCourts(tournament, {
-      courtAssignments: currentCourtAssignments,
-      preferredMatchId: matchId,
-    });
+    const courtIndex = currentCourtAssignments.indexOf(matchId);
+    return {
+      courtIndex,
+      courtNumber: courtIndex + 1,
+      isAlreadyActive: true,
+      replacedMatchId: null,
+      nextCourtAssignments: currentCourtAssignments,
+    };
   }
 
   const pendingMatchMap = new Map(pendingMatches.map((match) => [match.id, match]));
@@ -224,13 +228,37 @@ export const promoteMatchToActiveCourt = ({ tournament, matchId, courtAssignment
 
   nextCourtAssignments[slotIndex] = matchId;
 
+  return {
+    courtIndex: slotIndex,
+    courtNumber: slotIndex + 1,
+    isAlreadyActive: false,
+    replacedMatchId: currentCourtAssignments[slotIndex] || null,
+    nextCourtAssignments,
+  };
+};
+
+export const promoteMatchToActiveCourt = ({ tournament, matchId, courtAssignments } = {}) => {
+  if (!tournament || !matchId) return reconcileTournamentCourts(tournament);
+
+  const promotionPlan = getMatchPromotionPlan({ tournament, matchId, courtAssignments });
+  if (!promotionPlan) {
+    return reconcileTournamentCourts(tournament, { courtAssignments });
+  }
+
+  if (promotionPlan.isAlreadyActive) {
+    return reconcileTournamentCourts(tournament, {
+      courtAssignments: promotionPlan.nextCourtAssignments,
+      preferredMatchId: matchId,
+    });
+  }
+
   return reconcileTournamentCourts(
     {
       ...tournament,
       currentMatchId: matchId,
     },
     {
-      courtAssignments: nextCourtAssignments,
+      courtAssignments: promotionPlan.nextCourtAssignments,
       preferredMatchId: matchId,
     }
   );
