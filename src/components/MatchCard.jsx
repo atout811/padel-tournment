@@ -19,12 +19,12 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
 
   return (
     <div
-      className={`w-full rounded-2xl border p-3 text-left shadow-sm ${
+      className={`w-full rounded-lg border p-3 text-left shadow-sm ${
         isCompleted
-          ? 'motion-complete-glow border-[#BEDC45] bg-[#BEDC45]/14'
+          ? 'motion-complete-glow border-club-green bg-club-green/12'
           : isCurrent
-            ? 'border-[#1F60D1] bg-[#1F60D1]/16 shadow-[#1F60D1]/10'
-            : 'border-[rgba(255,255,255,0.08)] bg-[#0A141E]'
+            ? 'border-club-borderStrong bg-club-soft'
+            : 'border-club-border bg-club-surface'
       }`}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -36,9 +36,9 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
         {!isCompleted && onSetCurrent && !isCurrent && (
           <button
             onClick={() => onSetCurrent(match)}
-            className="min-h-9 shrink-0 rounded-xl bg-[#1F60D1] px-3 py-1.5 text-xs font-black text-white transition hover:bg-[#2F73E6]"
+            className="min-h-9 shrink-0 rounded-md border border-club-border bg-club-soft px-3 py-1.5 text-xs font-black text-club-ink transition hover:border-club-borderStrong hover:bg-white/[0.06]"
           >
-            {t('match.court')}
+            {t('match.setActive')}
           </button>
         )}
       </div>
@@ -49,7 +49,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
         </div>
         <div className="grid min-w-12 content-center gap-1 text-center">
           {padelScoreSummary ? (
-            <span className="max-w-24 rounded-xl bg-[#0A141E] px-2 py-1 text-[0.65rem] font-black leading-relaxed text-[#F7F8F7] shadow-sm sm:max-w-40">
+            <span className="max-w-24 rounded-md bg-club-surface px-2 py-1 text-[0.65rem] font-black leading-relaxed text-club-ink shadow-sm sm:max-w-40">
               {padelScoreSummary}
             </span>
           ) : hasScore ? (
@@ -58,7 +58,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
               <ScorePill active={teamBWon}>{match.score.teamB}</ScorePill>
             </>
           ) : (
-            <span className="self-center rounded-full bg-[#07111B] px-2 py-1 text-[0.65rem] font-black text-[#8D99A6]">{t('match.vs')}</span>
+            <span className="self-center rounded-md bg-club-wash px-2 py-1 text-[0.65rem] font-black text-club-muted">{t('match.vs')}</span>
           )}
         </div>
         <div className="min-w-0">
@@ -67,7 +67,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
       </div>
 
       {isCompleted && (
-        <p className="mt-2 rounded-xl bg-[#0A141E] p-2 text-center text-xs font-black text-[#BEDC45]">
+        <p className="mt-2 rounded-md bg-club-surface p-2 text-center text-xs font-black text-club-green">
           {t('match.winner', { team: teamAWon ? getTeamName(match.teamA) : getTeamName(match.teamB) })}
         </p>
       )}
@@ -78,17 +78,17 @@ export default function MatchCard({ match, onSetCurrent, isCurrent }) {
 function TeamLine({ name, won, align = 'left', t }) {
   return (
     <div className={`min-w-0 ${align === 'right' ? 'text-right' : ''}`}>
-      <p className={`truncate text-sm font-black leading-tight ${won ? 'text-[#BEDC45]' : 'text-[#F7F8F7]'}`} title={name}>
+      <p className={`truncate text-sm font-black leading-tight ${won ? 'text-club-green' : 'text-club-ink'}`} title={name}>
         {name}
       </p>
-      {won && <p className="mt-0.5 text-[0.62rem] font-black uppercase tracking-wide text-[#BEDC45]">{t('common.winner')}</p>}
+      {won && <p className="mt-0.5 text-[0.62rem] font-black uppercase tracking-wide text-club-green">{t('common.winner')}</p>}
     </div>
   );
 }
 
 function ScorePill({ active, children }) {
   return (
-    <span className={`rounded-xl px-2 py-1 text-sm font-black tabular-nums ${active ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#8D99A6]'}`}>
+    <span className={`rounded-md px-2 py-1 text-sm font-black tabular-nums ${active ? 'bg-club-green text-club-greenDeep' : 'bg-club-wash text-club-muted'}`}>
       {children}
     </span>
   );
@@ -96,11 +96,11 @@ function ScorePill({ active, children }) {
 
 function Badge({ tone, children }) {
   const tones = {
-    cyan: 'bg-[#1F60D1]/16 text-[#CFD2D3]',
-    emerald: 'bg-[#BEDC45]/14 text-[#BEDC45]',
-    gold: 'bg-[#19232B] text-[#BEDC45]',
-    slate: 'bg-[#07111B] text-[#8D99A6]',
+    cyan: 'bg-white/[0.06] text-club-muted',
+    emerald: 'bg-club-green/12 text-club-green',
+    gold: 'bg-club-soft text-club-green',
+    slate: 'bg-club-wash text-club-muted',
   };
 
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wide ${tones[tone] || tones.slate}`}>{children}</span>;
+  return <span className={`rounded-md px-2.5 py-1 text-xs font-black uppercase tracking-wide ${tones[tone] || tones.slate}`}>{children}</span>;
 }

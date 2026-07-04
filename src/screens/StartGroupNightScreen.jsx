@@ -4,9 +4,17 @@ import { createGroupSession, linkGroupSessionTournament } from '../utils/groupSe
 import { createTournamentRecord } from '../utils/tournamentService';
 import { buildTournament } from '../utils/tournamentBuilder';
 import { getSetupStatus, validatePlayerName } from '../utils/tournamentRules';
-import SegmentedControl from '../components/SegmentedControl.jsx';
-import { CheckIcon, CourtIcon, ListIcon, TrophyIcon, UsersIcon, XIcon } from '../components/Icons';
+import { BottomActionBar, Button, EmptyState, InlineNotice, MetricItem, PageHeader, Panel, Pill, ScreenShell, SectionHeading, TextInput } from '../components/Ui.jsx';
+import { SetupOptionsPanel, SetupProgress, SetupSummary } from '../components/NightSetupFlow.jsx';
+import { useNightSetupFlow } from '../hooks/useNightSetupFlow.js';
+import { CheckIcon, UsersIcon, XIcon } from '../components/Icons';
 import { useI18n } from '../i18n/useI18n.js';
+
+const stepLabels = {
+  participants: 'Players',
+  format: 'Format',
+  review: 'Start',
+};
 
 export default function StartGroupNightScreen({ group, showAlert, setTournament, setScreen }) {
   const { t } = useI18n();
@@ -14,9 +22,12 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [guests, setGuests] = useState([]);
   const [guestName, setGuestName] = useState('');
-  const [tournamentFormat, setTournamentFormat] = useState('cup');
-  const [courtCount, setCourtCount] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
+
+  const selectedPlayers = useMemo(() => players.filter((player) => selectedIds.has(player.id)), [players, selectedIds]);
+  const participantNames = useMemo(() => [...selectedPlayers.map((player) => player.name), ...guests.map((guest) => guest.name)], [selectedPlayers, guests]);
+  const flow = useNightSetupFlow({ participantCount: participantNames.length });
+  const setupStatus = useMemo(() => getSetupStatus(participantNames, flow.format), [flow.format, participantNames]);
 
   useEffect(() => {
     if (!group?.id) return;
@@ -50,10 +61,6 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
     });
   }, [group?.id]);
 
-  const selectedPlayers = useMemo(() => players.filter((player) => selectedIds.has(player.id)), [players, selectedIds]);
-  const participantNames = useMemo(() => [...selectedPlayers.map((player) => player.name), ...guests.map((guest) => guest.name)], [selectedPlayers, guests]);
-  const setupStatus = useMemo(() => getSetupStatus(participantNames, tournamentFormat), [participantNames, tournamentFormat]);
-
   const togglePlayer = (playerId) => {
     setSelectedIds((current) => {
       const next = new Set(current);
@@ -83,7 +90,6 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
       return;
     }
 
-    // TODO Smart Shuffle: use group player rating/level here before names are paired into teams.
     const participantMeta = [
       ...selectedPlayers.map((player) => ({
         name: player.name,
@@ -106,8 +112,8 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
       const session = await createGroupSession({ groupId: group.id, participantMeta });
       const tournament = buildTournament({
         players: participantNames,
-        format: tournamentFormat,
-        courtCount,
+        format: flow.format,
+        courtCount: flow.courtCount,
         metadata: {
           groupId: group.id,
           groupSessionId: session.id,
@@ -128,159 +134,188 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
 
   if (!group) {
     return (
-      <div className="rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-6">
-        <button type="button" onClick={() => setScreen('groups')} className="rounded-2xl bg-[#BEDC45] px-5 py-3 font-black text-[#020D16]">
-          {t('startNight.backToGroups')}
-        </button>
-      </div>
+      <ScreenShell>
+        <Button onClick={() => setScreen('groups')}>{t('startNight.backToGroups')}</Button>
+      </ScreenShell>
     );
   }
 
+  const metrics = [
+    { label: t('common.players'), value: participantNames.length, detail: `${setupStatus.minPlayers}+` },
+    { label: t('common.teams'), value: setupStatus.teamCount, detail: participantNames.length % 2 ? 'sub' : 'paired' },
+    { label: t('common.courts'), value: flow.courtCount, detail: flow.courtCount === 1 ? 'court' : 'courts' },
+  ];
+  const formatLabel = flow.format === 'cup' ? t('common.cup') : t('common.league');
+  const recommendation = flow.formatTouched ? null : `${formatLabel} is selected automatically for ${participantNames.length || 'tonight'} players.`;
+
   return (
-    <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
-      <section className="overflow-hidden rounded-3xl border border-[#BEDC45]/30 bg-[#0A141E] shadow-lg shadow-[#020D16]/20">
-        <div className="p-4 sm:p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[#BEDC45] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#020D16]">{t('startNight.tonight')}</span>
-            <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{setupStatus.isValid ? t('common.ready') : t('common.needsPlayers')}</span>
-          </div>
-          <h2 className="mt-3 min-w-0 truncate text-3xl font-black leading-tight text-[#F7F8F7] sm:text-4xl">{group?.name || t('startNight.groupNight')}</h2>
-        </div>
-      </section>
+    <ScreenShell className="pb-28 sm:pb-5">
+      <PageHeader eyebrow={t('startNight.tonight')} title={group.name} detail={t('startNight.setupDetail')} />
 
-      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 py-2">
-        <div className="grid grid-cols-3 divide-x divide-[rgba(255,255,255,0.08)]">
-          <PlanMetric icon={<UsersIcon className="h-4 w-4" />} label={t('common.players')} value={participantNames.length} />
-          <PlanMetric icon={<CourtIcon className="h-4 w-4" />} label={t('common.courts')} value={courtCount} />
-          <PlanMetric icon={tournamentFormat === 'cup' ? <TrophyIcon className="h-4 w-4" /> : <ListIcon className="h-4 w-4" />} label={t('common.format')} value={tournamentFormat === 'cup' ? t('common.cup') : t('common.league')} />
-        </div>
-      </section>
+      <SetupProgress currentStep={flow.currentStep} onStepChange={flow.setStep} labels={stepLabels} />
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <SegmentedControl
-          label={t('common.format')}
-          value={tournamentFormat}
-          disabled={isSaving}
-          onChange={setTournamentFormat}
-          options={[
-            { value: 'cup', label: t('common.cup'), icon: <TrophyIcon className="h-4 w-4" /> },
-            { value: 'league', label: t('common.league'), icon: <ListIcon className="h-4 w-4" /> },
-          ]}
+      <SetupSummary title={t('startNight.groupNight')} setupStatus={setupStatus} metrics={metrics} recommendation={recommendation} />
+
+      {flow.currentStep === 'participants' && (
+        <ParticipantsStep
+          players={players}
+          selectedIds={selectedIds}
+          participantCount={participantNames.length}
+          guests={guests}
+          guestName={guestName}
+          setGuestName={setGuestName}
+          onTogglePlayer={togglePlayer}
+          onAddGuest={handleAddGuest}
+          onRemoveGuest={removeGuest}
+          t={t}
         />
-        <SegmentedControl
-          label={t('common.courts')}
-          value={courtCount}
-          disabled={isSaving}
-          onChange={setCourtCount}
-          columns="grid-cols-3"
-          options={[
-            { value: 1, label: '1' },
-            { value: 2, label: '2' },
-            { value: 3, label: '3' },
-          ]}
-        />
-      </section>
+      )}
 
-      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-lg font-black text-[#F7F8F7]">{t('startNight.playingTonight')}</h3>
-          <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{participantNames.length}</span>
-        </div>
+      {flow.currentStep === 'format' && (
+        <SetupOptionsPanel flow={flow} setupStatus={setupStatus} t={t} />
+      )}
+
+      {flow.currentStep === 'review' && (
+        <ReviewStep selectedPlayers={selectedPlayers} guests={guests} setupStatus={setupStatus} flow={flow} t={t} />
+      )}
+
+      <BottomActionBar>
+        <SetupActions
+          currentStep={flow.currentStep}
+          setupStatus={setupStatus}
+          isSaving={isSaving}
+          onBack={() => flow.setStep(flow.currentStep === 'format' ? 'participants' : 'format')}
+          onNext={() => flow.setStep(flow.currentStep === 'participants' ? 'format' : 'review')}
+          onStart={startNight}
+          t={t}
+        />
+      </BottomActionBar>
+    </ScreenShell>
+  );
+}
+
+function ParticipantsStep({ players, selectedIds, participantCount, guests, guestName, setGuestName, onTogglePlayer, onAddGuest, onRemoveGuest, t }) {
+  return (
+    <div className="space-y-3">
+      <Panel>
+        <SectionHeading title={t('startNight.playingTonight')} detail={t('startNight.participantsDetail')} count={participantCount} />
         {players.length ? (
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="grid max-h-[46vh] gap-2 overflow-y-auto pr-1 sm:max-h-none sm:grid-cols-2">
             {players.map((player) => (
-              <PlayerSelectCard key={player.id} player={player} selected={selectedIds.has(player.id)} onClick={() => togglePlayer(player.id)} />
+              <PlayerSelectRow key={player.id} player={player} selected={selectedIds.has(player.id)} onClick={() => onTogglePlayer(player.id)} />
             ))}
           </div>
         ) : (
-          <p className="mt-3 rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">{t('startNight.noSavedPlayers')}</p>
+          <EmptyState title={t('startNight.noSavedPlayers')} detail={t('startNight.noSavedPlayersDetail')} />
         )}
-      </section>
+      </Panel>
 
-      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-        <h3 className="text-lg font-black text-[#F7F8F7]">{t('startNight.guests')}</h3>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <input
+      <Panel>
+        <SectionHeading title={t('startNight.guests')} detail={t('startNight.guestsDetail')} />
+        <div className="grid grid-cols-[1fr_auto] gap-2">
+          <TextInput
             value={guestName}
             onChange={(event) => setGuestName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
-                handleAddGuest();
+                onAddGuest();
               }
             }}
-            className="min-h-14 flex-1 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
             placeholder={t('startNight.guestName')}
             autoCapitalize="words"
             autoComplete="name"
             enterKeyHint="done"
           />
-          <button type="button" onClick={handleAddGuest} className="min-h-14 rounded-2xl bg-[#BEDC45] px-6 font-black text-[#020D16]">
-            {t('startNight.addGuest')}
-          </button>
+          <Button onClick={onAddGuest}>{t('startNight.addGuest')}</Button>
         </div>
         {guests.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {guests.map((guest) => (
-              <span key={guest.id} className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] py-2 pl-3 pr-1 text-sm font-black text-[#F7F8F7]">
-                {guest.name}
-                <button type="button" onClick={() => removeGuest(guest.id)} className="grid h-8 w-8 place-items-center rounded-xl text-[#8D99A6] hover:bg-[#DB4145]/10 hover:text-[#DB4145]">
-                  <XIcon className="h-4 w-4" />
-                </button>
-              </span>
+              <GuestChip key={guest.id} guest={guest} onRemove={() => onRemoveGuest(guest.id)} />
             ))}
           </div>
         )}
-      </section>
-
-      <div className="sticky bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-10 rounded-3xl border border-white/10 bg-[#07111B]/95 p-3 shadow-2xl shadow-[#020D16]/15 backdrop-blur">
-        <div className="grid gap-2">
-          <button type="button" onClick={startNight} disabled={isSaving || !setupStatus.isValid} className="min-h-14 rounded-2xl bg-[#BEDC45] px-4 text-lg font-black text-[#020D16] disabled:cursor-not-allowed disabled:bg-[rgba(255,255,255,0.08)] disabled:text-[#8D99A6]">
-            {isSaving ? t('startNight.starting') : setupStatus.isValid ? t('startNight.startTonight') : setupStatus.message}
-          </button>
-        </div>
-      </div>
+      </Panel>
     </div>
   );
 }
 
-function PlayerSelectCard({ player, selected, onClick }) {
+function ReviewStep({ selectedPlayers, guests, setupStatus, flow, t }) {
+  return (
+    <Panel>
+      <SectionHeading title={t('setup.reviewTitle')} detail={setupStatus.message} />
+      <div className="grid gap-2 sm:grid-cols-3">
+        <MetricItem label={t('common.format')} value={flow.format === 'cup' ? t('common.cup') : t('common.league')} />
+        <MetricItem label={t('common.players')} value={selectedPlayers.length + guests.length} />
+        <MetricItem label={t('common.courts')} value={flow.courtCount} />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {selectedPlayers.map((player) => (
+          <Pill key={player.id} tone="greenSoft">{player.name}</Pill>
+        ))}
+        {guests.map((guest) => (
+          <Pill key={guest.id}>{guest.name}</Pill>
+        ))}
+      </div>
+      {!setupStatus.isValid && <InlineNotice tone="info" className="mt-4">{setupStatus.message}</InlineNotice>}
+    </Panel>
+  );
+}
+
+function SetupActions({ currentStep, setupStatus, isSaving, onBack, onNext, onStart, t }) {
+  if (currentStep === 'participants') {
+    return <Button className="w-full" size="lg" onClick={onNext}>{t('setup.nextFormat')}</Button>;
+  }
+
+  if (currentStep === 'format') {
+    return (
+      <div className="grid grid-cols-[auto_1fr] gap-2">
+        <Button tone="secondary" size="lg" onClick={onBack}>{t('nav.back')}</Button>
+        <Button size="lg" onClick={onNext}>{t('setup.reviewStart')}</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-[auto_1fr] gap-2">
+      <Button tone="secondary" size="lg" onClick={onBack}>{t('nav.back')}</Button>
+      <Button size="lg" onClick={onStart} disabled={isSaving || !setupStatus.isValid}>
+        {isSaving ? t('startNight.starting') : t('startNight.startTonight')}
+      </Button>
+    </div>
+  );
+}
+
+function PlayerSelectRow({ player, selected, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`rounded-3xl border p-3 text-left transition ${
-        selected ? 'border-[#BEDC45] bg-[#BEDC45]/14 shadow-[0_0_0_3px_rgba(22,138,91,0.10)]' : 'border-[rgba(255,255,255,0.08)] bg-[#0D1823] hover:bg-[#07111B]'
+      className={`grid grid-cols-[32px_1fr_auto] items-center gap-3 rounded-lg border p-3 text-left transition ${
+        selected ? 'border-club-green bg-club-green/12' : 'border-club-border bg-club-soft hover:bg-club-wash'
       }`}
     >
-      <span className="flex items-center gap-3">
-        <span
-          className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition ${
-            selected ? 'border-[#BEDC45] bg-[#BEDC45] text-[#020D16]' : 'border-[rgba(190,220,69,0.32)] bg-[#0A141E] text-transparent'
-          }`}
-          aria-hidden="true"
-        >
-          <CheckIcon className="h-4 w-4" />
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate font-black text-[#F7F8F7]">{player.name}</span>
-          <span className="mt-1 block text-sm font-bold text-[#8D99A6]">Level {player.level}</span>
-          <span className="mt-0.5 block text-xs font-bold text-[#8D99A6]">Rating {player.rating}</span>
-        </span>
+      <span className={`grid h-8 w-8 place-items-center rounded-md border transition ${selected ? 'border-club-green bg-club-green text-club-greenDeep' : 'border-club-borderStrong bg-club-surface text-transparent'}`}>
+        <CheckIcon className="h-4 w-4" />
       </span>
+      <span className="min-w-0">
+        <span className="block truncate font-black text-club-ink">{player.name}</span>
+        <span className="mt-0.5 block text-xs font-bold text-club-muted">Level {player.level} / Rating {player.rating}</span>
+      </span>
+      <span className="text-xs font-black uppercase tracking-wide text-club-muted">{selected ? 'In' : 'Out'}</span>
     </button>
   );
 }
 
-function PlanMetric({ icon, label, value }) {
+function GuestChip({ guest, onRemove }) {
   return (
-    <div className="flex min-h-14 items-center justify-center gap-2 px-2 py-2">
-      <div className="text-[#BEDC45]">{icon}</div>
-      <div className="min-w-0">
-        <p className="truncate text-[0.58rem] font-black uppercase tracking-wide text-[#8D99A6]">{label}</p>
-        <p className="truncate text-sm font-black text-[#F7F8F7]">{value}</p>
-      </div>
-    </div>
+    <span className="inline-flex max-w-full items-center gap-2 rounded-lg border border-club-border bg-club-soft py-2 pl-3 pr-1 text-sm font-black text-club-ink">
+      <span className="truncate">{guest.name}</span>
+      <button type="button" onClick={onRemove} className="grid h-8 w-8 place-items-center rounded-md text-club-muted hover:bg-[#DB4145]/10 hover:text-[#DB4145]">
+        <XIcon className="h-4 w-4" />
+      </button>
+    </span>
   );
 }

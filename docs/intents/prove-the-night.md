@@ -35,10 +35,13 @@ Results are clear, trusted, and easy to share.
 - Group sessions link nights to group progression.
 - Bragging and award labels should be explainable from stored match, team, and participant snapshot data.
 - Share tokens allow controlled shared score updates.
+- Full live links include a `scoreToken`; anyone with that complete link can choose winners and set active courts through token-gated Supabase RPCs without receiving owner-only lifecycle or team-edit permissions.
+- Tournament links without the score token remain read-only for non-owners.
 
 ## Verification
 
 - League and cup winners resolve correctly.
 - Ended tournaments are read-only unless reopened.
 - Result history can reopen or resume where allowed.
-- Shared result links do not expose private score tokens unnecessarily.
+- Result sharing output does not expose private score tokens unnecessarily.
+- Live score links with a score token can update winners and active courts from a non-owner browser.

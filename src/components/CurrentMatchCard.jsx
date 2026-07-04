@@ -33,9 +33,9 @@ export default function CurrentMatchCard({ match, onDeclareWinner, disabled = fa
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl bg-[#07111B] px-3 py-2">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg bg-club-wash px-3 py-2">
         <TeamName name={getTeamName(match.teamA)} align="right" />
-        <span className="rounded-full bg-[#0A141E] px-2 py-1 text-[0.65rem] font-black text-[#8D99A6]">{t('match.vs')}</span>
+        <span className="rounded-md bg-club-surface px-2 py-1 text-[0.65rem] font-black text-club-muted">{t('match.vs')}</span>
         <TeamName name={getTeamName(match.teamB)} />
       </div>
 
@@ -57,7 +57,7 @@ export default function CurrentMatchCard({ match, onDeclareWinner, disabled = fa
       </div>
 
       {isSaving && (
-        <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] px-3 py-2 text-center text-xs font-black text-[#8D99A6]">
+        <div className="rounded-lg border border-club-border bg-club-soft px-3 py-2 text-center text-xs font-black text-club-muted">
           {t('match.savingResult')}
         </div>
       )}
@@ -67,7 +67,7 @@ export default function CurrentMatchCard({ match, onDeclareWinner, disabled = fa
 
 function TeamName({ name, align = 'left' }) {
   return (
-    <span className={`min-w-0 truncate text-sm font-black text-[#F7F8F7] ${align === 'right' ? 'text-right' : ''}`} title={name}>
+    <span className={`min-w-0 truncate text-sm font-black text-club-ink ${align === 'right' ? 'text-right' : ''}`} title={name}>
       {name}
     </span>
   );
@@ -79,8 +79,8 @@ function WinnerButton({ label, name, isWinner, onChoose, disabled }) {
       type="button"
       onClick={onChoose}
       disabled={disabled}
-      className={`min-h-12 rounded-xl border px-2 py-2 text-center shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80 ${
-        isWinner ? 'motion-score-save border-[#BEDC45] bg-[#BEDC45] text-[#020D16]' : 'border-[#BEDC45]/45 bg-[#BEDC45]/14 text-[#BEDC45] hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B]'
+      className={`min-h-12 rounded-lg border px-2 py-2 text-center shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80 ${
+        isWinner ? 'motion-score-save border-club-green bg-club-green text-club-greenDeep' : 'border-club-borderStrong bg-club-green/12 text-club-green hover:border-club-borderStrong hover:bg-club-wash'
       }`}
     >
       <span className="block truncate text-xs font-black uppercase tracking-wide">{label}</span>

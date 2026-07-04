@@ -2,37 +2,28 @@ import React, { useMemo, useState } from 'react';
 import { createTournamentRecord } from '../utils/tournamentService';
 import { getSetupStatus, validatePlayerName } from '../utils/tournamentRules';
 import { buildTournament } from '../utils/tournamentBuilder';
-import SegmentedControl from '../components/SegmentedControl.jsx';
-import { CheckIcon, ListIcon, TrophyIcon, UsersIcon, XIcon } from '../components/Icons';
+import { BottomActionBar, Button, EmptyState, InlineNotice, MetricItem, PageHeader, Panel, Pill, ScreenShell, SectionHeading, TextInput } from '../components/Ui.jsx';
+import { SetupOptionsPanel, SetupProgress, SetupSummary } from '../components/NightSetupFlow.jsx';
+import { useNightSetupFlow } from '../hooks/useNightSetupFlow.js';
+import { UsersIcon, XIcon } from '../components/Icons';
 import { useI18n } from '../i18n/useI18n.js';
+
+const stepLabels = {
+  participants: 'Players',
+  format: 'Format',
+  review: 'Start',
+};
 
 export default function PlayerSetupScreen({ showAlert, setTournament, setScreen }) {
   const { t } = useI18n();
   const [players, setPlayers] = useState([]);
   const [playerName, setPlayerName] = useState('');
   const [playerError, setPlayerError] = useState('');
-  const [tournamentFormat, setTournamentFormat] = useState('cup');
-  const [scoringPreset, setScoringPreset] = useState('standard');
-  const [maxSets, setMaxSets] = useState(3);
-  const [deuceMode, setDeuceMode] = useState('advantage');
-  const [courtCount, setCourtCount] = useState(1);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [activePanel, setActivePanel] = useState('players');
+  const flow = useNightSetupFlow({ participantCount: players.length });
 
-  const setupStatus = useMemo(() => getSetupStatus(players, tournamentFormat), [players, tournamentFormat]);
+  const setupStatus = useMemo(() => getSetupStatus(players, flow.format), [players, flow.format]);
   const hasOddPlayer = players.length % 2 !== 0;
-
-  const applyPreset = (preset) => {
-    setScoringPreset(preset);
-    if (preset === 'fast') {
-      setMaxSets(1);
-      setDeuceMode('golden');
-    } else {
-      setMaxSets(3);
-      setDeuceMode('advantage');
-    }
-  };
 
   const handleAddPlayer = () => {
     const validation = validatePlayerName(playerName, players);
@@ -42,18 +33,18 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
       return;
     }
 
-    setPlayers([...players, validation.name]);
+    setPlayers((current) => [...current, validation.name]);
     setPlayerName('');
     setPlayerError('');
   };
 
   const handleRemovePlayer = (nameToRemove) => {
-    setPlayers(players.filter((player) => player !== nameToRemove));
+    setPlayers((current) => current.filter((player) => player !== nameToRemove));
     setPlayerError('');
   };
 
   const handleCreateTournament = async () => {
-    const currentStatus = getSetupStatus(players, tournamentFormat);
+    const currentStatus = getSetupStatus(players, flow.format);
     if (!currentStatus.isValid) {
       showAlert(t('setup.notReadyTitle'), currentStatus.message);
       return;
@@ -63,11 +54,11 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
 
     const newTournament = buildTournament({
       players,
-      format: tournamentFormat,
-      scoringPreset,
-      maxSets,
-      deuceMode,
-      courtCount,
+      format: flow.format,
+      scoringPreset: flow.scoringPreset,
+      maxSets: flow.maxSets,
+      deuceMode: flow.deuceMode,
+      courtCount: flow.courtCount,
     });
 
     try {
@@ -82,307 +73,168 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
     }
   };
 
-  return (
-    <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 pb-24 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6 sm:pb-6">
-      <SetupBar players={players} setupStatus={setupStatus} courtCount={courtCount} hasOddPlayer={hasOddPlayer} tournamentFormat={tournamentFormat} t={t} />
+  const metrics = [
+    { label: t('common.players'), value: players.length, detail: `${setupStatus.minPlayers}+` },
+    { label: t('common.teams'), value: setupStatus.teamCount, detail: hasOddPlayer ? 'sub' : 'paired' },
+    { label: t('common.courts'), value: flow.courtCount, detail: flow.courtCount === 1 ? 'court' : 'courts' },
+  ];
+  const formatLabel = flow.format === 'cup' ? t('common.cup') : t('common.league');
+  const recommendation = flow.formatTouched ? null : `${formatLabel} is selected automatically for ${players.length || 'your current'} player list.`;
 
-      <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 shadow-sm">
-        <div className="grid grid-cols-3 gap-1 rounded-2xl bg-[#07111B] p-1">
-          <TabButton active={activePanel === 'players'} onClick={() => setActivePanel('players')}>
-            {t('setup.playersTab')}
-          </TabButton>
-          <TabButton active={activePanel === 'format'} onClick={() => setActivePanel('format')}>
-            {t('setup.formatTab')}
-          </TabButton>
-          <TabButton active={activePanel === 'rules'} onClick={() => setActivePanel('rules')}>
-            {t('setup.rulesTab')}
-          </TabButton>
+  return (
+    <ScreenShell className="pb-28 sm:pb-5">
+      <PageHeader eyebrow={t('setup.createTournament')} title={flow.format === 'league' ? t('setup.leagueNight') : t('setup.cupNight')} detail={t('setup.quickSetupDetail')} />
+
+      <SetupProgress currentStep={flow.currentStep} onStepChange={flow.setStep} labels={stepLabels} />
+
+      <SetupSummary title={t('setup.createTournament')} setupStatus={setupStatus} metrics={metrics} recommendation={recommendation} />
+
+      {flow.currentStep === 'participants' && (
+        <ParticipantsStep
+          players={players}
+          playerName={playerName}
+          playerError={playerError}
+          isSaving={isSaving}
+          setPlayerName={setPlayerName}
+          setPlayerError={setPlayerError}
+          onAddPlayer={handleAddPlayer}
+          onRemovePlayer={handleRemovePlayer}
+          t={t}
+        />
+      )}
+
+      {flow.currentStep === 'format' && (
+        <SetupOptionsPanel flow={flow} setupStatus={setupStatus} showScoring t={t} />
+      )}
+
+      {flow.currentStep === 'review' && (
+        <ReviewStep players={players} setupStatus={setupStatus} flow={flow} t={t} />
+      )}
+
+      <BottomActionBar>
+        <SetupActions
+          currentStep={flow.currentStep}
+          setupStatus={setupStatus}
+          isSaving={isSaving}
+          onBack={() => flow.setStep(flow.currentStep === 'format' ? 'participants' : 'format')}
+          onNext={() => flow.setStep(flow.currentStep === 'participants' ? 'format' : 'review')}
+          onStart={handleCreateTournament}
+          t={t}
+        />
+      </BottomActionBar>
+    </ScreenShell>
+  );
+}
+
+function ParticipantsStep({ players, playerName, playerError, isSaving, setPlayerName, setPlayerError, onAddPlayer, onRemovePlayer, t }) {
+  return (
+    <Panel>
+      <SectionHeading title={t('setup.playersTitle')} detail={t('setup.playersHint', { count: 4 })} count={players.length} />
+      <div className="grid grid-cols-[1fr_auto] gap-2">
+        <div>
+          <TextInput
+            type="text"
+            invalid={Boolean(playerError)}
+            placeholder={t('setup.playerName')}
+            value={playerName}
+            maxLength={40}
+            autoCapitalize="words"
+            autoComplete="name"
+            enterKeyHint="done"
+            onChange={(event) => {
+              setPlayerName(event.target.value);
+              if (playerError) setPlayerError('');
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                onAddPlayer();
+              }
+            }}
+          />
+          {playerError && <p className="mt-2 text-sm font-bold text-[#DB4145]">{playerError}</p>}
         </div>
-
-        {activePanel === 'players' && (
-          <div className="mt-3">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-base font-black text-[#F7F8F7]">{t('setup.playersTitle')}</h3>
-                <p className="text-xs font-medium text-[#8D99A6]">{t('setup.playersHint', { count: setupStatus.minPlayers })}</p>
-              </div>
-              <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black text-[#BEDC45]">{players.length}</span>
-            </div>
-
-            <div className="grid grid-cols-[1fr_auto] gap-2">
-              <div>
-                <input
-                  type="text"
-                  className={`min-h-12 w-full rounded-2xl border bg-[#07111B] px-4 text-base font-semibold text-[#F7F8F7] outline-none transition placeholder:text-[#8D99A6] focus:ring-4 ${
-                    playerError ? 'border-[#DB4145]/50 focus:border-[#DB4145] focus:ring-[#DB4145]/20' : 'border-[rgba(255,255,255,0.08)] focus:border-[#BEDC45] focus:ring-[#BEDC45]/20'
-                  }`}
-                  placeholder={t('setup.playerName')}
-                  value={playerName}
-                  maxLength={40}
-                  autoCapitalize="words"
-                  autoComplete="name"
-                  enterKeyHint="done"
-                  onChange={(event) => {
-                    setPlayerName(event.target.value);
-                    if (playerError) setPlayerError('');
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      handleAddPlayer();
-                    }
-                  }}
-                />
-                {playerError && <p className="mt-2 text-sm font-bold text-[#DB4145]">{playerError}</p>}
-              </div>
-              <button
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#BEDC45] px-4 text-sm font-black text-[#020D16] shadow-lg shadow-[#BEDC45]/20 transition hover:bg-[#D3F05A] disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={handleAddPlayer}
-                disabled={isSaving}
-              >
-                <UsersIcon className="h-4 w-4" />
-                {t('common.add')}
-              </button>
-            </div>
-
-            <div className="mt-3">
-              {players.length > 0 ? (
-                <div className="grid max-h-[42vh] gap-2 overflow-y-auto pr-1 sm:max-h-none sm:grid-cols-2">
-                  {players.map((player, index) => (
-                    <PlayerChip key={player} index={index + 1} name={player} onRemove={() => handleRemovePlayer(player)} disabled={isSaving} />
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-6 text-center">
-                  <p className="text-base font-black text-[#F7F8F7]">{t('setup.noPlayers')}</p>
-                  <p className="mt-1 text-xs font-medium text-[#8D99A6]">{t('setup.addNames')}</p>
-                </div>
-              )}
-            </div>
-
-            {hasOddPlayer && (
-              <p className="mt-3 rounded-2xl bg-[#1F60D1]/16 px-3 py-2 text-xs font-bold text-[#CFD2D3]">
-                {t('setup.oddPlayer')}
-              </p>
-            )}
-          </div>
-        )}
-
-        {activePanel === 'format' && (
-          <div className="mt-3 space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-base font-black text-[#F7F8F7]">{t('setup.tournamentFormat')}</h3>
-                <p className="mt-1 text-xs font-medium text-[#8D99A6]">{t('setup.formatHint')}</p>
-              </div>
-              <StatusPill ready={setupStatus.isValid} text={setupStatus.isValid ? 'Ready' : 'Needs players'} />
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ChoiceCard
-                title={t('common.cup')}
-                eyebrow={t('setup.cupEyebrow')}
-                description={t('setup.cupDescription')}
-                icon={<TrophyIcon />}
-                selected={tournamentFormat === 'cup'}
-                onClick={() => setTournamentFormat('cup')}
-                t={t}
-              />
-              <ChoiceCard
-                title={t('common.league')}
-                eyebrow={t('setup.leagueEyebrow')}
-                description={t('setup.leagueDescription')}
-                icon={<ListIcon />}
-                selected={tournamentFormat === 'league'}
-                onClick={() => setTournamentFormat('league')}
-                t={t}
-              />
-            </div>
-            <p className={`rounded-2xl px-3 py-2 text-xs font-bold ${setupStatus.isValid ? 'bg-[#BEDC45]/14 text-[#BEDC45]' : 'bg-[#19232B] text-[#BEDC45]'}`}>
-              {setupStatus.message}
-            </p>
-          </div>
-        )}
-
-        {activePanel === 'rules' && (
-          <div className="mt-3 space-y-3">
-            <SegmentedControl
-              label={t('setup.courtsAvailable')}
-              value={courtCount}
-              disabled={isSaving}
-              onChange={setCourtCount}
-              columns="grid-cols-3"
-              options={[
-                { value: 1, label: '1' },
-                { value: 2, label: '2' },
-                { value: 3, label: '3' },
-              ]}
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowAdvanced((value) => !value)}
-              className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 text-left text-sm font-black text-[#F7F8F7] transition hover:bg-[#0D1823]"
-            >
-              {showAdvanced ? t('setup.hideScoringOptions') : t('setup.scoringOptions')}
-            </button>
-
-            {showAdvanced && (
-              <div className="space-y-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-3">
-                <div className="grid gap-2 sm:grid-cols-2">
-            <ChoiceCard
-              title={t('setup.classic')}
-              eyebrow={t('setup.classicEyebrow')}
-              description={t('setup.classicDescription')}
-              selected={scoringPreset === 'standard'}
-              onClick={() => applyPreset('standard')}
-              t={t}
-            />
-            <ChoiceCard
-              title={t('setup.quick')}
-              eyebrow={t('setup.quickEyebrow')}
-              description={t('setup.quickDescription')}
-              selected={scoringPreset === 'fast'}
-              onClick={() => applyPreset('fast')}
-              t={t}
-            />
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <FieldSelect
-                    id="maxSets"
-                    label={t('setup.matchLength')}
-                    value={maxSets}
-                    disabled={isSaving}
-                    onChange={(event) => {
-                      setMaxSets(Number(event.target.value));
-                      setScoringPreset('custom');
-                    }}
-                    options={[
-                      { value: 1, label: 'Best of 1 set' },
-                      { value: 3, label: 'Best of 3 sets' },
-                      { value: 5, label: 'Best of 5 sets' },
-                    ]}
-                  />
-                  <FieldSelect
-                    id="deuceMode"
-                    label={t('setup.deuceRule')}
-                    value={deuceMode}
-                    disabled={isSaving}
-                    onChange={(event) => {
-                      setDeuceMode(event.target.value);
-                      setScoringPreset('custom');
-                    }}
-                    options={[
-                      { value: 'advantage', label: 'Advantage at deuce' },
-                      { value: 'golden', label: 'Golden point at deuce' },
-                    ]}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl shadow-[#020D16]/15 backdrop-blur sm:sticky sm:bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:rounded-3xl sm:border">
-        <button
-          className="min-h-14 w-full rounded-2xl bg-[#BEDC45] px-4 text-lg font-black text-[#020D16] shadow-lg shadow-[#BEDC45]/20 transition hover:bg-[#D3F05A] disabled:cursor-not-allowed disabled:bg-[rgba(255,255,255,0.08)] disabled:text-[#8D99A6] disabled:shadow-none"
-          onClick={handleCreateTournament}
-          disabled={isSaving || !setupStatus.isValid}
-        >
-          {isSaving ? t('setup.creating') : t('setup.startTournament')}
-        </button>
+        <Button onClick={onAddPlayer} disabled={isSaving}>
+          <UsersIcon className="h-4 w-4" />
+          {t('common.add')}
+        </Button>
       </div>
-    </div>
+
+      <div className="mt-3">
+        {players.length > 0 ? (
+          <div className="grid max-h-[42vh] gap-2 overflow-y-auto pr-1 sm:max-h-none sm:grid-cols-2">
+            {players.map((player, index) => (
+              <PlayerChip key={player} index={index + 1} name={player} onRemove={() => onRemovePlayer(player)} disabled={isSaving} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState title={t('setup.noPlayers')} detail={t('setup.addNames')} />
+        )}
+      </div>
+    </Panel>
   );
 }
 
-function SetupBar({ players, setupStatus, courtCount, hasOddPlayer, tournamentFormat, t }) {
+function ReviewStep({ players, setupStatus, flow, t }) {
   return (
-    <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">{t('setup.createTournament')}</p>
-          <h2 className="truncate text-lg font-black leading-tight text-[#F7F8F7]">{tournamentFormat === 'league' ? t('setup.leagueNight') : t('setup.cupNight')}</h2>
+    <Panel>
+      <SectionHeading title={t('setup.reviewTitle')} detail={setupStatus.message} />
+      <div className="grid gap-2 sm:grid-cols-3">
+        <MetricItem label={t('common.format')} value={flow.format === 'cup' ? t('common.cup') : t('common.league')} />
+        <MetricItem label={t('common.players')} value={players.length} />
+        <MetricItem label={t('common.courts')} value={flow.courtCount} />
+      </div>
+      {players.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {players.map((player) => (
+            <Pill key={player}>{player}</Pill>
+          ))}
         </div>
-        <StatusPill ready={setupStatus.isValid} text={setupStatus.isValid ? t('common.ready') : t('common.needsPlayers')} />
-      </div>
-      <div className="mt-3 grid grid-cols-3 gap-1.5">
-        <MiniStat label={t('common.players')} value={players.length} detail={`${setupStatus.minPlayers}+`} />
-        <MiniStat label={t('common.teams')} value={setupStatus.teamCount} detail={hasOddPlayer ? 'sub' : 'paired'} />
-        <MiniStat label={t('common.courts')} value={courtCount} detail={courtCount === 1 ? 'court' : 'courts'} />
-      </div>
-    </section>
+      )}
+      {!setupStatus.isValid && <InlineNotice tone="info" className="mt-4">{setupStatus.message}</InlineNotice>}
+    </Panel>
   );
 }
 
-function MiniStat({ label, value, detail }) {
+function SetupActions({ currentStep, setupStatus, isSaving, onBack, onNext, onStart, t }) {
+  if (currentStep === 'participants') {
+    return (
+      <Button className="w-full" size="lg" onClick={onNext}>
+        {t('setup.nextFormat')}
+      </Button>
+    );
+  }
+
+  if (currentStep === 'format') {
+    return (
+      <div className="grid grid-cols-[auto_1fr] gap-2">
+        <Button tone="secondary" size="lg" onClick={onBack}>{t('nav.back')}</Button>
+        <Button size="lg" onClick={onNext}>{t('setup.reviewStart')}</Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-xl bg-[#07111B] px-2 py-2 text-center">
-      <p className="text-base font-black tabular-nums text-[#F7F8F7]">{value}</p>
-      <p className="truncate text-[0.62rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
-      <p className="truncate text-[0.62rem] font-bold text-[#BEDC45]">{detail}</p>
+    <div className="grid grid-cols-[auto_1fr] gap-2">
+      <Button tone="secondary" size="lg" onClick={onBack}>{t('nav.back')}</Button>
+      <Button size="lg" onClick={onStart} disabled={isSaving || !setupStatus.isValid}>
+        {isSaving ? t('setup.creating') : t('setup.startTournament')}
+      </Button>
     </div>
-  );
-}
-
-function TabButton({ active, onClick, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`min-h-10 rounded-xl px-2 text-sm font-black transition ${
-        active ? 'motion-soft-pop bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function StatusPill({ ready, text }) {
-  return (
-    <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${ready ? 'bg-[#BEDC45]/14 text-[#BEDC45]' : 'bg-[#19232B] text-[#BEDC45]'}`}>
-      {text}
-    </span>
-  );
-}
-
-function ChoiceCard({ title, eyebrow, description, icon, selected, onClick, t }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative min-h-24 rounded-2xl border p-3 text-left transition active:scale-[0.99] ${
-        selected ? 'border-[#BEDC45] bg-[#BEDC45]/14 shadow-[0_0_0_4px_rgba(22,138,91,0.12)]' : 'border-[rgba(255,255,255,0.08)] bg-[#0A141E] hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B]'
-      }`}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wide ${selected ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#8D99A6]'}`}>
-          {selected ? t('common.ready') : eyebrow}
-        </span>
-        {icon && <span className={`grid h-9 w-9 place-items-center rounded-xl ${selected ? 'bg-[#0A141E] text-[#BEDC45]' : 'bg-[#07111B] text-[#8D99A6]'}`}>{icon}</span>}
-      </div>
-      <span className="mt-2 flex items-center gap-2 text-lg font-black text-[#F7F8F7]">
-        {selected && <CheckIcon className="h-4 w-4 text-[#BEDC45]" />}
-        {title}
-      </span>
-      <span className="mt-1 block text-xs font-semibold leading-relaxed text-[#8D99A6]">{description}</span>
-    </button>
   );
 }
 
 function PlayerChip({ index, name, onRemove, disabled }) {
   return (
-    <div className="flex max-w-full items-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] py-1.5 pl-2 pr-1 shadow-sm">
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#BEDC45] text-xs font-black text-[#020D16]">{getInitials(name) || index}</span>
-      <span className="min-w-0 truncate text-sm font-black text-[#F7F8F7]">{name}</span>
+    <div className="flex max-w-full items-center gap-2 rounded-lg border border-club-border bg-club-soft py-1.5 pl-2 pr-1 shadow-sm">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-club-green text-xs font-black text-club-greenDeep">{getInitials(name) || index}</span>
+      <span className="min-w-0 truncate text-sm font-black text-club-ink">{name}</span>
       <button
         type="button"
         onClick={onRemove}
         disabled={disabled}
         aria-label={`Remove ${name}`}
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-[#8D99A6] transition hover:bg-[#DB4145]/10 hover:text-[#DB4145] disabled:cursor-not-allowed disabled:opacity-60"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-club-muted transition hover:bg-[#DB4145]/10 hover:text-[#DB4145] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <XIcon className="h-4 w-4" />
       </button>
@@ -398,28 +250,4 @@ function getInitials(name) {
     .map((part) => part[0])
     .join('')
     .toUpperCase();
-}
-
-
-function FieldSelect({ id, label, value, disabled, onChange, options }) {
-  return (
-    <div>
-      <label htmlFor={id} className="mb-2 block text-sm font-black uppercase tracking-wide text-[#8D99A6]">
-        {label}
-      </label>
-      <select
-        id={id}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-3 text-base font-bold text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
 }

@@ -6,7 +6,7 @@
   html {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
     min-height: 100%;
-    background: #020D16;
+    background: #050607;
     -webkit-font-smoothing: antialiased;
   }
   
@@ -14,7 +14,7 @@
     margin: 0;
     min-height: 100dvh;
     overflow-x: hidden;
-    background: #020D16;
+    background: #050607;
     overscroll-behavior-y: none;
   }
 

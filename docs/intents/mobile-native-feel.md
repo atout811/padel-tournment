@@ -21,6 +21,21 @@ Players can open the app, start a night, update scores, and share results with t
 - Make sync state visible without making the UI noisy.
 - Add motion only when it improves perceived responsiveness.
 
+## Clean Dark Refactor Direction
+
+Accepted direction for the full UI/UX restructure:
+
+- Keep the dark club identity, but use a cleaner, flatter mobile interface.
+- Reduce nested card chrome, large radii, neon-heavy emphasis, and repeated uppercase labels.
+- Make mobile flow the first success metric: Home -> Group/Quick Night -> setup -> first court -> result share.
+- Keep `localStorage` fallback, Supabase persistence, score-token safety, and tournament JSON shape unchanged.
+- Share setup behavior between quick tournaments and group nights, including automatic League/Cup recommendation from participant count unless the organizer manually overrides it.
+- Put active scoring before secondary actions such as live-share links.
+- Treat Friend Cards, Start Tonight, Past Nights, and Night Result as the preferred friend-group language.
+- Use one calm dark color system: near-black background, subtle surfaces, low-contrast borders, green for primary action/state, and neutral secondary controls.
+- Keep group and player pages low-density by default: one primary action, one compact status line, and secondary stats behind detail or lower-priority surfaces.
+- Apply the same system to secondary surfaces: auth, install prompts, loaders, edit modals, match log, and exported result assets should not fall back to the old high-chrome style.
+
 ## Progressive Implementation
 
 ### Phase 1: Tactile Basics
@@ -63,6 +78,14 @@ Players can open the app, start a night, update scores, and share results with t
 - Improve install prompt timing so it appears after useful actions, not immediately.
 - Verify the offline app shell opens without connection.
 - Keep localhost/dev service worker behavior cache-safe.
+
+Accepted Phase 4 implementation:
+
+- Header shows a compact `Cloud`, `Local`, or `Offline` status so players know whether they are in Supabase sync mode, local fallback mode, or offline mode.
+- Live tournaments refresh through the existing tournament service when the app regains focus, applying only newer tournament data.
+- PWA shortcuts open quick setup, groups, and history when there is no active night to resume.
+- Install prompts wait for meaningful app use or a long fallback delay, and dismissal cools down for one week.
+- Live queued matches use `Set active` language and can be promoted into active courts without changing match results, standings, or tournament JSON shape.
 
 ### Phase 5: Gestures And Motion
 

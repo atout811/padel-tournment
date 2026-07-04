@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { signInWithEmail, signInWithGoogle, signUpWithEmail } from '../utils/authService';
 import { GoogleIcon } from '../components/Icons';
+import { Button, InlineNotice, TextInput } from '../components/Ui.jsx';
 
 export default function AuthScreen({ showAlert }) {
   const [mode, setMode] = useState('signIn');
@@ -45,61 +46,62 @@ export default function AuthScreen({ showAlert }) {
   };
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[#020D16] px-3 py-6 text-[#F7F8F7]">
-      <main className="w-full max-w-md rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-4 shadow-2xl shadow-[#020D16]/40">
-        <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-          <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">Padel Night</p>
-          <h1 className="mt-1 text-3xl font-black text-[#F7F8F7]">Sign in</h1>
+    <div className="flex min-h-dvh items-center justify-center bg-club-bg px-4 py-6 text-club-ink">
+      <main className="w-full max-w-md rounded-lg border border-club-border bg-club-surface p-4">
+        <section className="pb-2">
+          <p className="text-xs font-black uppercase tracking-wide text-club-muted">Padel Night</p>
+          <h1 className="mt-1 text-3xl font-black leading-tight text-club-ink">Sign in</h1>
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-club-muted">Keep group nights, scores, and history synced.</p>
         </section>
 
-        <button
-          type="button"
+        <Button
           onClick={handleGoogle}
           disabled={isSaving}
-          className="mt-4 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#BEDC45] px-4 text-base font-black text-[#020D16] transition hover:bg-[#D3F05A] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-4 w-full"
+          size="lg"
         >
           <GoogleIcon className="h-5 w-5" />
           Continue with Google
-        </button>
+        </Button>
 
-        <div className="my-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-black uppercase tracking-wide text-[#8D99A6]">
+        <div className="my-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-black uppercase tracking-wide text-club-muted">
           <span className="h-px bg-white/10" />
           <span>Email</span>
           <span className="h-px bg-white/10" />
         </div>
 
-        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-[#0A141E] p-1">
+        <div className="grid grid-cols-2 gap-1 rounded-lg bg-club-wash p-1">
           <AuthTab active={mode === 'signIn'} onClick={() => setMode('signIn')}>Login</AuthTab>
           <AuthTab active={mode === 'signUp'} onClick={() => setMode('signUp')}>Create</AuthTab>
         </div>
 
         <form onSubmit={handleEmail} className="mt-3 space-y-2">
-          <input
+          <TextInput
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="min-h-14 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
             placeholder="Email"
             autoComplete="email"
           />
-          <input
+          <TextInput
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="min-h-14 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
             placeholder="Password"
             autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
           />
-          <button
+          <Button
             type="submit"
+            tone="secondary"
             disabled={isSaving}
-            className="min-h-14 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 font-black text-[#F7F8F7] transition hover:bg-[#0D1823] disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full"
+            size="lg"
           >
             {mode === 'signUp' ? 'Create Account' : 'Login'}
-          </button>
+          </Button>
         </form>
 
-        {notice && <p className="mt-3 rounded-2xl bg-[#BEDC45]/14 px-3 py-2 text-sm font-bold text-[#BEDC45]">{notice}</p>}
+        {notice && <InlineNotice tone="green" className="mt-3">{notice}</InlineNotice>}
       </main>
     </div>
   );
@@ -110,8 +112,8 @@ function AuthTab({ active, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-11 rounded-xl px-3 text-sm font-black transition ${
-        active ? 'bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#07111B] hover:text-[#F7F8F7]'
+      className={`min-h-11 rounded-md px-3 text-sm font-black transition ${
+        active ? 'bg-club-green text-club-greenDeep' : 'text-club-muted hover:bg-club-soft hover:text-club-ink'
       }`}
     >
       {children}

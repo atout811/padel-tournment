@@ -8,8 +8,9 @@ import { ConfirmationModal } from '../components/Alert';
 import EditTeamsModal from '../screens/modals/EditTeamsModal';
 import GameHistoryModal from '../screens/modals/GameHistoryModal';
 import { TournamentSummaryShareCard } from './TournamentResultScreen.jsx';
-import { buildCourtAssignments, buildLeaderboard, emptyTeamStats, reconcileTournamentCourts, syncTeamPointsFromMatches } from '../utils/tournamentRules';
+import { buildCourtAssignments, buildLeaderboard, emptyTeamStats, promoteMatchToActiveCourt, reconcileTournamentCourts, syncTeamPointsFromMatches } from '../utils/tournamentRules';
 import { CheckIcon, CourtIcon, ShareIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
+import { BottomActionBar, Button, EmptyState, Panel, Pill, ScreenShell, SectionHeading } from '../components/Ui.jsx';
 import { useI18n } from '../i18n/useI18n.js';
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -65,7 +66,8 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       ? round2LeagueMatches.length > 0 && round2LeagueMatches.every((match) => match.status === 'completed')
       : Boolean(finalMatch);
   const hasSharedWriteAccess = Boolean(tournament.scoreToken);
-  const canEditTournament = (canManageTournament || hasSharedWriteAccess) && !isReadOnly;
+  const canUpdateScores = (canManageTournament || hasSharedWriteAccess) && !isReadOnly;
+  const canEditTeams = canManageTournament && !isReadOnly;
   const canEndTournament = canManageTournament;
   const canReopenTournament = canManageTournament && isReadOnly;
   const champion =
@@ -152,6 +154,11 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       return;
     }
 
+    if (!canUpdateScores) {
+      showAlert(t('tournament.sharedAccessRequiredTitle'), t('tournament.sharedAccessRequiredMessage'));
+      return;
+    }
+
     const winnerId = typeof result === 'string' ? result : result?.winnerId;
     if (!winnerId) {
       showAlert(t('tournament.winnerRequiredTitle'), t('tournament.winnerRequiredMessage'));
@@ -216,27 +223,28 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
     }
   };
 
-  const setAsCurrentMatch = async (match) => {
+  const setAsActiveMatch = async (match) => {
     if (isReadOnly) {
       showAlert(t('tournament.closedTitle'), t('tournament.closedCourt'));
       return;
     }
 
-    const updatedTournament = reconcileTournamentCourts(
-      {
-        ...tournament,
-        currentMatchId: match.id,
-      },
-      {
-        preferredMatchId: match.id,
-        courtAssignments: resolvedCourtAssignments,
-      }
-    );
+    if (!canUpdateScores) {
+      showAlert(t('tournament.sharedAccessRequiredTitle'), t('tournament.sharedAccessRequiredMessage'));
+      return;
+    }
+
+    const updatedTournament = promoteMatchToActiveCourt({
+      tournament,
+      matchId: match.id,
+      courtAssignments: resolvedCourtAssignments,
+    });
+
     try {
       const savedTournament = await updateTournamentRecord(updatedTournament);
       setTournament(savedTournament);
     } catch (error) {
-      console.error('Error updating current match:', error);
+      console.error('Error updating active match:', error);
       showAlert(t('alerts.error'), t('tournament.currentError'));
     }
   };
@@ -355,7 +363,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   };
 
   return (
-    <div className="space-y-3 rounded-b-3xl border-x border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-3 pb-24 shadow-xl shadow-[#020D16]/5 backdrop-blur sm:p-6 sm:pb-6">
+    <ScreenShell className="pb-24 sm:pb-5">
       <StageBar
         tournament={tournament}
         activeCourtAssignments={resolvedCourtAssignments}
@@ -370,27 +378,6 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         t={t}
       />
 
-      {shareLink && !isReadOnly && (
-        <section className="rounded-3xl border border-[#1F60D1] bg-[#1F60D1]/16 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-black text-[#F7F8F7]">{t('tournament.shareTitle')}</h2>
-              <p className="text-sm font-semibold text-[#CFD2D3]">{t('tournament.shareDetail')}</p>
-              <p className="mt-2 break-all rounded-2xl bg-[#0A141E] p-3 text-xs font-semibold text-[#CFD2D3]">{shareLink}</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleCopyShareLink}
-              disabled={isCopyingLink}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#1F60D1] px-5 font-black text-white transition hover:bg-[#2F73E6] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <ShareIcon className="h-5 w-5" />
-              {isCopyingLink ? t('tournament.copying') : copyFeedback || t('tournament.copyLink')}
-            </button>
-          </div>
-        </section>
-      )}
-
       {(isTournamentFinished || isReadOnly) && (
         <>
           <FinishedSummary
@@ -402,6 +389,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
             finalMatch={finalMatch}
             onEndTournament={canEndTournament ? () => setShowEndConfirm(true) : null}
             onReopenTournament={canReopenTournament ? () => setShowReopenConfirm(true) : null}
+            t={t}
           />
           <TournamentSummaryShareCard
             title={resultTitle}
@@ -419,24 +407,32 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       )}
 
       {!isTournamentFinished && !isReadOnly && (
-        <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-3">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">{t('tournament.activeCourts')}</p>
-              <h2 className="text-base font-black text-[#F7F8F7]">{t('tournament.playing', { active: activeMatches.length, total: courtCount })}</h2>
-            </div>
-            <p className="rounded-full bg-[#0A141E] px-3 py-1 text-xs font-black text-[#8D99A6]">{t('tournament.waiting', { count: waitingMatchesCount })}</p>
-          </div>
+        <Panel>
+          <SectionHeading
+            title={t('tournament.activeCourts')}
+            detail={t('tournament.playing', { active: activeMatches.length, total: courtCount })}
+            actions={<Pill>{t('tournament.waiting', { count: waitingMatchesCount })}</Pill>}
+          />
           <div className="grid gap-2 md:grid-cols-2">
             {courtSlots.map((match, index) => (
-              <CourtCard key={match?.id || `empty-court-${index}`} courtNumber={index + 1} match={match} onDeclareWinner={handleDeclareWinner} disabled={isSavingResult || isReadOnly} t={t} />
+              <CourtCard key={match?.id || `empty-court-${index}`} courtNumber={index + 1} match={match} onDeclareWinner={handleDeclareWinner} disabled={isSavingResult || !canUpdateScores} t={t} />
             ))}
           </div>
-        </section>
+        </Panel>
       )}
 
-      <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 shadow-sm">
-        <div className="grid grid-cols-3 gap-1 rounded-2xl bg-[#07111B] p-1">
+      {shareLink && !isReadOnly && !isTournamentFinished && (
+        <LiveShareStrip
+          shareLink={shareLink}
+          isCopyingLink={isCopyingLink}
+          copyFeedback={copyFeedback}
+          onCopy={handleCopyShareLink}
+          t={t}
+        />
+      )}
+
+      <Panel>
+        <div className="grid grid-cols-3 gap-1 rounded-lg bg-club-wash p-1">
           <TabButton active={activePanel === 'standings'} onClick={() => setActivePanel('standings')}>
             {t('tournament.table')}
           </TabButton>
@@ -465,7 +461,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         {activePanel === 'upcoming' && (
           <MatchPanel emptyText={t('tournament.upcomingEmpty')}>
             {upcomingMatches.map((match) => (
-              <MatchCard key={match.id} match={match} onSetCurrent={canEditTournament ? setAsCurrentMatch : null} isCurrent={match.id === tournament.currentMatchId} />
+              <MatchCard key={match.id} match={match} onSetCurrent={canUpdateScores ? setAsActiveMatch : null} isCurrent={false} />
             ))}
           </MatchPanel>
         )}
@@ -477,42 +473,42 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
             ))}
           </MatchPanel>
         )}
-      </section>
+      </Panel>
 
-      <section className={`hidden gap-3 sm:grid ${canEditTournament ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
-        {canEditTournament && (
-          <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 font-black text-[#F7F8F7] shadow-sm transition hover:bg-[#07111B]">
-            <UsersIcon className="h-5 w-5 text-[#BEDC45]" />
+      <section className={`hidden gap-3 sm:grid ${canEditTeams ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
+        {canEditTeams && (
+          <Button tone="secondary" onClick={() => setShowEditTeams(true)}>
+            <UsersIcon className="h-5 w-5" />
             {t('tournament.editTeams')}
-          </button>
+          </Button>
         )}
-        <button onClick={() => setShowGameHistory(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 font-black text-[#F7F8F7] shadow-sm transition hover:bg-[#07111B]">
-          <CheckIcon className="h-5 w-5 text-[#BEDC45]" />
+        <Button tone="secondary" onClick={() => setShowGameHistory(true)}>
+          <CheckIcon className="h-5 w-5" />
           {t('tournament.matchHistory')}
-        </button>
+        </Button>
       </section>
 
-      {canEndTournament && (
-        <button onClick={() => setShowEndConfirm(true)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 px-4 font-black text-[#DB4145] transition hover:bg-[#DB4145]/20">
+      {canEndTournament && !isTournamentFinished && !isReadOnly && (
+        <Button tone="danger" onClick={() => setShowEndConfirm(true)} className="w-full">
           <TrashIcon className="h-5 w-5" />
           {t('tournament.endTournament')}
-        </button>
+        </Button>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
-        <div className={`mx-auto grid max-w-6xl gap-2 ${canEditTournament ? 'grid-cols-[1fr_1fr_auto]' : 'grid-cols-1'}`}>
-          {canEditTournament && (
-            <button onClick={() => setShowEditTeams(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 text-sm font-black text-[#F7F8F7]">
-              <UsersIcon className="h-4 w-4 text-[#BEDC45]" />
+      <BottomActionBar className="sm:hidden">
+        <div className={`mx-auto grid max-w-6xl gap-2 ${canEditTeams ? 'grid-cols-[1fr_1fr_auto]' : 'grid-cols-1'}`}>
+          {canEditTeams && (
+            <Button tone="secondary" onClick={() => setShowEditTeams(true)}>
+              <UsersIcon className="h-4 w-4" />
               {t('common.teams')}
-            </button>
+            </Button>
           )}
-          <button onClick={() => setShowGameHistory(true)} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 text-sm font-black text-[#F7F8F7]">
-            <CheckIcon className="h-4 w-4 text-[#BEDC45]" />
-            {t('nav.history')}
-          </button>
+          <Button tone="secondary" onClick={() => setShowGameHistory(true)}>
+            <CheckIcon className="h-4 w-4" />
+            {t('tournament.matchHistory')}
+          </Button>
         </div>
-      </div>
+      </BottomActionBar>
 
       {showEndConfirm && (
         <ConfirmationModal
@@ -532,7 +528,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         />
       )}
 
-      {showEditTeams && canEditTournament && (
+      {showEditTeams && canEditTeams && (
         <EditTeamsModal tournament={tournament} setTournament={setTournament} onClose={() => setShowEditTeams(false)} showAlert={showAlert} showToast={showToast} />
       )}
 
@@ -544,10 +540,10 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
           onClose={() => setShowGameHistory(false)}
           showAlert={showAlert}
           showToast={showToast}
-          readOnly={isReadOnly}
+          readOnly={!canUpdateScores}
         />
       )}
-    </div>
+    </ScreenShell>
   );
 }
 
@@ -577,6 +573,23 @@ function getStandingLabel({ isLeader, isTop4, isChampion, format }) {
   return '';
 }
 
+function LiveShareStrip({ shareLink, isCopyingLink, copyFeedback, onCopy, t }) {
+  return (
+    <Panel className="bg-club-soft">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-black text-club-ink">{t('tournament.shareTitle')}</p>
+          <p className="mt-0.5 truncate text-xs font-semibold text-club-muted">{shareLink}</p>
+        </div>
+        <Button tone="blue" onClick={onCopy} disabled={isCopyingLink} className="shrink-0">
+          <ShareIcon className="h-5 w-5" />
+          {isCopyingLink ? t('tournament.copying') : copyFeedback || t('tournament.copyLink')}
+        </Button>
+      </div>
+    </Panel>
+  );
+}
+
 function StageBar({ tournament, activeCourtAssignments, isFinished, isEnded, completedInRound, currentRoundMatches, pendingMatches, completedMatches, courtCount, roundProgress, t }) {
   const stageTitle = isEnded ? t('history.ended') : isFinished ? t('history.complete') : getStageTitle(tournament, t);
   const stageLabel = tournament.format === 'league' ? t('common.league') : t('common.cup');
@@ -584,38 +597,26 @@ function StageBar({ tournament, activeCourtAssignments, isFinished, isEnded, com
   const waitingCount = pendingMatches.filter((match) => !activeCourtIds.has(match.id)).length;
 
   return (
-    <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3">
+    <Panel>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">{stageLabel}</p>
-          <h2 className="truncate text-lg font-black leading-tight text-[#F7F8F7]">{stageTitle}</h2>
+          <p className="text-xs font-black uppercase tracking-wide text-club-muted">{stageLabel}</p>
+          <h2 className="truncate text-xl font-black leading-tight text-club-ink">{stageTitle}</h2>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-lg font-black tabular-nums text-[#BEDC45]">{completedInRound}/{currentRoundMatches.length || 0}</p>
-          <p className="text-[0.65rem] font-bold uppercase tracking-wide text-[#8D99A6]">{t('common.matches')}</p>
+          <p className="text-lg font-black tabular-nums text-club-green">{completedInRound}/{currentRoundMatches.length || 0}</p>
+          <p className="text-[0.65rem] font-bold uppercase tracking-wide text-club-muted">{t('common.matches')}</p>
         </div>
       </div>
 
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#07111B]">
-        <div className="h-full rounded-full bg-[#BEDC45] transition-all" style={{ width: `${roundProgress}%` }} />
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-club-wash">
+        <div className="h-full rounded-full bg-club-green transition-all" style={{ width: `${roundProgress}%` }} />
       </div>
 
-      <div className="mt-3 grid grid-cols-4 gap-1.5">
-        <MiniStat label={t('common.teams')} value={tournament.teams.length} />
-        <MiniStat label={t('common.courts')} value={courtCount} />
-        <MiniStat label={t('common.waiting')} value={waitingCount} />
-        <MiniStat label={t('common.done')} value={completedMatches.length} />
-      </div>
-    </section>
-  );
-}
-
-function MiniStat({ label, value }) {
-  return (
-    <div className="rounded-xl bg-[#07111B] px-2 py-2 text-center">
-      <p className="text-base font-black tabular-nums text-[#F7F8F7]">{value}</p>
-      <p className="truncate text-[0.62rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
-    </div>
+      <p className="mt-3 truncate text-sm font-bold text-club-muted">
+        {tournament.teams.length} {t('common.teams').toLowerCase()} / {courtCount} {t('common.courts').toLowerCase()} / {waitingCount} {t('common.waiting').toLowerCase()} / {completedMatches.length} {t('common.done').toLowerCase()}
+      </p>
+    </Panel>
   );
 }
 
@@ -624,8 +625,8 @@ function TabButton({ active, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-10 rounded-xl px-2 text-sm font-black transition ${
-        active ? 'motion-soft-pop bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
+      className={`min-h-10 rounded-md px-2 text-sm font-black transition ${
+        active ? 'motion-soft-pop bg-club-green text-club-greenDeep' : 'text-club-muted hover:bg-club-soft hover:text-club-ink'
       }`}
     >
       {children}
@@ -638,7 +639,7 @@ function MatchPanel({ emptyText, children }) {
 
   return (
     <div className="mt-3 space-y-2">
-      {hasChildren ? children : <p className="rounded-2xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#0D1823] px-4 py-6 text-center text-sm font-bold text-[#8D99A6]">{emptyText}</p>}
+      {hasChildren ? children : <EmptyState title={emptyText} />}
     </div>
   );
 }
@@ -646,24 +647,24 @@ function MatchPanel({ emptyText, children }) {
 function CourtCard({ courtNumber, match, onDeclareWinner, disabled, t }) {
   if (!match) {
     return (
-      <div className="rounded-2xl border border-dashed border-[#1F60D1] bg-[#1F60D1]/16 p-3 text-center">
+      <div className="rounded-lg border border-dashed border-club-borderStrong bg-club-soft p-3 text-center">
         <div className="flex min-h-28 flex-col items-center justify-center">
-          <span className="rounded-full bg-[#0A141E] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#CFD2D3]">Court {courtNumber}</span>
-          <h3 className="mt-2 text-base font-black text-[#F7F8F7]">{t('common.waiting')}</h3>
-          <p className="mt-1 max-w-xs text-xs font-semibold text-[#CFD2D3]">{t('tournament.noSafeMatch')}</p>
+          <Pill tone="blue">Court {courtNumber}</Pill>
+          <h3 className="mt-2 text-base font-black text-club-ink">{t('common.waiting')}</h3>
+          <p className="mt-1 max-w-xs text-xs font-semibold text-club-muted">{t('tournament.noSafeMatch')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 shadow-sm">
+    <div className="rounded-lg border border-club-border bg-club-surface p-3 shadow-sm">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-[0.65rem] font-black uppercase tracking-[0.16em] text-[#1F60D1]">
+        <p className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-club-muted">
           <CourtIcon className="h-3.5 w-3.5" />
           Court {courtNumber}
         </p>
-        <p className="truncate rounded-full bg-[#07111B] px-2 py-1 text-[0.65rem] font-black text-[#8D99A6]">{getMatchLabel(match)}</p>
+        <Pill>{getMatchLabel(match)}</Pill>
       </div>
       <CurrentMatchCard match={match} onDeclareWinner={onDeclareWinner} disabled={disabled} />
     </div>
@@ -672,15 +673,15 @@ function CourtCard({ courtNumber, match, onDeclareWinner, disabled, t }) {
 
 function StandingRow({ rank, team, stats, highlighted, label }) {
   return (
-    <div className={`grid grid-cols-[36px_1fr_auto] items-center gap-3 rounded-3xl border p-3 ${highlighted ? 'border-[#BEDC45] bg-[#BEDC45]/14' : 'border-[rgba(255,255,255,0.08)] bg-[#0D1823]'}`}>
-      <span className={`grid h-9 w-9 place-items-center rounded-2xl text-sm font-black ${highlighted ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#0A141E] text-[#8D99A6]'}`}>{rank}</span>
+    <div className={`grid grid-cols-[36px_1fr_auto] items-center gap-3 rounded-lg border p-3 ${highlighted ? 'border-club-borderStrong bg-club-surface' : 'border-club-border bg-club-soft'}`}>
+      <span className={`grid h-9 w-9 place-items-center rounded-lg text-sm font-black ${highlighted ? 'bg-club-green/14 text-club-green' : 'bg-club-wash text-club-muted'}`}>{rank}</span>
       <div className="min-w-0">
-        <p className="break-words font-black leading-tight text-[#F7F8F7]">{getTeamName(team)}</p>
-        {label && <p className="mt-1 text-xs font-black uppercase tracking-wide text-[#BEDC45]">{label}</p>}
+        <p className="break-words font-black leading-tight text-club-ink">{getTeamName(team)}</p>
+        {label && <p className="mt-1 text-xs font-black uppercase tracking-wide text-club-green">{label}</p>}
       </div>
       <div className="text-right">
-        <p className="text-xl font-black tabular-nums text-[#F7F8F7]">{stats.points}</p>
-        <p className="text-xs font-bold tabular-nums text-[#8D99A6]">
+        <p className="text-xl font-black tabular-nums text-club-ink">{stats.points}</p>
+        <p className="text-xs font-bold tabular-nums text-club-muted">
           {stats.wins}-{stats.losses} / {stats.diff > 0 ? '+' : ''}
           {stats.diff}
         </p>
@@ -689,30 +690,30 @@ function StandingRow({ rank, team, stats, highlighted, label }) {
   );
 }
 
-function FinishedSummary({ title, champion, leaderboard, teamStats, completedMatches, finalMatch, onEndTournament, onReopenTournament }) {
+function FinishedSummary({ title, champion, leaderboard, teamStats, completedMatches, finalMatch, onEndTournament, onReopenTournament, t }) {
   const topTeams = leaderboard.slice(0, 3);
 
   return (
-    <section className="rounded-3xl border border-[#BEDC45]/50 bg-gradient-to-br from-[#020D16] via-[#19232B] to-[#0A141E] p-5 shadow-lg shadow-[#BEDC45]/10">
-      <div className="text-center">
-        <span className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-[#BEDC45] text-[#020D16] shadow-lg shadow-[#BEDC45]/20">
+    <Panel className="border-club-green/50 bg-club-soft">
+      <div>
+        <span className="grid h-14 w-14 place-items-center rounded-lg bg-club-green text-club-greenDeep">
           <TrophyIcon className="h-9 w-9" />
         </span>
-        <p className="mt-4 text-xs font-black uppercase tracking-[0.22em] text-[#BEDC45]">{title}</p>
-        <h2 className="mt-2 text-4xl font-black text-[#F7F8F7]">{champion ? 'Champion Moment' : 'Results Locked'}</h2>
-        <p className="mt-3 text-2xl font-black text-[#BEDC45]">{champion ? getTeamName(champion) : 'Champion pending'}</p>
+        <p className="mt-4 text-xs font-black uppercase tracking-wide text-club-green">{title}</p>
+        <h2 className="mt-2 text-3xl font-black text-club-ink">{champion ? t('tournament.championMoment') : t('tournament.resultsLocked')}</h2>
+        <p className="mt-2 text-xl font-black text-club-green">{champion ? getTeamName(champion) : 'Champion pending'}</p>
         {finalMatch && (
-          <p className="mt-2 text-sm font-bold text-[#8D99A6]">
+          <p className="mt-2 text-sm font-bold text-club-muted">
             Final: {getTeamName(finalMatch.teamA)} vs {getTeamName(finalMatch.teamB)}
           </p>
         )}
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
-        <div className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-[#8D99A6]">
-            <TrophyIcon className="h-5 w-5 text-[#BEDC45]" />
-            Final Ranking
+        <div className="rounded-lg border border-club-border bg-club-surface p-3">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-club-muted">
+            <TrophyIcon className="h-5 w-5 text-club-green" />
+            {t('tournament.finalRanking')}
           </h3>
           <div className="grid gap-2 sm:grid-cols-3">
             {topTeams.map((team, index) => {
@@ -720,37 +721,37 @@ function FinishedSummary({ title, champion, leaderboard, teamStats, completedMat
               return (
                 <div
                   key={team.id}
-                  className={`rounded-2xl p-3 text-center ${
-                    index === 0 ? 'bg-[#19232B] ring-2 ring-[#BEDC45]/40' : 'bg-[#0D1823]'
+                  className={`rounded-lg p-3 text-center ${
+                    index === 0 ? 'bg-club-green/12 ring-2 ring-club-green/40' : 'bg-club-soft'
                   }`}
                 >
-                  <span className={`mx-auto grid h-10 w-10 place-items-center rounded-2xl text-sm font-black ${index === 0 ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#0A141E] text-[#8D99A6]'}`}>
+                  <span className={`mx-auto grid h-10 w-10 place-items-center rounded-lg text-sm font-black ${index === 0 ? 'bg-club-green text-club-greenDeep' : 'bg-club-surface text-club-muted'}`}>
                     {index + 1}
                   </span>
-                  <span className="mt-2 block min-w-0 break-words font-black leading-tight text-[#F7F8F7]">{getTeamName(team)}</span>
-                  <span className="mt-1 block text-sm font-black text-[#8D99A6]">{stats.points} pts</span>
+                  <span className="mt-2 block min-w-0 break-words font-black leading-tight text-club-ink">{getTeamName(team)}</span>
+                  <span className="mt-1 block text-sm font-black text-club-muted">{stats.points} pts</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 text-center sm:min-w-40">
-          <p className="text-4xl font-black tabular-nums text-[#F7F8F7]">{completedMatches.length}</p>
-          <p className="text-sm font-bold text-[#8D99A6]">matches played</p>
+        <div className="rounded-lg border border-club-border bg-club-surface p-4 text-center sm:min-w-40">
+          <p className="text-4xl font-black tabular-nums text-club-ink">{completedMatches.length}</p>
+          <p className="text-sm font-bold text-club-muted">{t('tournament.matchesPlayed')}</p>
           {onEndTournament && (
-            <button onClick={onEndTournament} className="mt-4 min-h-11 w-full rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] transition hover:bg-[#D3F05A]">
+            <Button onClick={onEndTournament} className="mt-4 w-full">
               End Tournament
-            </button>
+            </Button>
           )}
           {onReopenTournament && (
-            <button onClick={onReopenTournament} className="mt-4 min-h-11 w-full rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] transition hover:bg-[#D3F05A]">
+            <Button onClick={onReopenTournament} className="mt-4 w-full">
               Reopen Tournament
-            </button>
+            </Button>
           )}
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }
 

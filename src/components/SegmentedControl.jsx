@@ -2,13 +2,13 @@ import React from 'react';
 
 export default function SegmentedControl({ label, value, options, onChange, disabled = false, columns = 'grid-cols-2' }) {
   return (
-    <div className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3 shadow-sm">
+    <div className="rounded-lg border border-club-border bg-club-surface p-3 shadow-sm">
       {label && (
-        <p className="mb-2 text-xs font-black uppercase tracking-wide text-[#8D99A6]">
+        <p className="mb-2 text-xs font-black uppercase tracking-wide text-club-muted">
           {label}
         </p>
       )}
-      <div className={`grid ${columns} gap-1 rounded-2xl bg-[#07111B] p-1`} role="group" aria-label={label}>
+      <div className={`grid ${columns} gap-1 rounded-lg bg-club-wash p-1`} role="group" aria-label={label}>
         {options.map((option) => {
           const active = option.value === value;
           return (
@@ -18,8 +18,8 @@ export default function SegmentedControl({ label, value, options, onChange, disa
               onClick={() => onChange(option.value)}
               disabled={disabled}
               aria-pressed={active}
-              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                active ? 'motion-soft-pop bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                active ? 'motion-soft-pop bg-club-green text-club-greenDeep' : 'text-club-muted hover:bg-club-soft hover:text-club-ink'
               }`}
             >
               {option.icon && <span className="h-4 w-4">{option.icon}</span>}

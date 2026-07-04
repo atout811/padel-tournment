@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ConfirmationModal } from '../components/Alert';
 import { ListIcon, TrashIcon, TrophyIcon } from '../components/Icons';
 import { SkeletonRows } from '../components/Skeleton.jsx';
+import { EmptyState, PageHeader, Panel, Pill, ScreenShell } from '../components/Ui.jsx';
 import { fetchGroups } from '../utils/groupService';
 import { fetchTournamentHistory, removeTournamentRecord } from '../utils/tournamentService';
 import { buildLeaderboard } from '../utils/tournamentRules';
@@ -84,22 +85,21 @@ export default function TournamentHistoryScreen({ showAlert, onOpenTournamentRes
   };
 
   return (
-    <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 pb-24 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6 sm:pb-6">
-      <section className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-[#BEDC45]">{t('history.eyebrow')}</p>
-        <div className="mt-1 flex items-end justify-between gap-3">
-          <h2 className="min-w-0 truncate text-2xl font-black leading-tight text-[#F7F8F7] sm:text-3xl">{t('history.title')}</h2>
-          <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{filteredTournaments.length}</span>
-        </div>
-      </section>
+    <ScreenShell withBottomNav>
+      <PageHeader
+        eyebrow={t('history.eyebrow')}
+        title={t('history.title')}
+        detail={t('history.detail')}
+        meta={<Pill tone="greenSoft">{filteredTournaments.length} nights</Pill>}
+      />
 
-      <section className="flex flex-wrap gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-2">
+      <Panel className="flex flex-wrap gap-2 p-2">
         {filters.map((filter) => (
           <FilterButton key={filter.id} active={activeFilter === filter.id} onClick={() => setActiveFilter(filter.id)}>
             {t(filter.labelKey)}
           </FilterButton>
         ))}
-      </section>
+      </Panel>
 
       <section className="space-y-2">
         {isLoading ? (
@@ -119,7 +119,7 @@ export default function TournamentHistoryScreen({ showAlert, onOpenTournamentRes
             />
           ))
         ) : (
-          <HistoryState title={tournaments.length ? t('history.noMatch') : t('history.empty')} detail={tournaments.length ? t('history.noMatchDetail') : t('history.emptyDetail')} />
+          <EmptyState title={tournaments.length ? t('history.noMatch') : t('history.empty')} detail={tournaments.length ? t('history.noMatchDetail') : t('history.emptyDetail')} />
         )}
       </section>
 
@@ -131,7 +131,7 @@ export default function TournamentHistoryScreen({ showAlert, onOpenTournamentRes
           onCancel={() => setDeleteCandidate(null)}
         />
       )}
-    </div>
+    </ScreenShell>
   );
 }
 
@@ -140,8 +140,8 @@ function FilterButton({ active, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-10 rounded-xl px-3 text-sm font-black transition ${
-        active ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#8D99A6] hover:bg-[#0D1823] hover:text-[#F7F8F7]'
+      className={`min-h-10 rounded-md px-3 text-sm font-black transition ${
+        active ? 'bg-club-green text-club-greenDeep' : 'bg-club-wash text-club-muted hover:bg-club-soft hover:text-club-ink'
       }`}
     >
       {children}
@@ -154,22 +154,22 @@ function HistoryRow({ tournament, groupName, t, formatDate, isRtl, isRemoving, o
   const Icon = tournament.format === 'league' ? ListIcon : TrophyIcon;
 
   return (
-    <div className="grid min-h-24 grid-cols-[1fr_auto] overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] shadow-sm transition hover:border-[rgba(190,220,69,0.32)] hover:bg-[#07111B]">
+    <div className="grid min-h-24 grid-cols-[1fr_auto] overflow-hidden rounded-lg border border-club-border bg-club-surface shadow-sm transition hover:border-club-borderStrong hover:bg-club-soft">
       <button type="button" onClick={onOpen} className={`grid min-w-0 grid-cols-[48px_1fr_auto] items-center gap-3 p-3 active:scale-[0.99] ${isRtl ? 'text-right' : 'text-left'}`}>
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#BEDC45]/14 text-[#BEDC45]">
+        <span className="grid h-12 w-12 place-items-center rounded-lg bg-club-green/12 text-club-green">
           <Icon className="h-6 w-6" />
         </span>
         <span className="min-w-0">
           <span className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[#07111B] px-2.5 py-1 text-xs font-black uppercase tracking-wide text-[#BEDC45]">{summary.status}</span>
-            <span className="text-xs font-bold text-[#8D99A6]">{summary.date}</span>
+            <Pill tone="greenSoft">{summary.status}</Pill>
+            <span className="text-xs font-bold text-club-muted">{summary.date}</span>
           </span>
-          <span className="mt-2 block truncate text-lg font-black text-[#F7F8F7]">{summary.title}</span>
-          <span className="mt-0.5 block truncate text-sm font-semibold text-[#8D99A6]">{summary.detail}</span>
+          <span className="mt-2 block truncate text-lg font-black text-club-ink">{summary.title}</span>
+          <span className="mt-0.5 block truncate text-sm font-semibold text-club-muted">{summary.detail}</span>
         </span>
         <span className="hidden text-right sm:block">
-          <span className="block text-lg font-black tabular-nums text-[#F7F8F7]">{summary.completedMatches}/{summary.totalMatches}</span>
-          <span className="block text-xs font-bold uppercase tracking-wide text-[#8D99A6]">{t('common.matches')}</span>
+          <span className="block text-lg font-black tabular-nums text-club-ink">{summary.completedMatches}/{summary.totalMatches}</span>
+          <span className="block text-xs font-bold uppercase tracking-wide text-club-muted">{t('common.matches')}</span>
         </span>
       </button>
       <button
@@ -177,19 +177,10 @@ function HistoryRow({ tournament, groupName, t, formatDate, isRtl, isRemoving, o
         onClick={onRemove}
         disabled={isRemoving}
         aria-label={`Remove ${summary.title}`}
-        className="grid w-12 place-items-center border-l border-[rgba(255,255,255,0.08)] text-[#DB4145] transition hover:bg-[#DB4145]/10 disabled:cursor-not-allowed disabled:opacity-60"
+        className="grid w-12 place-items-center border-l border-club-border text-[#DB4145] transition hover:bg-[#DB4145]/10 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <TrashIcon className="h-5 w-5" />
       </button>
-    </div>
-  );
-}
-
-function HistoryState({ title, detail }) {
-  return (
-    <div className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#0A141E] px-4 py-8 text-center">
-      <p className="text-base font-black text-[#F7F8F7]">{title}</p>
-      <p className="mt-1 text-sm font-semibold text-[#8D99A6]">{detail}</p>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { addGroupPlayer, deactivateGroupPlayer, fetchGroupPlayers, subscribeToGroupPlayers, updateGroupPlayer } from '../utils/groupPlayerService';
 import { getPlayerWinRate } from '../utils/playerProgressionService';
-import { CheckIcon, SparkIcon, TrashIcon, TrophyIcon, UsersIcon } from '../components/Icons';
+import { TrashIcon, UsersIcon } from '../components/Icons';
+import { Button, EmptyState, PageHeader, Panel, ScreenShell, SectionHeading, TextInput } from '../components/Ui.jsx';
 import { useI18n } from '../i18n/useI18n.js';
 
 export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
@@ -84,53 +85,42 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
 
   if (!group) {
     return (
-      <div className="rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-6">
-        <button type="button" onClick={() => setScreen('groups')} className="rounded-2xl bg-[#BEDC45] px-5 py-3 font-black text-[#020D16]">
+      <ScreenShell>
+        <Button onClick={() => setScreen('groups')}>
           {t('startNight.backToGroups')}
-        </button>
-      </div>
+        </Button>
+      </ScreenShell>
     );
   }
 
   const rankedPlayers = sortPlayersForCards(players);
   const totalMatches = players.reduce((sum, player) => sum + Number(player.matchesPlayed || 0), 0);
-  const bestStreak = players.reduce((max, player) => Math.max(max, Number(player.bestStreak || 0)), 0);
-  const averageWinRate = players.length
-    ? Math.round(players.reduce((sum, player) => sum + getPlayerWinRate(player), 0) / players.length)
-    : 0;
+  const topPlayer = rankedPlayers[0] || null;
+  const isAddOpen = showAddPlayer || players.length === 0;
 
   return (
-    <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
-      <section className="overflow-hidden rounded-3xl border border-[#BEDC45]/30 bg-[#0A141E] shadow-lg shadow-[#020D16]/20">
-        <div className="p-4 sm:p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[#BEDC45] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#020D16]">{t('pool.eyebrow')}</span>
-            <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{t('pool.tag')}</span>
-          </div>
-          <h2 className="mt-3 min-w-0 truncate text-3xl font-black leading-tight text-[#F7F8F7] sm:text-4xl">{group?.name || 'Group'}</h2>
-        </div>
-      </section>
+    <ScreenShell withBottomNav>
+      <PageHeader
+        eyebrow={t('pool.tag')}
+        title={group?.name || 'Group'}
+        detail={t('pool.detail')}
+      />
 
-      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-3 py-2">
-        <div className="grid grid-cols-2 divide-y divide-[rgba(255,255,255,0.08)] sm:grid-cols-4 sm:divide-x sm:divide-y-0">
-          <PoolMetric label={t('pool.players')} value={players.length} />
-          <PoolMetric label={t('pool.matches')} value={totalMatches} />
-          <PoolMetric label={t('pool.avgWin')} value={`${averageWinRate}%`} />
-          <PoolMetric label={t('pool.bestStreak')} value={bestStreak} />
-        </div>
-      </section>
+      <FriendCardsSummary players={players} totalMatches={totalMatches} topPlayer={topPlayer} t={t} />
 
-      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-        <button type="button" onClick={() => setShowAddPlayer((current) => !current)} className="flex min-h-12 w-full items-center justify-between gap-3 text-left">
-          <span className="inline-flex items-center gap-2 text-lg font-black text-[#F7F8F7]">
-            <UsersIcon className="h-5 w-5" />
-            {t('pool.addPlayer')}
-          </span>
-          <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#BEDC45]">{showAddPlayer ? t('common.hide') : t('common.open')}</span>
-        </button>
-        {showAddPlayer && (
+      <Panel>
+        {players.length > 0 && (
+          <button type="button" onClick={() => setShowAddPlayer((current) => !current)} className="flex min-h-12 w-full items-center justify-between gap-3 text-left">
+            <span className="inline-flex items-center gap-2 text-base font-black text-club-ink">
+              <UsersIcon className="h-5 w-5 text-club-muted" />
+              {t('pool.addPlayer')}
+            </span>
+            <span className="text-xs font-black uppercase tracking-wide text-club-muted">{isAddOpen ? t('common.hide') : t('common.open')}</span>
+          </button>
+        )}
+        {isAddOpen && (
           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_140px_auto]">
-            <input
+            <TextInput
               value={name}
               onChange={(event) => setName(event.target.value)}
               onKeyDown={(event) => {
@@ -140,46 +130,41 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
                 }
               }}
               maxLength={28}
-              className="min-h-14 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-4 font-semibold text-[#F7F8F7] outline-none placeholder:text-[#8D99A6] focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20"
               placeholder={t('pool.playerName')}
               autoCapitalize="words"
               autoComplete="name"
               enterKeyHint="done"
             />
             <LevelSelect value={level} onChange={setLevel} disabled={isSaving} t={t} />
-            <button type="button" onClick={handleAdd} disabled={isSaving} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#BEDC45] px-6 font-black text-[#020D16] disabled:opacity-60">
+            <Button onClick={handleAdd} disabled={isSaving} size="lg">
               {t('common.add')}
-            </button>
+            </Button>
           </div>
         )}
-      </section>
+      </Panel>
 
-      <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-lg font-black text-[#F7F8F7]">{t('pool.friendCards')}</h3>
-          <span className="rounded-full bg-[#07111B] px-3 py-1 text-sm font-black tabular-nums text-[#BEDC45]">{players.length}</span>
-        </div>
+      <Panel>
+        <SectionHeading title={t('pool.friendCards')} count={players.length} />
         {players.length ? (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-2 md:grid-cols-2">
             {rankedPlayers.map((player, index) => (
-              <div key={player.id} className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-3">
+              <div key={player.id} className="rounded-lg border border-club-border bg-club-surface p-3">
                 {editingId === player.id ? (
                   <div className="grid gap-2 sm:grid-cols-[1fr_120px_auto_auto]">
-                    <input
+                    <TextInput
                       value={editName}
                       onChange={(event) => setEditName(event.target.value)}
-                      className="min-h-12 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-3 font-semibold text-[#F7F8F7] outline-none focus:border-[#BEDC45]"
                       autoCapitalize="words"
                       autoComplete="name"
                       enterKeyHint="done"
                     />
                     <LevelSelect value={editLevel} onChange={setEditLevel} disabled={isSaving} t={t} />
-                    <button type="button" onClick={saveEdit} disabled={isSaving} className="rounded-2xl bg-[#BEDC45] px-4 font-black text-[#020D16] disabled:opacity-60">
+                    <Button onClick={saveEdit} disabled={isSaving}>
                       {t('common.save')}
-                    </button>
-                    <button type="button" onClick={() => setEditingId(null)} className="rounded-2xl border border-[rgba(255,255,255,0.08)] px-4 font-black text-[#8D99A6]">
+                    </Button>
+                    <Button tone="secondary" onClick={() => setEditingId(null)}>
                       {t('common.cancel')}
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <PlayerProfileCard
@@ -196,10 +181,24 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
             ))}
           </div>
         ) : (
-          <p className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">{t('pool.addFirst')}</p>
+          <EmptyState title={t('pool.addFirst')} detail={t('pool.addFirstDetail')} action={<Button onClick={() => setShowAddPlayer(true)}>{t('pool.addPlayer')}</Button>} />
         )}
-      </section>
-    </div>
+      </Panel>
+    </ScreenShell>
+  );
+}
+
+function FriendCardsSummary({ players, totalMatches, topPlayer, t }) {
+  const summary = [
+    `${players.length} ${t('pool.players').toLowerCase()}`,
+    `${totalMatches} ${t('pool.matches').toLowerCase()}`,
+    topPlayer ? `#1 ${topPlayer.name}` : t('pool.addFirst'),
+  ];
+
+  return (
+    <Panel className="py-3">
+      <p className="truncate text-sm font-bold text-club-muted">{summary.join(' / ')}</p>
+    </Panel>
   );
 }
 
@@ -210,74 +209,53 @@ function PlayerProfileCard({ player, rank, onEdit, onDeactivate, isSaving, t, fo
   const winRate = getPlayerWinRate(player);
   const currentStreak = Math.max(0, Number(player.currentStreak || 0));
   const bestStreak = Math.max(0, Number(player.bestStreak || 0));
-  const cardTag = getPlayerCardTag(player, rank, t);
+  const status = getPlayerStatusLine(player, t);
 
   return (
     <div>
-      <div className="flex items-start gap-3">
-        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[#BEDC45] text-lg font-black text-[#020D16]">
+      <div className="grid grid-cols-[44px_1fr_auto] items-start gap-3">
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-club-border bg-white/[0.05] text-sm font-black text-club-ink">
           {getInitials(player.name)}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[#07111B] px-2.5 py-1 text-[0.65rem] font-black uppercase tracking-wide text-[#BEDC45]">#{rank}</span>
-            <span className="rounded-full bg-[#1F60D1]/16 px-2.5 py-1 text-[0.65rem] font-black uppercase tracking-wide text-[#CFD2D3]">{cardTag}</span>
-          </div>
-          <h4 className="mt-2 break-words text-xl font-black leading-tight text-[#F7F8F7]">{player.name}</h4>
-          <p className="mt-1 text-sm font-bold text-[#8D99A6]">
-            {t('common.level')} {player.level} <span className="text-[#CFD2D3]">{t('pool.rating', { rating: player.rating })}</span>
+        <div className="min-w-0">
+          <h4 className="break-words text-lg font-black leading-tight text-club-ink">{player.name}</h4>
+          <p className="mt-1 text-sm font-bold text-club-muted">
+            {t('common.level')} {player.level} / {t('pool.rating', { rating: player.rating })}
           </p>
+          <p className="mt-1 truncate text-xs font-semibold text-club-muted">{status}</p>
         </div>
+        <span className="rounded-md bg-white/[0.05] px-2 py-1 text-xs font-black text-club-muted">#{rank}</span>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <CardStat label={t('pool.record')} value={matchesPlayed ? `${wins}-${losses}` : '0-0'} />
-        <CardStat label={t('pool.winRate')} value={`${winRate}%`} />
-        <CardStat label={t('pool.matches')} value={matchesPlayed} />
-      </div>
+      <details className="mt-3 rounded-lg bg-white/[0.035] px-3 py-2">
+        <summary className="cursor-pointer text-xs font-black uppercase tracking-wide text-club-muted">{t('pool.stats')}</summary>
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+          <StatLine label={t('pool.record')} value={matchesPlayed ? `${wins}-${losses}` : '0-0'} />
+          <StatLine label={t('pool.winRate')} value={`${winRate}%`} />
+          <StatLine label={t('pool.currentStreak')} value={currentStreak} />
+          <StatLine label={t('pool.bestStreak')} value={bestStreak} />
+          <StatLine label={t('pool.lastPlayed')} value={formatLastPlayed(player.lastPlayedAt, formatDate, t)} className="col-span-2" />
+        </div>
+      </details>
 
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <CardStat label={t('pool.currentStreak')} value={currentStreak} icon={<SparkIcon className="h-4 w-4" />} />
-        <CardStat label={t('pool.bestStreak')} value={bestStreak} icon={<TrophyIcon className="h-4 w-4" />} />
-      </div>
-
-      <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-[#07111B] px-3 py-2">
-        <p className="min-w-0 truncate text-xs font-bold text-[#8D99A6]">
-          {t('pool.lastPlayed')} <span className="text-[#CFD2D3]">{formatLastPlayed(player.lastPlayedAt, formatDate, t)}</span>
-        </p>
-        <CheckIcon className="h-4 w-4 shrink-0 text-[#BEDC45]" />
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button type="button" onClick={onEdit} className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] px-4 py-2 font-black text-[#F7F8F7] hover:bg-[#07111B]">
+      <div className="mt-3 flex gap-2">
+        <Button tone="secondary" size="sm" onClick={onEdit} className="flex-1">
           {t('common.edit')}
-        </button>
-        <button type="button" onClick={onDeactivate} disabled={isSaving} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#DB4145]/30 bg-[#DB4145]/10 px-4 py-2 font-black text-[#DB4145] disabled:opacity-60">
+        </Button>
+        <Button tone="danger" size="sm" onClick={onDeactivate} disabled={isSaving} aria-label={`${t('pool.deactivate')} ${player.name}`} className="px-3">
           <TrashIcon className="h-4 w-4" />
-          {t('pool.deactivate')}
-        </button>
+          <span className="sr-only">{t('pool.deactivate')}</span>
+        </Button>
       </div>
     </div>
   );
 }
 
-function PoolMetric({ label, value }) {
+function StatLine({ label, value, className = '' }) {
   return (
-    <div className="flex min-h-14 items-center justify-between gap-3 px-3 py-2 sm:justify-center sm:px-4">
-      <p className="truncate text-[0.62rem] font-black uppercase tracking-wide text-[#8D99A6] sm:order-2">{label}</p>
-      <p className="text-lg font-black tabular-nums text-[#F7F8F7] sm:order-1">{value}</p>
-    </div>
-  );
-}
-
-function CardStat({ label, value, icon }) {
-  return (
-    <div className="rounded-2xl bg-[#07111B] p-2 text-center">
-      <p className="flex min-h-6 items-center justify-center gap-1 text-lg font-black tabular-nums text-[#F7F8F7]">
-        {icon}
-        {value}
-      </p>
-      <p className="mt-0.5 truncate text-[0.58rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
+    <div className={className}>
+      <p className="truncate text-[0.62rem] font-black uppercase tracking-wide text-club-muted">{label}</p>
+      <p className="mt-0.5 truncate text-sm font-black tabular-nums text-club-ink">{value}</p>
     </div>
   );
 }
@@ -293,14 +271,10 @@ function sortPlayersForCards(players) {
   );
 }
 
-function getPlayerCardTag(player, rank, t) {
-  if (rank === 1) return t('pool.currentOne');
+function getPlayerStatusLine(player, t) {
   if (Number(player.currentStreak || 0) >= 3) return t('pool.hotStreak');
-  if (rank === 2) return t('pool.nextThreat');
   if (Number(player.matchesPlayed || 0) === 0) return t('pool.freshSigning');
-  if (getPlayerWinRate(player) >= 65) return t('pool.clutchPick');
-  if (Number(player.matchesPlayed || 0) >= 10) return t('pool.courtRegular');
-  return t('pool.rising');
+  return `${Number(player.matchesPlayed || 0)} ${t('pool.matches').toLowerCase()} / ${getPlayerWinRate(player)}%`;
 }
 
 function getInitials(name) {
@@ -320,8 +294,8 @@ function formatLastPlayed(value, formatDate, t) {
 function LevelSelect({ value, onChange, disabled, t }) {
   return (
     <div>
-      <p className="mb-2 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{t('common.level')}</p>
-      <div className="grid grid-cols-5 gap-1 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-1">
+      <p className="mb-2 text-xs font-black uppercase tracking-wide text-club-muted">{t('common.level')}</p>
+      <div className="grid grid-cols-5 gap-1 rounded-lg border border-club-border bg-club-wash p-1">
         {[1, 2, 3, 4, 5].map((item) => (
           <button
             key={item}
@@ -329,8 +303,8 @@ function LevelSelect({ value, onChange, disabled, t }) {
             onClick={() => onChange(item)}
             disabled={disabled}
             aria-pressed={value === item}
-            className={`min-h-12 rounded-xl text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${
-            value === item ? 'motion-soft-pop bg-[#BEDC45] text-[#020D16]' : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
+            className={`min-h-12 rounded-md text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${
+            value === item ? 'motion-soft-pop bg-club-green text-club-greenDeep' : 'text-club-muted hover:bg-club-soft hover:text-club-ink'
           }`}
           >
             {item}

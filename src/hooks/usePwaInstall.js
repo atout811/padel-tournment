@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
-const DISMISS_KEY = 'padel-night-install-dismissed';
+const DISMISS_UNTIL_KEY = 'padel-night-install-dismissed-until';
+const LEGACY_DISMISS_KEY = 'padel-night-install-dismissed';
+const DISMISS_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -12,10 +14,22 @@ const isIosSafari = () => {
   return isAppleDevice && !isOtherBrowser;
 };
 
+const getDismissedUntil = () => {
+  try {
+    if (localStorage.getItem(LEGACY_DISMISS_KEY) === '1') {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    return Number(localStorage.getItem(DISMISS_UNTIL_KEY) || 0);
+  } catch {
+    return 0;
+  }
+};
+
 export const usePwaInstall = () => {
   const [installEvent, setInstallEvent] = useState(null);
   const [isInstalled, setIsInstalled] = useState(isStandalone);
-  const [isDismissed, setIsDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === '1');
+  const [dismissedUntil, setDismissedUntil] = useState(getDismissedUntil);
+  const [hasUsefulAction, setHasUsefulAction] = useState(false);
   const [isIos, setIsIos] = useState(false);
 
   useEffect(() => {
@@ -31,12 +45,18 @@ export const usePwaInstall = () => {
       setInstallEvent(null);
     };
 
+    const handleUsefulAction = () => setHasUsefulAction(true);
+    const fallbackTimer = window.setTimeout(() => setHasUsefulAction(true), 45000);
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
+    window.addEventListener('padel-night:useful-action', handleUsefulAction);
 
     return () => {
+      window.clearTimeout(fallbackTimer);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener('padel-night:useful-action', handleUsefulAction);
     };
   }, []);
 
@@ -55,13 +75,20 @@ export const usePwaInstall = () => {
   }, [installEvent]);
 
   const dismiss = useCallback(() => {
-    localStorage.setItem(DISMISS_KEY, '1');
-    setIsDismissed(true);
+    const nextDismissedUntil = Date.now() + DISMISS_COOLDOWN_MS;
+    try {
+      localStorage.setItem(DISMISS_UNTIL_KEY, String(nextDismissedUntil));
+      localStorage.removeItem(LEGACY_DISMISS_KEY);
+    } catch {
+      // Keep the banner hidden for this session if storage is unavailable.
+    }
+    setDismissedUntil(nextDismissedUntil);
   }, []);
 
   const canPromptInstall = Boolean(installEvent);
+  const isDismissed = Date.now() < dismissedUntil;
   const showIosHint = isIos && !isInstalled && !isDismissed;
-  const showInstallBanner = !isInstalled && !isDismissed && (canPromptInstall || showIosHint);
+  const showInstallBanner = hasUsefulAction && !isInstalled && !isDismissed && (canPromptInstall || showIosHint);
 
   return {
     canPromptInstall,

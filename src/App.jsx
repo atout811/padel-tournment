@@ -20,6 +20,18 @@ import { getOrCreateUserId, loadActiveTournamentId, loadTournamentData, saveActi
 import { buildTournamentShareUrl, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
 import { useI18n } from './i18n/useI18n.js';
 
+const getTimestamp = (value) => {
+  const timestamp = Date.parse(value || '');
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const getShortcutScreen = (shortcut) => {
+  if (shortcut === 'start') return 'setup';
+  if (shortcut === 'groups') return 'groups';
+  if (shortcut === 'history') return 'history';
+  return null;
+};
+
 export default function App() {
   const { t } = useI18n();
   const [tournament, setTournament] = useState(null);
@@ -34,6 +46,7 @@ export default function App() {
   const subscriptionCleanup = useRef(null);
   const historyReady = useRef(false);
   const claimedOwnerRef = useRef(null);
+  const focusRefreshRef = useRef({ tournamentId: null, at: 0 });
   const toastIdRef = useRef(0);
 
   const showAlert = useCallback((title, message) => setAlert({ show: true, title, message }), []);
@@ -182,6 +195,7 @@ export default function App() {
       try {
         const params = new URLSearchParams(window.location.search);
         const tournamentIdFromUrl = params.get('tournamentId');
+        const shortcutScreen = getShortcutScreen(params.get('shortcut'));
         getOrCreateUserId();
         const cachedTournament = loadTournamentData();
         const restoreTournament = (tournamentData) => {
@@ -250,11 +264,12 @@ export default function App() {
           return;
         }
 
+        const initialScreen = shortcutScreen || 'home';
         setTournament(null);
         setResultTournament(null);
-        setScreen('home');
+        setScreen(initialScreen);
         saveActiveTournamentId(null);
-        window.history.replaceState({ screen: 'home', selectedGroup: null }, '', window.location.href);
+        window.history.replaceState({ screen: initialScreen, selectedGroup: null }, '', window.location.pathname);
       } catch (error) {
         console.error('Error initializing app:', error);
         if (!active) {
@@ -360,6 +375,82 @@ export default function App() {
       detachSubscription();
     }
   }, [tournament?.id, tournament?.scoreToken, attachSubscription, detachSubscription, screen, selectedGroup]);
+
+  const activeTournamentId = tournament?.id;
+
+  useEffect(() => {
+    if (!activeTournamentId) {
+      return undefined;
+    }
+
+    let active = true;
+
+    const refreshTournament = async () => {
+      if (document.visibilityState === 'hidden') return;
+
+      const now = Date.now();
+      if (focusRefreshRef.current.tournamentId === activeTournamentId && now - focusRefreshRef.current.at < 3000) {
+        return;
+      }
+
+      focusRefreshRef.current = { tournamentId: activeTournamentId, at: now };
+
+      try {
+        const latest = await fetchTournamentById(activeTournamentId);
+        if (!active || !latest) return;
+
+        let didApplyUpdate = false;
+        setTournament((current) => {
+          if (!current || current.id !== latest.id) return current;
+
+          const incomingTimestamp = getTimestamp(latest.updatedAt);
+          const existingTimestamp = getTimestamp(current.updatedAt);
+          if (incomingTimestamp && existingTimestamp && incomingTimestamp <= existingTimestamp) {
+            return current;
+          }
+          if (!incomingTimestamp && latest.updatedAt === current.updatedAt) {
+            return current;
+          }
+
+          didApplyUpdate = true;
+          return latest;
+        });
+
+        if (didApplyUpdate) {
+          showToast(t('sync.updated'), t('sync.updatedDetail'), 'info');
+        }
+      } catch (error) {
+        console.error('Error refreshing tournament after app focus:', error);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshTournament();
+      }
+    };
+
+    window.addEventListener('focus', refreshTournament);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      active = false;
+      window.removeEventListener('focus', refreshTournament);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [activeTournamentId, showToast, t]);
+
+  useEffect(() => {
+    if (screen === 'loading' || screen === 'auth') return;
+
+    const hasUsefulState =
+      Boolean(tournament?.id || selectedGroup?.id) ||
+      ['groups', 'groupHome', 'playersPool', 'startGroupNight', 'setup', 'history', 'tournamentResult'].includes(screen);
+
+    if (hasUsefulState) {
+      window.dispatchEvent(new Event('padel-night:useful-action'));
+    }
+  }, [screen, selectedGroup?.id, tournament?.id]);
 
   const navigation = useMemo(() => {
     if (screen === 'loading') return null;
@@ -477,8 +568,8 @@ export default function App() {
       ) : shouldShowAuth ? (
         <AuthScreen showAlert={showAlert} />
       ) : (
-    <div className="min-h-dvh bg-[#020D16] text-[#F7F8F7] font-sans">
-      <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-0 sm:px-4 sm:py-6">
+    <div className="min-h-dvh bg-club-bg text-club-ink font-sans">
+      <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-0 sm:px-4 sm:py-5">
         <Header
           backLabel={navigation?.label}
           contextLabel={navigation?.contextLabel}
@@ -506,9 +597,9 @@ export default function App() {
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-dvh items-center justify-center rounded-b-3xl border-x border-b border-[rgba(255,255,255,0.08)] bg-[#07111B]/95 p-6 shadow-xl shadow-[#020D16]/5">
-      <div className="w-full max-w-sm rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4">
-        <SkeletonBlock className="mx-auto h-12 w-12 rounded-3xl bg-[#BEDC45]/20" />
+    <div className="flex min-h-dvh items-center justify-center border-x border-b border-club-border bg-club-bg p-6 shadow-xl shadow-club-greenDeep/5 sm:rounded-b-lg">
+      <div className="w-full max-w-sm rounded-lg border border-club-border bg-club-surface p-4">
+        <SkeletonBlock className="mx-auto h-12 w-12 rounded-lg bg-club-green/20" />
         <SkeletonBlock className="mx-auto mt-4 h-5 w-40" />
         <SkeletonBlock className="mx-auto mt-2 h-3 w-28" />
       </div>
@@ -519,7 +610,7 @@ function LoadingScreen() {
 function BottomNavigation({ items }) {
   const gridClass = items.length === 3 ? 'grid-cols-3' : 'grid-cols-4';
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#07111B]/95 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-2xl shadow-[#020D16]/30 backdrop-blur sm:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-club-bg/95 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-2xl shadow-club-greenDeep/30 backdrop-blur sm:hidden">
       <div className={`mx-auto grid max-w-6xl ${gridClass} gap-1`}>
         {items.map((item) => (
           <button
@@ -527,12 +618,12 @@ function BottomNavigation({ items }) {
             type="button"
             onClick={item.onClick}
             disabled={item.disabled}
-            className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-black transition ${
+            className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-xs font-black transition ${
               item.active
-                ? 'motion-soft-pop bg-[#BEDC45] text-[#020D16]'
+                ? 'motion-soft-pop bg-club-green text-club-greenDeep'
                 : item.disabled
                   ? 'cursor-not-allowed text-[#4E5A66]'
-                  : 'text-[#8D99A6] hover:bg-[#0A141E] hover:text-[#F7F8F7]'
+                  : 'text-club-muted hover:bg-club-surface hover:text-club-ink'
             }`}
           >
             {item.icon}

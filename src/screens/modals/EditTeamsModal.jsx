@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { updateTournamentRecord } from '../../utils/tournamentService';
+import { Button } from '../../components/Ui.jsx';
 
 export default function EditTeamsModal({ tournament, setTournament, onClose, showAlert, showToast }) {
   const [editableTeams, setEditableTeams] = useState(tournament.teams.map((team) => ({ ...team, players: [...team.players] })));
@@ -62,16 +63,20 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#020D16]/75 p-3 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-2xl sm:p-6">
-        <h3 className="mb-4 text-2xl font-black text-[#F7F8F7]">Edit Teams</h3>
-        <div className="mb-6 space-y-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-club-bg/75 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-club-border bg-club-surface p-4 shadow-2xl shadow-black/40 sm:p-5">
+        <div className="mb-4">
+          <p className="text-xs font-black uppercase tracking-wide text-club-muted">Tournament Actions</p>
+          <h3 className="mt-1 text-2xl font-black leading-tight text-club-ink">Edit Teams</h3>
+          <p className="mt-1 text-sm font-semibold text-club-muted">Changing one player swaps them with their current team.</p>
+        </div>
+        <div className="mb-5 space-y-3">
           {editableTeams.map((team, teamIndex) => (
-            <div key={team.id} className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-4">
-              <h4 className="mb-2 font-black text-[#F7F8F7]">Team {teamIndex + 1}</h4>
+            <div key={team.id} className="rounded-lg border border-club-border bg-club-soft p-3">
+              <h4 className="mb-2 font-black text-club-ink">Team {teamIndex + 1}</h4>
               <div className="space-y-2">
                 {team.players.map((player, playerIndex) => (
-                  <select key={playerIndex} value={player} onChange={(e) => handlePlayerChange(teamIndex, playerIndex, e.target.value)} className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-2 font-bold text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20">
+                  <select key={playerIndex} value={player} onChange={(e) => handlePlayerChange(teamIndex, playerIndex, e.target.value)} className="min-h-12 w-full rounded-lg border border-club-border bg-club-wash p-2 font-bold text-club-ink outline-none focus:border-club-green focus:ring-4 focus:ring-club-green/20">
                     {availablePlayers.map((p) => (
                       <option key={p} value={p}>
                         {p}
@@ -85,8 +90,8 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
           ))}
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <button onClick={onClose} className="min-h-12 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] py-2 font-black text-[#F7F8F7] hover:bg-[#07111B]">Cancel</button>
-          <button onClick={saveTeamChanges} disabled={isSaving} className="min-h-12 rounded-2xl bg-[#BEDC45] py-2 font-black text-[#020D16] hover:bg-[#D3F05A] disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? 'Saving...' : 'Save Changes'}</button>
+          <Button tone="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={saveTeamChanges} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
       </div>
     </div>

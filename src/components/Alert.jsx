@@ -5,10 +5,10 @@ export function CustomAlert({ title, message, onClose }) {
   const { t } = useI18n();
   return (
     <ViewportPopup>
-      <div className="w-full max-w-sm rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-5 text-center shadow-2xl">
-        <h3 className="mb-2 text-2xl font-black text-[#F7F8F7]">{title}</h3>
-        <p className="mb-5 text-sm font-semibold leading-relaxed text-[#8D99A6]">{message}</p>
-        <button onClick={onClose} className="min-h-12 rounded-2xl bg-[#BEDC45] px-8 py-2 font-black text-[#020D16] hover:bg-[#D3F05A]">
+      <div className="w-full max-w-sm rounded-lg border border-club-border bg-club-surface p-5 text-center shadow-2xl">
+        <h3 className="mb-2 text-2xl font-black text-club-ink">{title}</h3>
+        <p className="mb-5 text-sm font-semibold leading-relaxed text-club-muted">{message}</p>
+        <button onClick={onClose} className="min-h-12 rounded-lg bg-club-green px-8 py-2 font-black text-club-greenDeep hover:bg-club-greenDark">
           {t('common.confirm')}
         </button>
       </div>
@@ -23,22 +23,22 @@ export function ToastViewport({ toasts = [], onDismiss }) {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`pointer-events-auto flex items-start justify-between gap-3 rounded-2xl border p-3 shadow-2xl shadow-[#020D16]/30 backdrop-blur ${
+          className={`pointer-events-auto flex items-start justify-between gap-3 rounded-lg border p-3 shadow-2xl shadow-club-greenDeep/30 backdrop-blur ${
             toast.tone === 'success'
-              ? 'border-[#BEDC45]/35 bg-[#102018]/95'
+              ? 'border-club-borderStrong bg-club-surface/95'
               : toast.tone === 'danger'
                 ? 'border-[#DB4145]/35 bg-[#241014]/95'
-                : 'border-[rgba(255,255,255,0.08)] bg-[#0A141E]/95'
+                : 'border-club-border bg-club-surface/95'
           }`}
         >
           <div className={`min-w-0 ${isRtl ? 'text-right' : ''}`}>
-            <p className={`truncate text-sm font-black ${toast.tone === 'danger' ? 'text-[#DB4145]' : 'text-[#F7F8F7]'}`}>{toast.title}</p>
-            {toast.message && <p className="mt-0.5 line-clamp-2 text-xs font-semibold text-[#8D99A6]">{toast.message}</p>}
+            <p className={`truncate text-sm font-black ${toast.tone === 'danger' ? 'text-[#DB4145]' : 'text-club-ink'}`}>{toast.title}</p>
+            {toast.message && <p className="mt-0.5 line-clamp-2 text-xs font-semibold text-club-muted">{toast.message}</p>}
           </div>
           <button
             type="button"
             onClick={() => onDismiss?.(toast.id)}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-sm font-black text-[#8D99A6] hover:bg-[#07111B] hover:text-[#F7F8F7]"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-sm font-black text-club-muted hover:bg-club-wash hover:text-club-ink"
             aria-label="Dismiss notification"
           >
             x
@@ -55,14 +55,14 @@ export function ConfirmationModal({ title, message, onConfirm, onCancel }) {
   const { t } = useI18n();
   return (
     <ViewportPopup>
-      <div className="w-full max-w-sm rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-5 text-center shadow-2xl">
-        <h3 className="mb-2 text-2xl font-black text-[#F7F8F7]">{title}</h3>
-        <p className="mb-5 text-sm font-semibold leading-relaxed text-[#8D99A6]">{message}</p>
+      <div className="w-full max-w-sm rounded-lg border border-club-border bg-club-surface p-5 text-center shadow-2xl">
+        <h3 className="mb-2 text-2xl font-black text-club-ink">{title}</h3>
+        <p className="mb-5 text-sm font-semibold leading-relaxed text-club-muted">{message}</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <button onClick={onCancel} className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] py-2 font-black text-[#F7F8F7] hover:bg-[#07111B]">
+          <button onClick={onCancel} className="min-h-12 w-full rounded-lg border border-club-border bg-club-surface py-2 font-black text-club-ink hover:bg-club-wash">
             {t('common.cancel')}
           </button>
-          <button onClick={onConfirm} className="min-h-12 w-full rounded-2xl bg-[#DB4145] py-2 font-black text-white hover:bg-[#E04C50]">
+          <button onClick={onConfirm} className="min-h-12 w-full rounded-lg bg-[#DB4145] py-2 font-black text-white hover:bg-[#E04C50]">
             {t('common.confirm')}
           </button>
         </div>
@@ -73,7 +73,7 @@ export function ConfirmationModal({ title, message, onConfirm, onCancel }) {
 
 function ViewportPopup({ children }) {
   const popup = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-[#020D16]/75 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-club-bg/75 p-4 backdrop-blur-sm">
       {children}
     </div>
   );

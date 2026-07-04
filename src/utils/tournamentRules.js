@@ -177,6 +177,65 @@ export const reconcileTournamentCourts = (tournament, options = {}) => {
   };
 };
 
+export const promoteMatchToActiveCourt = ({ tournament, matchId, courtAssignments } = {}) => {
+  if (!tournament || !matchId) return reconcileTournamentCourts(tournament);
+
+  const pendingMatches = (tournament.matches || []).filter((match) => match.round === tournament.currentRound && match.status === 'pending');
+  const targetMatch = pendingMatches.find((match) => match.id === matchId);
+  if (!targetMatch) {
+    return reconcileTournamentCourts(tournament, { courtAssignments });
+  }
+
+  const courtCount = getSafeCourtCount(tournament.courtCount);
+  const currentCourtAssignments = buildCourtAssignments({
+    pendingMatches,
+    courtCount,
+    preferredMatchId: tournament.currentMatchId,
+    courtAssignments: courtAssignments || tournament.courtAssignments,
+  });
+
+  if (currentCourtAssignments.includes(matchId)) {
+    return reconcileTournamentCourts(tournament, {
+      courtAssignments: currentCourtAssignments,
+      preferredMatchId: matchId,
+    });
+  }
+
+  const pendingMatchMap = new Map(pendingMatches.map((match) => [match.id, match]));
+  const targetTeamIds = new Set(getMatchTeamIds(targetMatch));
+  const nextCourtAssignments = currentCourtAssignments.map((activeMatchId) => (activeMatchId === matchId ? null : activeMatchId));
+  const conflictsWithTarget = (activeMatchId) => {
+    const activeMatch = pendingMatchMap.get(activeMatchId);
+    return activeMatch ? getMatchTeamIds(activeMatch).some((teamId) => targetTeamIds.has(teamId)) : false;
+  };
+  const canUseSlot = (slotIndex) =>
+    nextCourtAssignments.every((activeMatchId, index) => !activeMatchId || index === slotIndex || !conflictsWithTarget(activeMatchId));
+
+  let slotIndex = nextCourtAssignments.findIndex((activeMatchId, index) => !activeMatchId && canUseSlot(index));
+  if (slotIndex === -1) {
+    slotIndex = nextCourtAssignments.findIndex((activeMatchId, index) => Boolean(activeMatchId) && canUseSlot(index));
+  }
+  if (slotIndex === -1) {
+    slotIndex = nextCourtAssignments.findIndex((activeMatchId) => conflictsWithTarget(activeMatchId));
+  }
+  if (slotIndex === -1) {
+    slotIndex = 0;
+  }
+
+  nextCourtAssignments[slotIndex] = matchId;
+
+  return reconcileTournamentCourts(
+    {
+      ...tournament,
+      currentMatchId: matchId,
+    },
+    {
+      courtAssignments: nextCourtAssignments,
+      preferredMatchId: matchId,
+    }
+  );
+};
+
 export const selectActiveMatches = (pendingMatches, courtCount, preferredMatchId, courtAssignments = []) => {
   const nextCourtAssignments = buildCourtAssignments({
     pendingMatches,

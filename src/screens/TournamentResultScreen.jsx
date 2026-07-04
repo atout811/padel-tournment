@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import MatchCard from '../components/MatchCard';
 import { ConfirmationModal } from '../components/Alert';
 import { CheckIcon, ListIcon, ShareIcon, TrophyIcon } from '../components/Icons';
+import { Button, MetricGrid, MetricItem, PageHeader, Panel, Pill, ScreenShell, SectionHeading } from '../components/Ui.jsx';
 import { fetchGroups } from '../utils/groupService';
 import { calculatePlayerMatchDeltas } from '../utils/playerProgressionService';
 import { reopenTournamentRecord } from '../utils/tournamentService';
@@ -16,14 +17,81 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 
 const getTeamName = (team) => team.players.join(' & ');
 
+function useResultSharing({ buildPayload, showAlert }) {
+  const [isSharingResult, setIsSharingResult] = useState(false);
+  const [isDownloadingPng, setIsDownloadingPng] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState('');
+
+  const handleShareWhatsApp = async () => {
+    const payload = buildPayload();
+    const shareText = buildResultShareText(payload);
+
+    try {
+      setIsSharingResult(true);
+      setShareFeedback('');
+
+      const imageBlob = await createResultCardBlob(payload);
+      const file = imageBlob && typeof File !== 'undefined'
+        ? new File([imageBlob], `${slugify(payload.title)}-tournament-summary.png`, { type: 'image/png' })
+        : null;
+
+      if (file && navigator.canShare?.({ files: [file], title: `${payload.title} tournament summary`, text: shareText })) {
+        await navigator.share({ files: [file], title: `${payload.title} tournament summary`, text: shareText });
+        setShareFeedback('Shared');
+        return;
+      }
+
+      if (imageBlob) {
+        downloadBlob(imageBlob, `${slugify(payload.title)}-tournament-summary.png`);
+      }
+      openWhatsAppShare(shareText);
+      setShareFeedback(imageBlob ? 'PNG downloaded' : 'WhatsApp opened');
+    } catch (error) {
+      if (error?.name !== 'AbortError') {
+        console.error('Error sharing WhatsApp summary:', error);
+        showAlert('WhatsApp Share Failed', 'Could not prepare the tournament summary for WhatsApp.');
+      }
+    } finally {
+      setIsSharingResult(false);
+      setTimeout(() => setShareFeedback(''), 2200);
+    }
+  };
+
+  const handleDownloadResultPng = async () => {
+    const payload = buildPayload();
+
+    try {
+      setIsDownloadingPng(true);
+      const imageBlob = await createResultCardBlob(payload);
+      if (!imageBlob) {
+        showAlert('Download Unavailable', 'Your browser could not generate the tournament summary image.');
+        return;
+      }
+      downloadBlob(imageBlob, `${slugify(payload.title)}-tournament-summary.png`);
+      setShareFeedback('PNG downloaded');
+    } catch (error) {
+      console.error('Error downloading tournament summary:', error);
+      showAlert('Download Failed', 'Could not download the tournament summary image.');
+    } finally {
+      setIsDownloadingPng(false);
+      setTimeout(() => setShareFeedback(''), 2200);
+    }
+  };
+
+  return {
+    isSharingResult,
+    isDownloadingPng,
+    shareFeedback,
+    handleShareWhatsApp,
+    handleDownloadResultPng,
+  };
+}
+
 export default function TournamentResultScreen({ tournament, showAlert, showToast, onResumeTournament, canManageTournament = false }) {
   const { language } = useI18n();
   const [groupName, setGroupName] = useState('');
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
-  const [isSharingResult, setIsSharingResult] = useState(false);
-  const [isDownloadingPng, setIsDownloadingPng] = useState(false);
-  const [shareFeedback, setShareFeedback] = useState('');
   const [showStandings, setShowStandings] = useState(false);
   const [showMatches, setShowMatches] = useState(false);
 
@@ -92,107 +160,39 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
       tournament,
       language,
     });
-
-  const handleShareWhatsApp = async () => {
-    const payload = buildCurrentResultPayload();
-    const shareText = buildResultShareText(payload);
-
-    try {
-      setIsSharingResult(true);
-      setShareFeedback('');
-
-      const imageBlob = await createResultCardBlob(payload);
-      const file = imageBlob && typeof File !== 'undefined'
-        ? new File([imageBlob], `${slugify(payload.title)}-tournament-summary.png`, { type: 'image/png' })
-        : null;
-
-      if (file && navigator.canShare?.({ files: [file], title: `${payload.title} tournament summary`, text: shareText })) {
-        await navigator.share({ files: [file], title: `${payload.title} tournament summary`, text: shareText });
-        setShareFeedback('Shared');
-        return;
-      }
-
-      if (imageBlob) {
-        downloadBlob(imageBlob, `${slugify(payload.title)}-tournament-summary.png`);
-      }
-      openWhatsAppShare(shareText);
-      setShareFeedback(imageBlob ? 'PNG downloaded' : 'WhatsApp opened');
-    } catch (error) {
-      if (error?.name !== 'AbortError') {
-        console.error('Error sharing WhatsApp summary:', error);
-        showAlert('WhatsApp Share Failed', 'Could not prepare the tournament summary for WhatsApp.');
-      }
-    } finally {
-      setIsSharingResult(false);
-      setTimeout(() => setShareFeedback(''), 2200);
-    }
-  };
-
-  const handleDownloadResultPng = async () => {
-    const payload = buildCurrentResultPayload();
-
-    try {
-      setIsDownloadingPng(true);
-      const imageBlob = await createResultCardBlob(payload);
-      if (!imageBlob) {
-        showAlert('Download Unavailable', 'Your browser could not generate the tournament summary image.');
-        return;
-      }
-      downloadBlob(imageBlob, `${slugify(payload.title)}-tournament-summary.png`);
-      setShareFeedback('PNG downloaded');
-    } catch (error) {
-      console.error('Error downloading tournament summary:', error);
-      showAlert('Download Failed', 'Could not download the tournament summary image.');
-    } finally {
-      setIsDownloadingPng(false);
-      setTimeout(() => setShareFeedback(''), 2200);
-    }
-  };
+  const { isSharingResult, isDownloadingPng, shareFeedback, handleShareWhatsApp, handleDownloadResultPng } = useResultSharing({
+    buildPayload: buildCurrentResultPayload,
+    showAlert,
+  });
 
   return (
-    <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 pb-24 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6 sm:pb-6">
-      <section className="rounded-3xl border border-[#BEDC45]/30 bg-[#0A141E] p-4 shadow-lg shadow-[#020D16]/20">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-[#BEDC45] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#020D16]">{statusLabel}</span>
-              <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{formatLabel}</span>
-              <span className="text-xs font-bold text-[#8D99A6]">{dateLabel}</span>
-            </div>
-            <p className="mt-4 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-[#BEDC45]">
-              <TrophyIcon className="h-5 w-5" />
-              Champions
-            </p>
-            <h2 className="mt-2 break-words text-3xl font-black leading-tight text-[#F7F8F7] sm:text-4xl">{champion ? getTeamName(champion) : 'Pending'}</h2>
-            <p className="mt-2 text-sm font-semibold text-[#8D99A6]">{title}</p>
-          </div>
-          {!isEnded ? (
-            <button
-              type="button"
-              onClick={() => onResumeTournament(tournament)}
-              className="min-h-11 shrink-0 rounded-2xl bg-[#BEDC45] px-4 text-sm font-black text-[#020D16] transition hover:bg-[#D3F05A]"
-            >
-              Resume
-            </button>
+    <ScreenShell className="pb-24 sm:pb-5">
+      <PageHeader
+        eyebrow="Night Result"
+        title={champion ? getTeamName(champion) : 'Pending'}
+        detail={title}
+        meta={
+          <>
+            <Pill tone="green">{statusLabel}</Pill>
+            <Pill>{formatLabel}</Pill>
+            <span className="inline-flex min-h-7 items-center text-xs font-bold text-club-muted">{dateLabel}</span>
+          </>
+        }
+        actions={
+          !isEnded ? (
+            <Button onClick={() => onResumeTournament(tournament)}>Resume</Button>
           ) : canManageTournament ? (
-            <button
-              type="button"
-              onClick={() => setShowReopenConfirm(true)}
-              disabled={isReopening}
-              className="min-h-11 shrink-0 rounded-2xl bg-[#BEDC45] px-4 text-sm font-black text-[#020D16] transition hover:bg-[#D3F05A] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Reopen
-            </button>
-          ) : null}
-        </div>
+            <Button onClick={() => setShowReopenConfirm(true)} disabled={isReopening}>Reopen</Button>
+          ) : null
+        }
+      />
 
-        <div className="mt-4 grid grid-cols-4 divide-x divide-[rgba(255,255,255,0.08)] rounded-2xl bg-[#07111B] px-2 py-2">
-          <ResultMini label="Teams" value={tournament.teams.length} />
-          <ResultMini label="Done" value={completedMatches.length} />
-          <ResultMini label="Waiting" value={pendingMatches.length} />
-          <ResultMini label="Courts" value={Math.max(1, Number(tournament.courtCount || 1))} />
-        </div>
-      </section>
+      <MetricGrid columns={4}>
+        <MetricItem label="Teams" value={tournament.teams.length} />
+        <MetricItem label="Done" value={completedMatches.length} />
+        <MetricItem label="Waiting" value={pendingMatches.length} />
+        <MetricItem label="Courts" value={Math.max(1, Number(tournament.courtCount || 1))} />
+      </MetricGrid>
 
       <ShareResultCard
         title={title}
@@ -212,7 +212,7 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
       />
 
       <DetailSection
-        icon={<ListIcon className="h-5 w-5 text-[#BEDC45]" />}
+        icon={<ListIcon className="h-5 w-5 text-club-muted" />}
         title="Final Ranking"
         count={leaderboard.length}
         open={showStandings}
@@ -227,7 +227,7 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
       </DetailSection>
 
       <DetailSection
-        icon={<CheckIcon className="h-5 w-5 text-[#BEDC45]" />}
+        icon={<CheckIcon className="h-5 w-5 text-club-muted" />}
         title="Matches"
         count={tournament.matches.length}
         open={showMatches}
@@ -248,33 +248,24 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
           onCancel={() => setShowReopenConfirm(false)}
         />
       )}
-    </div>
-  );
-}
-
-function ResultMini({ label, value }) {
-  return (
-    <div className="px-2 text-center">
-      <p className="text-lg font-black tabular-nums text-[#F7F8F7]">{value}</p>
-      <p className="mt-0.5 truncate text-[0.56rem] font-black uppercase tracking-wide text-[#8D99A6]">{label}</p>
-    </div>
+    </ScreenShell>
   );
 }
 
 function DetailSection({ icon, title, count, open, onToggle, children }) {
   return (
-    <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-3">
-      <button type="button" onClick={onToggle} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl px-1 text-left">
+    <Panel>
+      <button type="button" onClick={onToggle} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-1 text-left">
         <span className="flex min-w-0 items-center gap-2">
           {icon}
-          <span className="truncate text-sm font-black uppercase tracking-wide text-[#F7F8F7]">{title}</span>
+          <span className="truncate text-sm font-black uppercase tracking-wide text-club-ink">{title}</span>
         </span>
-        <span className="shrink-0 rounded-full bg-[#07111B] px-3 py-1 text-xs font-black tabular-nums text-[#BEDC45]">
+        <span className="shrink-0 rounded-md bg-club-wash px-3 py-1 text-xs font-black tabular-nums text-club-green">
           {open ? 'Hide' : count}
         </span>
       </button>
       {open && <div className="mt-3">{children}</div>}
-    </section>
+    </Panel>
   );
 }
 
@@ -307,54 +298,52 @@ function ShareResultCard({
   });
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-[#1F60D1]/60 bg-[#0A141E] shadow-lg shadow-[#020D16]/20">
-      <div className="bg-[#1F60D1]/16 p-4">
+    <Panel className="overflow-hidden p-0">
+      <div className="border-b border-club-border bg-club-soft p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-black uppercase tracking-wide text-[#BEDC45]">Social Brag</p>
-            <h3 className="mt-1 text-2xl font-black text-[#F7F8F7]">Share the Night</h3>
+            <p className="text-sm font-black uppercase tracking-wide text-club-muted">Share</p>
+            <h3 className="mt-1 text-2xl font-black text-club-ink">Share the Night</h3>
           </div>
           <div className="grid gap-2 sm:grid-cols-[auto_auto]">
-            <button
-              type="button"
+            <Button
+              tone="whatsapp"
               onClick={onShareWhatsApp}
               disabled={isSharing || isDownloading}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-5 font-black text-[#020D16] transition hover:bg-[#41E37D] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <ShareIcon className="h-5 w-5" />
               {isSharing ? 'Preparing...' : feedback || 'WhatsApp PNG'}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              tone="secondary"
               onClick={onDownloadPng}
               disabled={isSharing || isDownloading}
-              className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-5 font-black text-[#F7F8F7] transition hover:bg-[#0D1823] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isDownloading ? 'Preparing...' : 'Download PNG'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
       <div className="p-4">
-        <div className="rounded-3xl border border-[#BEDC45]/30 bg-[#020D16] p-5">
+        <div className="rounded-lg border border-club-border bg-club-bg p-5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[#BEDC45] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#020D16]">Padel Night</span>
-            <span className="rounded-full bg-[#0A141E] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{formatLabel}</span>
-            <span className="text-xs font-bold text-[#8D99A6]">{dateLabel}</span>
+            <Pill tone="green">Padel Night</Pill>
+            <Pill>{formatLabel}</Pill>
+            <span className="text-xs font-bold text-club-muted">{dateLabel}</span>
           </div>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
             <div className="min-w-0">
-              <p className="text-sm font-black uppercase tracking-wide text-[#BEDC45]">Champions of the Night</p>
-              <h4 className="mt-1 break-words text-3xl font-black leading-tight text-[#F7F8F7]">{payload.championName}</h4>
-              <p className="mt-2 text-sm font-bold text-[#8D99A6]">{title}</p>
+              <p className="text-sm font-black uppercase tracking-wide text-club-muted">Champions of the Night</p>
+              <h4 className="mt-1 break-words text-3xl font-black leading-tight text-club-ink">{payload.championName}</h4>
+              <p className="mt-2 text-sm font-bold text-club-muted">{title}</p>
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:min-w-72">
-              <ResultCardMiniStat label="Matches" value={payload.matchesPlayed} />
-              <ResultCardMiniStat label="Teams" value={payload.teamCount} />
-              <ResultCardMiniStat label="Courts" value={payload.courtCount} />
-            </div>
+            <MetricGrid columns={3} className="sm:min-w-72">
+              <MetricItem label="Matches" value={payload.matchesPlayed} />
+              <MetricItem label="Teams" value={payload.teamCount} />
+              <MetricItem label="Courts" value={payload.courtCount} />
+            </MetricGrid>
           </div>
 
           {payload.awards.length > 0 && (
@@ -366,13 +355,13 @@ function ShareResultCard({
           )}
 
           {payload.topTeams.length > 1 && (
-            <div className="mt-5 rounded-2xl bg-[#0A141E] p-3">
-              <p className="text-[0.62rem] font-black uppercase tracking-wide text-[#8D99A6]">Runner Up</p>
+            <div className="mt-5 rounded-lg bg-club-surface p-3">
+              <p className="text-[0.62rem] font-black uppercase tracking-wide text-club-muted">Runner Up</p>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {payload.topTeams.slice(1, 3).map((team) => (
-                  <div key={`${team.rank}-${team.name}`} className="flex min-w-0 items-center gap-2 rounded-2xl bg-[#07111B] px-3 py-2">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#0A141E] text-sm font-black text-[#BEDC45]">#{team.rank}</span>
-                    <p className="truncate text-sm font-black text-[#F7F8F7]">{team.name}</p>
+                  <div key={`${team.rank}-${team.name}`} className="flex min-w-0 items-center gap-2 rounded-lg bg-club-wash px-3 py-2">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-club-surface text-sm font-black text-club-green">#{team.rank}</span>
+                    <p className="truncate text-sm font-black text-club-ink">{team.name}</p>
                   </div>
                 ))}
               </div>
@@ -380,25 +369,16 @@ function ShareResultCard({
           )}
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }
 
 function AwardTile({ award }) {
   return (
-    <div className="rounded-2xl bg-[#07111B] p-3">
-      <p className="truncate text-[0.62rem] font-black uppercase tracking-wide text-[#8D99A6]">{award.label}</p>
-      <p className="mt-1 truncate text-sm font-black text-[#F7F8F7]">{award.value}</p>
-      {award.detail && <p className="mt-1 truncate text-xs font-bold text-[#BEDC45]">{award.detail}</p>}
-    </div>
-  );
-}
-
-function ResultCardMiniStat({ label, value }) {
-  return (
-    <div className="rounded-2xl bg-[#0A141E] p-2 text-center">
-      <p className="text-xl font-black tabular-nums text-[#F7F8F7]">{value}</p>
-      <p className="mt-0.5 truncate text-[0.58rem] font-bold uppercase tracking-wide text-[#8D99A6]">{label}</p>
+    <div className="rounded-lg bg-club-wash p-3">
+      <p className="truncate text-[0.62rem] font-black uppercase tracking-wide text-club-muted">{award.label}</p>
+      <p className="mt-1 truncate text-sm font-black text-club-ink">{award.value}</p>
+      {award.detail && <p className="mt-1 truncate text-xs font-bold text-club-green">{award.detail}</p>}
     </div>
   );
 }
@@ -416,9 +396,6 @@ export function TournamentSummaryShareCard({
   showAlert,
 }) {
   const { language } = useI18n();
-  const [isSharingResult, setIsSharingResult] = useState(false);
-  const [isDownloadingPng, setIsDownloadingPng] = useState(false);
-  const [shareFeedback, setShareFeedback] = useState('');
 
   const buildCurrentResultPayload = () =>
     buildResultSharePayload({
@@ -433,62 +410,10 @@ export function TournamentSummaryShareCard({
       tournament,
       language,
     });
-
-  const handleShareWhatsApp = async () => {
-    const payload = buildCurrentResultPayload();
-    const shareText = buildResultShareText(payload);
-
-    try {
-      setIsSharingResult(true);
-      setShareFeedback('');
-
-      const imageBlob = await createResultCardBlob(payload);
-      const file = imageBlob && typeof File !== 'undefined'
-        ? new File([imageBlob], `${slugify(payload.title)}-tournament-summary.png`, { type: 'image/png' })
-        : null;
-
-      if (file && navigator.canShare?.({ files: [file], title: `${payload.title} tournament summary`, text: shareText })) {
-        await navigator.share({ files: [file], title: `${payload.title} tournament summary`, text: shareText });
-        setShareFeedback('Shared');
-        return;
-      }
-
-      if (imageBlob) {
-        downloadBlob(imageBlob, `${slugify(payload.title)}-tournament-summary.png`);
-      }
-      openWhatsAppShare(shareText);
-      setShareFeedback(imageBlob ? 'PNG downloaded' : 'WhatsApp opened');
-    } catch (error) {
-      if (error?.name !== 'AbortError') {
-        console.error('Error sharing WhatsApp summary:', error);
-        showAlert('WhatsApp Share Failed', 'Could not prepare the tournament summary for WhatsApp.');
-      }
-    } finally {
-      setIsSharingResult(false);
-      setTimeout(() => setShareFeedback(''), 2200);
-    }
-  };
-
-  const handleDownloadResultPng = async () => {
-    const payload = buildCurrentResultPayload();
-
-    try {
-      setIsDownloadingPng(true);
-      const imageBlob = await createResultCardBlob(payload);
-      if (!imageBlob) {
-        showAlert('Download Unavailable', 'Your browser could not generate the tournament summary image.');
-        return;
-      }
-      downloadBlob(imageBlob, `${slugify(payload.title)}-tournament-summary.png`);
-      setShareFeedback('PNG downloaded');
-    } catch (error) {
-      console.error('Error downloading tournament summary:', error);
-      showAlert('Download Failed', 'Could not download the tournament summary image.');
-    } finally {
-      setIsDownloadingPng(false);
-      setTimeout(() => setShareFeedback(''), 2200);
-    }
-  };
+  const { isSharingResult, isDownloadingPng, shareFeedback, handleShareWhatsApp, handleDownloadResultPng } = useResultSharing({
+    buildPayload: buildCurrentResultPayload,
+    showAlert,
+  });
 
   return (
     <ShareResultCard
@@ -512,16 +437,16 @@ export function TournamentSummaryShareCard({
 
 function RankingRow({ team, rank, stats }) {
   return (
-    <div className="grid grid-cols-[40px_1fr_auto] items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-3">
-      <span className={`grid h-10 w-10 place-items-center rounded-2xl text-sm font-black ${rank === 1 ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#8D99A6]'}`}>{rank}</span>
+    <div className="grid grid-cols-[40px_1fr_auto] items-center gap-3 rounded-lg border border-club-border bg-club-soft p-3">
+      <span className={`grid h-10 w-10 place-items-center rounded-lg text-sm font-black ${rank === 1 ? 'bg-club-green text-club-greenDeep' : 'bg-club-wash text-club-muted'}`}>{rank}</span>
       <div className="min-w-0">
-        <p className="truncate font-black text-[#F7F8F7]">{getTeamName(team)}</p>
-        <p className="mt-0.5 text-xs font-bold text-[#8D99A6]">
+        <p className="truncate font-black text-club-ink">{getTeamName(team)}</p>
+        <p className="mt-0.5 text-xs font-bold text-club-muted">
           {stats.wins}-{stats.losses} / {stats.diff > 0 ? '+' : ''}
           {stats.diff}
         </p>
       </div>
-      <p className="text-lg font-black tabular-nums text-[#BEDC45]">{stats.points}</p>
+      <p className="text-lg font-black tabular-nums text-club-green">{stats.points}</p>
     </div>
   );
 }
@@ -798,10 +723,10 @@ function drawResultCanvas(ctx, payload, width, height) {
     return;
   }
 
-  ctx.fillStyle = '#BEDC45';
+  ctx.fillStyle = '#B9D94C';
   ctx.fillRect(0, 0, width, height);
 
-  ctx.fillStyle = '#020D16';
+  ctx.fillStyle = '#050607';
   ctx.beginPath();
   ctx.moveTo(0, 580);
   ctx.lineTo(width, 420);
@@ -810,30 +735,30 @@ function drawResultCanvas(ctx, payload, width, height) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = 'rgba(2, 13, 22, 0.12)';
+  ctx.fillStyle = 'rgba(5, 6, 7, 0.12)';
   ctx.beginPath();
   ctx.arc(width - 120, 170, 300, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#020D16';
+  ctx.fillStyle = '#050607';
   ctx.font = '900 34px Arial';
   ctx.fillText('الملعب ولّع', 72, 110);
 
-  ctx.fillStyle = 'rgba(2, 13, 22, 0.72)';
+  ctx.fillStyle = 'rgba(5, 6, 7, 0.72)';
   ctx.font = '900 26px Arial';
   ctx.textAlign = 'right';
   ctx.fillText(`${getArabicFormatLabel(payload.formatLabel)} / ${payload.dateLabel}`, width - 72, 110);
   ctx.textAlign = 'left';
 
-  ctx.fillStyle = '#020D16';
+  ctx.fillStyle = '#050607';
   ctx.font = '900 42px Arial';
   ctx.fillText('ملوك الليلة', 72, 250);
 
   ctx.font = '900 92px Arial';
   drawCanvasText(ctx, payload.championName, 72, 375, width - 144, 104, 2);
 
-  drawCanvasPanel(ctx, 72, 570, width - 144, 112, 32, '#020D16', '#020D16');
-  ctx.fillStyle = '#BEDC45';
+  drawCanvasPanel(ctx, 72, 570, width - 144, 112, 32, '#050607', '#050607');
+  ctx.fillStyle = '#B9D94C';
   ctx.font = '900 28px Arial';
   drawCanvasText(ctx, payload.title, 112, 635, width - 224, 32, 1);
 
@@ -845,18 +770,18 @@ function drawResultCanvas(ctx, payload, width, height) {
     ['ملاعب', payload.courtCount],
   ].forEach(([label, value], index) => {
     const x = 72 + index * (statWidth + 48);
-    drawCanvasPanel(ctx, x, statY, statWidth, 130, 28, index === 0 ? '#BEDC45' : '#0A141E', index === 0 ? '#BEDC45' : 'rgba(255,255,255,0.12)');
-    ctx.fillStyle = index === 0 ? '#020D16' : '#F7F8F7';
+    drawCanvasPanel(ctx, x, statY, statWidth, 130, 28, index === 0 ? '#B9D94C' : '#101214', index === 0 ? '#B9D94C' : 'rgba(255,255,255,0.12)');
+    ctx.fillStyle = index === 0 ? '#050607' : '#F4F5F2';
     ctx.font = '900 50px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(String(value), x + statWidth / 2, statY + 60);
-    ctx.fillStyle = index === 0 ? 'rgba(2,13,22,0.68)' : '#8D99A6';
+    ctx.fillStyle = index === 0 ? 'rgba(5,6,7,0.68)' : '#989FA6';
     ctx.font = '900 20px Arial';
     ctx.fillText(label, x + statWidth / 2, statY + 100);
     ctx.textAlign = 'left';
   });
 
-  ctx.fillStyle = '#F7F8F7';
+  ctx.fillStyle = '#F4F5F2';
   ctx.font = '900 34px Arial';
   ctx.fillText('لقطات الليلة', 72, 975);
 
@@ -864,15 +789,15 @@ function drawResultCanvas(ctx, payload, width, height) {
     payload.awards.slice(0, 3).forEach((award, index) => {
       const y = 1035 + index * 160;
       const isMainAward = index === 0;
-      drawCanvasPanel(ctx, 72, y, width - 144, 118, 30, isMainAward ? '#BEDC45' : '#0A141E', isMainAward ? '#BEDC45' : 'rgba(255,255,255,0.12)');
-      ctx.fillStyle = isMainAward ? '#020D16' : '#BEDC45';
+      drawCanvasPanel(ctx, 72, y, width - 144, 118, 30, isMainAward ? '#B9D94C' : '#101214', isMainAward ? '#B9D94C' : 'rgba(255,255,255,0.12)');
+      ctx.fillStyle = isMainAward ? '#050607' : '#B9D94C';
       ctx.font = '900 24px Arial';
       ctx.fillText(getArabicAwardLabel(award.label), 116, y + 42);
-      ctx.fillStyle = isMainAward ? '#020D16' : '#F7F8F7';
+      ctx.fillStyle = isMainAward ? '#050607' : '#F4F5F2';
       ctx.font = '900 34px Arial';
       ctx.fillText(trimCanvasText(ctx, award.value, 520), 116, y + 86);
       if (award.detail) {
-        ctx.fillStyle = isMainAward ? 'rgba(2,13,22,0.72)' : '#8D99A6';
+        ctx.fillStyle = isMainAward ? 'rgba(5,6,7,0.72)' : '#989FA6';
         ctx.font = '900 24px Arial';
         ctx.textAlign = 'right';
         ctx.fillText(trimCanvasText(ctx, getArabicAwardDetail(award), 260), width - 116, y + 72);
@@ -880,33 +805,33 @@ function drawResultCanvas(ctx, payload, width, height) {
       }
     });
   } else if (payload.mvpRatingDelta > 0) {
-    ctx.fillStyle = '#BEDC45';
+    ctx.fillStyle = '#B9D94C';
     ctx.font = '900 34px Arial';
     ctx.textAlign = 'right';
     ctx.fillText(`${formatSignedNumber(payload.mvpRatingDelta)} rating pts`, width - 156, 1140);
     ctx.textAlign = 'left';
   } else {
-    ctx.fillStyle = '#8D99A6';
+    ctx.fillStyle = '#989FA6';
     ctx.font = '800 28px Arial';
     drawCanvasText(ctx, 'الجوائز بتظهر بعد نتيجة الجروب.', 72, 1060, width - 144, 34, 2);
   }
 
-  drawCanvasPanel(ctx, 72, 1550, width - 144, 230, 36, '#07111B', 'rgba(255,255,255,0.12)');
-  ctx.fillStyle = '#BEDC45';
+  drawCanvasPanel(ctx, 72, 1550, width - 144, 230, 36, '#101214', 'rgba(255,255,255,0.12)');
+  ctx.fillStyle = '#B9D94C';
   ctx.font = '900 28px Arial';
   ctx.fillText('قريبين أوي', 116, 1618);
 
   payload.topTeams.slice(1, 3).forEach((team, index) => {
     const y = 1650 + index * 64;
-    ctx.fillStyle = '#BEDC45';
+    ctx.fillStyle = '#B9D94C';
     ctx.font = '900 26px Arial';
     ctx.fillText(`#${team.rank}`, 116, y + 42);
-    ctx.fillStyle = '#F7F8F7';
+    ctx.fillStyle = '#F4F5F2';
     ctx.font = '900 26px Arial';
     ctx.fillText(trimCanvasText(ctx, team.name, 660), 190, y + 42);
   });
 
-  ctx.fillStyle = '#8D99A6';
+  ctx.fillStyle = '#989FA6';
   ctx.font = '900 22px Arial';
   ctx.textAlign = 'center';
   ctx.fillText(
@@ -918,10 +843,10 @@ function drawResultCanvas(ctx, payload, width, height) {
 }
 
 function drawEnglishResultCanvas(ctx, payload, width, height) {
-  ctx.fillStyle = '#BEDC45';
+  ctx.fillStyle = '#B9D94C';
   ctx.fillRect(0, 0, width, height);
 
-  ctx.fillStyle = '#020D16';
+  ctx.fillStyle = '#050607';
   ctx.beginPath();
   ctx.moveTo(0, 580);
   ctx.lineTo(width, 420);
@@ -930,30 +855,30 @@ function drawEnglishResultCanvas(ctx, payload, width, height) {
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = 'rgba(2, 13, 22, 0.12)';
+  ctx.fillStyle = 'rgba(5, 6, 7, 0.12)';
   ctx.beginPath();
   ctx.arc(width - 120, 170, 300, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#020D16';
+  ctx.fillStyle = '#050607';
   ctx.font = '900 34px Arial';
   ctx.fillText('PADEL NIGHT', 72, 110);
 
-  ctx.fillStyle = 'rgba(2, 13, 22, 0.72)';
+  ctx.fillStyle = 'rgba(5, 6, 7, 0.72)';
   ctx.font = '900 26px Arial';
   ctx.textAlign = 'right';
   ctx.fillText(`${payload.formatLabel} / ${payload.dateLabel}`, width - 72, 110);
   ctx.textAlign = 'left';
 
-  ctx.fillStyle = '#020D16';
+  ctx.fillStyle = '#050607';
   ctx.font = '900 42px Arial';
   ctx.fillText('CHAMPIONS OF THE NIGHT', 72, 250);
 
   ctx.font = '900 92px Arial';
   drawCanvasText(ctx, payload.championName, 72, 375, width - 144, 104, 2);
 
-  drawCanvasPanel(ctx, 72, 570, width - 144, 112, 32, '#020D16', '#020D16');
-  ctx.fillStyle = '#BEDC45';
+  drawCanvasPanel(ctx, 72, 570, width - 144, 112, 32, '#050607', '#050607');
+  ctx.fillStyle = '#B9D94C';
   ctx.font = '900 28px Arial';
   drawCanvasText(ctx, payload.title, 112, 635, width - 224, 32, 1);
 
@@ -965,18 +890,18 @@ function drawEnglishResultCanvas(ctx, payload, width, height) {
     ['COURTS', payload.courtCount],
   ].forEach(([label, value], index) => {
     const x = 72 + index * (statWidth + 48);
-    drawCanvasPanel(ctx, x, statY, statWidth, 130, 28, index === 0 ? '#BEDC45' : '#0A141E', index === 0 ? '#BEDC45' : 'rgba(255,255,255,0.12)');
-    ctx.fillStyle = index === 0 ? '#020D16' : '#F7F8F7';
+    drawCanvasPanel(ctx, x, statY, statWidth, 130, 28, index === 0 ? '#B9D94C' : '#101214', index === 0 ? '#B9D94C' : 'rgba(255,255,255,0.12)');
+    ctx.fillStyle = index === 0 ? '#050607' : '#F4F5F2';
     ctx.font = '900 50px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(String(value), x + statWidth / 2, statY + 60);
-    ctx.fillStyle = index === 0 ? 'rgba(2,13,22,0.68)' : '#8D99A6';
+    ctx.fillStyle = index === 0 ? 'rgba(5,6,7,0.68)' : '#989FA6';
     ctx.font = '900 20px Arial';
     ctx.fillText(label, x + statWidth / 2, statY + 100);
     ctx.textAlign = 'left';
   });
 
-  ctx.fillStyle = '#F7F8F7';
+  ctx.fillStyle = '#F4F5F2';
   ctx.font = '900 34px Arial';
   ctx.fillText('NIGHT HIGHLIGHTS', 72, 975);
 
@@ -984,15 +909,15 @@ function drawEnglishResultCanvas(ctx, payload, width, height) {
     payload.awards.slice(0, 3).forEach((award, index) => {
       const y = 1035 + index * 160;
       const isMainAward = index === 0;
-      drawCanvasPanel(ctx, 72, y, width - 144, 118, 30, isMainAward ? '#BEDC45' : '#0A141E', isMainAward ? '#BEDC45' : 'rgba(255,255,255,0.12)');
-      ctx.fillStyle = isMainAward ? '#020D16' : '#BEDC45';
+      drawCanvasPanel(ctx, 72, y, width - 144, 118, 30, isMainAward ? '#B9D94C' : '#101214', isMainAward ? '#B9D94C' : 'rgba(255,255,255,0.12)');
+      ctx.fillStyle = isMainAward ? '#050607' : '#B9D94C';
       ctx.font = '900 24px Arial';
       ctx.fillText(award.label.toUpperCase(), 116, y + 42);
-      ctx.fillStyle = isMainAward ? '#020D16' : '#F7F8F7';
+      ctx.fillStyle = isMainAward ? '#050607' : '#F4F5F2';
       ctx.font = '900 34px Arial';
       ctx.fillText(trimCanvasText(ctx, award.value, 520), 116, y + 86);
       if (award.detail) {
-        ctx.fillStyle = isMainAward ? 'rgba(2,13,22,0.72)' : '#8D99A6';
+        ctx.fillStyle = isMainAward ? 'rgba(5,6,7,0.72)' : '#989FA6';
         ctx.font = '900 24px Arial';
         ctx.textAlign = 'right';
         ctx.fillText(trimCanvasText(ctx, award.detail, 260), width - 116, y + 72);
@@ -1000,27 +925,27 @@ function drawEnglishResultCanvas(ctx, payload, width, height) {
       }
     });
   } else {
-    ctx.fillStyle = '#8D99A6';
+    ctx.fillStyle = '#989FA6';
     ctx.font = '800 28px Arial';
     drawCanvasText(ctx, 'Highlights appear after group results.', 72, 1060, width - 144, 34, 2);
   }
 
-  drawCanvasPanel(ctx, 72, 1550, width - 144, 230, 36, '#07111B', 'rgba(255,255,255,0.12)');
-  ctx.fillStyle = '#BEDC45';
+  drawCanvasPanel(ctx, 72, 1550, width - 144, 230, 36, '#101214', 'rgba(255,255,255,0.12)');
+  ctx.fillStyle = '#B9D94C';
   ctx.font = '900 28px Arial';
   ctx.fillText('RUNNERS UP', 116, 1618);
 
   payload.topTeams.slice(1, 3).forEach((team, index) => {
     const y = 1650 + index * 64;
-    ctx.fillStyle = '#BEDC45';
+    ctx.fillStyle = '#B9D94C';
     ctx.font = '900 26px Arial';
     ctx.fillText(`#${team.rank}`, 116, y + 42);
-    ctx.fillStyle = '#F7F8F7';
+    ctx.fillStyle = '#F4F5F2';
     ctx.font = '900 26px Arial';
     ctx.fillText(trimCanvasText(ctx, team.name, 660), 190, y + 42);
   });
 
-  ctx.fillStyle = '#8D99A6';
+  ctx.fillStyle = '#989FA6';
   ctx.font = '900 22px Arial';
   ctx.textAlign = 'center';
   ctx.fillText(

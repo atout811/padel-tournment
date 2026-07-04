@@ -48,9 +48,11 @@ const getCachedScoreToken = (tournamentId) => {
   return cachedTournament?.id === tournamentId ? cachedTournament.scoreToken || null : null;
 };
 
+const getAvailableScoreToken = (tournamentId) => getScoreTokenFromUrl(tournamentId) || getCachedScoreToken(tournamentId);
+
 const attachAvailableScoreToken = (tournament) => {
   if (!tournament?.id) return tournament;
-  const scoreToken = tournament.scoreToken || getScoreTokenFromUrl(tournament.id) || getCachedScoreToken(tournament.id);
+  const scoreToken = tournament.scoreToken || getAvailableScoreToken(tournament.id);
   return scoreToken ? { ...tournament, scoreToken } : tournament;
 };
 
@@ -75,6 +77,38 @@ const mergeTournamentHistory = (tournaments) => {
 const isPermissionError = (error) => {
   const message = String(error?.message || '').toLowerCase();
   return error?.code === '42501' || message.includes('row-level security') || message.includes('permission denied');
+};
+
+const fetchSharedTournamentByToken = async (tournamentId, scoreToken) => {
+  if (!supabase || !tournamentId || !scoreToken) return null;
+
+  const { data, error } = await supabase.rpc('get_shared_tournament', {
+    p_tournament_id: tournamentId,
+    p_score_token: scoreToken,
+  });
+
+  if (error) {
+    throw new Error(`Failed to load shared tournament: ${error.message}`);
+  }
+
+  return data ? attachAvailableScoreToken({ ...data, id: data.id || tournamentId, scoreToken }) : null;
+};
+
+const updateSharedTournamentRecord = async (record, publicRecord) => {
+  const { data, error } = await supabase.rpc('update_shared_tournament_score', {
+    p_tournament_id: record.id,
+    p_score_token: record.scoreToken,
+    p_tournament_data: publicRecord,
+  });
+
+  if (error) {
+    throw new Error(`Failed to update tournament: ${error.message}`);
+  }
+
+  const sharedRecord = attachAvailableScoreToken({ ...(data || publicRecord), id: record.id, scoreToken: record.scoreToken });
+  cacheTournament(sharedRecord);
+  cacheTournamentHistory(sharedRecord);
+  return sharedRecord;
 };
 
 export const createTournamentRecord = async (tournament) => {
@@ -134,6 +168,11 @@ export const updateTournamentRecord = async (tournament) => {
 
   const publicRecord = removePrivateTournamentFields(record);
   const scoreTokenHash = await hashScoreToken(record.scoreToken);
+  const currentOwnerId = await getCurrentOwnerId();
+
+  if (record.scoreToken && record.ownerId && record.ownerId !== currentOwnerId) {
+    return updateSharedTournamentRecord(record, publicRecord);
+  }
 
   const updatePayload = {
     data: publicRecord,
@@ -151,20 +190,7 @@ export const updateTournamentRecord = async (tournament) => {
     .single();
 
   if (error && record.scoreToken && isPermissionError(error)) {
-    const { data, error: rpcError } = await supabase.rpc('update_shared_tournament_score', {
-      p_tournament_id: record.id,
-      p_score_token: record.scoreToken,
-      p_tournament_data: publicRecord,
-    });
-
-    if (rpcError) {
-      throw new Error(`Failed to update tournament: ${rpcError.message}`);
-    }
-
-    const sharedRecord = attachAvailableScoreToken({ ...(data || publicRecord), id: record.id, scoreToken: record.scoreToken });
-    cacheTournament(sharedRecord);
-    cacheTournamentHistory(sharedRecord);
-    return sharedRecord;
+    return updateSharedTournamentRecord(record, publicRecord);
   }
 
   if (error) {
@@ -186,24 +212,35 @@ export const fetchTournamentById = async (tournamentId) => {
     return cachedTournament?.id === tournamentId ? cachedTournament : null;
   }
 
+  const scoreToken = getAvailableScoreToken(tournamentId);
   const { data, error } = await supabase
     .from('tournaments')
     .select('data, owner_id')
     .eq('id', tournamentId)
     .maybeSingle();
 
+  if (!error && data?.data) {
+    const tournament = attachAvailableScoreToken({ ...data.data, ownerId: data.owner_id || data.data.ownerId });
+
+    cacheTournament(tournament);
+    cacheTournamentHistory(tournament);
+    return tournament;
+  }
+
+  if (scoreToken) {
+    const sharedTournament = await fetchSharedTournamentByToken(tournamentId, scoreToken);
+    if (sharedTournament) {
+      cacheTournament(sharedTournament);
+      cacheTournamentHistory(sharedTournament);
+      return sharedTournament;
+    }
+  }
+
   if (error) {
     throw new Error(`Failed to load tournament: ${error.message}`);
   }
 
-  const tournament = data?.data ? attachAvailableScoreToken({ ...data.data, ownerId: data.owner_id || data.data.ownerId }) : null;
-
-  if (tournament) {
-    cacheTournament(tournament);
-    cacheTournamentHistory(tournament);
-  }
-
-  return tournament;
+  return null;
 };
 
 export const fetchTournamentHistory = async () => {

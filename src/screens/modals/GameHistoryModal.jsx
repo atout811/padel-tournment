@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { updateTournamentRecord } from '../../utils/tournamentService';
 import { summarizePadelScore } from '../../utils/padelScoring';
 import { reconcileCupProgression, reconcileTournamentCourts, syncTeamPointsFromMatches } from '../../utils/tournamentRules';
+import { Button, EmptyState, Pill } from '../../components/Ui.jsx';
 
 const getTeamName = (team) => team.players.join(' & ');
 
@@ -63,61 +64,62 @@ export default function GameHistoryModal({ tournament, courtAssignments = [], se
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#020D16]/75 p-3 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-2xl sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-club-bg/75 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-club-border bg-club-surface p-4 shadow-2xl shadow-black/40 sm:p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-2xl font-black text-[#F7F8F7]">Match History</h3>
-            <p className="text-sm font-semibold text-[#8D99A6]">{completedMatches.length} completed matches</p>
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-wide text-club-muted">Tournament Actions</p>
+            <h3 className="mt-1 text-2xl font-black leading-tight text-club-ink">Match Log</h3>
+            <p className="mt-1 text-sm font-semibold text-club-muted">{completedMatches.length} completed match{completedMatches.length === 1 ? '' : 'es'}</p>
           </div>
-          <button onClick={onClose} className="min-h-10 rounded-2xl border border-[rgba(255,255,255,0.08)] px-3 text-sm font-black text-[#F7F8F7] hover:bg-[#07111B]">
+          <Button tone="secondary" size="sm" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
 
         {completedMatches.length === 0 ? (
-          <p className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#0D1823] py-8 text-center font-bold text-[#8D99A6]">No completed matches yet.</p>
+          <EmptyState title="No completed matches yet." />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {completedMatches.map((match) => {
               const teamAWon = match.winnerId === match.teamA.id;
               const teamBWon = match.winnerId === match.teamB.id;
               const hasScore = Number.isFinite(Number(match.score?.teamA)) && Number.isFinite(Number(match.score?.teamB));
               const padelScoreSummary = summarizePadelScore(match.score, match.teamA.id, match.teamB.id);
               return (
-                <div key={match.id} className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-4">
+                <div key={match.id} className="rounded-lg border border-club-border bg-club-soft p-3">
                   <div className="mb-3 grid grid-cols-[1fr_auto] gap-3">
                     <div className="min-w-0 space-y-2">
-                      <p className={`break-words font-black ${teamAWon ? 'text-[#BEDC45]' : 'text-[#F7F8F7]'}`}>{getTeamName(match.teamA)}</p>
-                      <p className={`break-words font-black ${teamBWon ? 'text-[#BEDC45]' : 'text-[#F7F8F7]'}`}>{getTeamName(match.teamB)}</p>
+                      <p className={`break-words font-black ${teamAWon ? 'text-club-green' : 'text-club-ink'}`}>{getTeamName(match.teamA)}</p>
+                      <p className={`break-words font-black ${teamBWon ? 'text-club-green' : 'text-club-ink'}`}>{getTeamName(match.teamB)}</p>
                     </div>
                     <div className="grid content-center gap-2 text-center">
                       {padelScoreSummary ? (
-                        <span className="max-w-32 rounded-2xl bg-[#0A141E] px-3 py-2 text-xs font-black leading-relaxed text-[#F7F8F7]">
+                        <span className="max-w-32 rounded-md bg-club-wash px-3 py-2 text-xs font-black leading-relaxed text-club-ink">
                           {padelScoreSummary}
                         </span>
                       ) : hasScore ? (
                         <>
-                          <span className="rounded-2xl bg-[#0A141E] px-3 py-1 text-lg font-black tabular-nums text-[#F7F8F7]">{match.score.teamA}</span>
-                          <span className="rounded-2xl bg-[#0A141E] px-3 py-1 text-lg font-black tabular-nums text-[#F7F8F7]">{match.score.teamB}</span>
+                          <span className="rounded-md bg-club-wash px-3 py-1 text-lg font-black tabular-nums text-club-ink">{match.score.teamA}</span>
+                          <span className="rounded-md bg-club-wash px-3 py-1 text-lg font-black tabular-nums text-club-ink">{match.score.teamB}</span>
                         </>
                       ) : (
-                        <span className="text-xs font-bold text-[#8D99A6]">No score</span>
+                        <span className="text-xs font-bold text-club-muted">No score</span>
                       )}
                     </div>
                   </div>
                   {readOnly ? (
-                    <p className="border-t border-[rgba(255,255,255,0.08)] pt-3 text-sm font-black text-[#BEDC45]">
-                      Winner: {getWinnerName(match)}
-                    </p>
+                    <div className="border-t border-club-border pt-3">
+                      <Pill tone="greenSoft">Winner: {getWinnerName(match)}</Pill>
+                    </div>
                   ) : (
-                    <div className="border-t border-[rgba(255,255,255,0.08)] pt-3">
-                      <label className="mb-2 block text-sm font-black text-[#8D99A6]">Change Winner</label>
+                    <div className="border-t border-club-border pt-3">
+                      <label className="mb-2 block text-sm font-black text-club-muted">Change Winner</label>
                       <select
                         value={match.winnerId || ''}
                         onChange={(e) => handleWinnerChange(match, e.target.value)}
                         disabled={updatingMatchId === match.id}
-                        className="min-h-12 w-full rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] p-2 font-bold text-[#F7F8F7] outline-none focus:border-[#BEDC45] focus:ring-4 focus:ring-[#BEDC45]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="min-h-12 w-full rounded-lg border border-club-border bg-club-wash p-2 font-bold text-club-ink outline-none focus:border-club-green focus:ring-4 focus:ring-club-green/20 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <option value="">No Winner</option>
                         <option value={match.teamA.id}>{getTeamName(match.teamA)}</option>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchGroupLeaderboard, getInitialRatingFromLevel, getPlayerWinRate, calculatePlayerMatchDeltas } from '../utils/playerProgressionService';
 import { CourtIcon, UsersIcon } from '../components/Icons';
+import { Button, EmptyState, PageHeader, Panel, ScreenShell } from '../components/Ui.jsx';
 import { subscribeToGroupPlayers } from '../utils/groupPlayerService';
 import { fetchTournamentHistory } from '../utils/tournamentService';
 import { buildLeaderboard } from '../utils/tournamentRules';
@@ -53,11 +54,11 @@ export default function GroupHomeScreen({ group, showAlert, setScreen }) {
 
   if (!group) {
     return (
-      <div className="rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-6">
-        <button type="button" onClick={() => setScreen('groups')} className="rounded-2xl bg-[#BEDC45] px-5 py-3 font-black text-[#020D16]">
+      <ScreenShell>
+        <Button onClick={() => setScreen('groups')}>
           Back to Groups
-        </button>
-      </div>
+        </Button>
+      </ScreenShell>
     );
   }
 
@@ -65,41 +66,26 @@ export default function GroupHomeScreen({ group, showAlert, setScreen }) {
   const seasonStory = buildSeasonStory(activePlayers);
 
   return (
-    <div className="space-y-3 rounded-b-3xl border-x border-b border-club-border bg-[#07111B]/95 p-3 shadow-xl shadow-club-greenDeep/5 backdrop-blur sm:p-6">
-      <section className="overflow-hidden rounded-3xl border border-[#BEDC45]/30 bg-[#0A141E] shadow-lg shadow-[#020D16]/20">
-        <div className="p-4 sm:p-5">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-[#BEDC45] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#020D16]">Weekly Night</span>
-              <span className="rounded-full bg-[#07111B] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#8D99A6]">{readiness.label}</span>
-            </div>
-            <h2 className="mt-3 break-words text-3xl font-black leading-tight text-[#F7F8F7] sm:text-4xl">{group.name}</h2>
-            <p className="mt-2 text-sm font-bold text-[#CFD2D3]">{readiness.detail}</p>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => setScreen('startGroupNight')}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#BEDC45] px-5 font-black text-[#020D16] transition hover:bg-[#D3F05A]"
-              >
-                <CourtIcon className="h-5 w-5" />
-                Start Tonight's Games
-              </button>
-              <button
-                type="button"
-                onClick={() => setScreen('playersPool')}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#07111B] px-5 font-black text-[#F7F8F7] transition hover:bg-[#0D1823]"
-              >
-                <UsersIcon className="h-5 w-5 text-[#BEDC45]" />
-                Player Cards
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+    <ScreenShell withBottomNav>
+      <PageHeader
+        eyebrow="Group Night"
+        title={group.name}
+        detail={readiness.detail}
+      />
 
-      <LastNightStrip story={lastNightStory} onStartNight={() => setScreen('startGroupNight')} />
-      <LeaderboardCard players={activePlayers.slice(0, 3)} story={seasonStory} onOpenPool={() => setScreen('playersPool')} onStartNight={() => setScreen('startGroupNight')} />
-    </div>
+      <StartTonightPanel
+        readiness={readiness}
+        playerCount={activePlayers.length}
+        onStartNight={() => setScreen('startGroupNight')}
+        onOpenPool={() => setScreen('playersPool')}
+      />
+      <GroupSnapshot
+        players={activePlayers}
+        story={seasonStory}
+        lastNightStory={lastNightStory}
+        onOpenPool={() => setScreen('playersPool')}
+      />
+    </ScreenShell>
   );
 }
 
@@ -107,101 +93,72 @@ function loadGroupRace(groupId) {
   return fetchGroupLeaderboard(groupId);
 }
 
-function LastNightStrip({ story, onStartNight }) {
-  if (!story) {
-    return (
-      <section className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#0A141E] px-3 py-2">
-        <div>
-          <h3 className="text-sm font-black text-[#F7F8F7]">Last Night</h3>
-          <p className="text-xs font-semibold text-[#8D99A6]">First result unlocks this.</p>
-        </div>
-        <button type="button" onClick={onStartNight} className="min-h-9 shrink-0 rounded-xl bg-[#BEDC45] px-3 text-xs font-black text-[#020D16] hover:bg-[#D3F05A]">
-          Start One
-        </button>
-      </section>
-    );
-  }
-
+function StartTonightPanel({ readiness, playerCount, onStartNight, onOpenPool }) {
   return (
-    <section className="rounded-2xl border border-[#1F60D1]/45 bg-[#0A141E] px-3 py-2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="rounded-full bg-[#1F60D1]/20 px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-wide text-[#CFD2D3]">Last Night</span>
-          <span className="truncate text-xs font-bold text-[#8D99A6]">{story.dateLabel}</span>
-          <span className="rounded-full bg-[#07111B] px-2 py-0.5 text-[0.58rem] font-black uppercase tracking-wide text-[#8D99A6]">{story.formatLabel}</span>
-        </div>
-        <div className="grid min-w-0 gap-1.5 sm:grid-cols-3 sm:gap-2">
-          <CompactStoryItem label="Champions" value={story.championName} />
-          <CompactStoryItem label="MVP" value={story.mvpName} />
-          <CompactStoryItem label="Rising" value={story.risingName} />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function CompactStoryItem({ label, value }) {
-  return (
-    <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[#07111B] px-2.5 py-1.5">
-      <span className="shrink-0 text-[0.56rem] font-black uppercase tracking-wide text-[#8D99A6]">{label}</span>
-      <span className="min-w-0 truncate text-xs font-black text-[#F7F8F7]">{value}</span>
-    </div>
-  );
-}
-
-function LeaderboardCard({ players, story, onOpenPool, onStartNight }) {
-  return (
-    <section className="rounded-3xl border border-[rgba(255,255,255,0.08)] bg-[#0A141E] p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <Panel>
+      <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
         <div className="min-w-0">
-          <h3 className="text-lg font-black text-[#F7F8F7]">Group Race</h3>
-          <p className="truncate text-sm font-semibold text-[#8D99A6]">{story.hook}</p>
+          <p className="text-xs font-black uppercase tracking-wide text-club-muted">{readiness.label}</p>
+          <h3 className="mt-1 text-2xl font-black leading-tight text-club-ink">Start Tonight</h3>
+          <p className="mt-1 text-sm font-semibold leading-relaxed text-club-muted">
+            {playerCount} friend{playerCount === 1 ? '' : 's'} saved for this group.
+          </p>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <button type="button" onClick={onOpenPool} className="rounded-2xl border border-[rgba(255,255,255,0.08)] px-4 py-2 text-sm font-black text-[#8D99A6] hover:bg-[#07111B]">
-            Cards
-          </button>
-          <button type="button" onClick={onStartNight} className="rounded-2xl bg-[#BEDC45] px-4 py-2 text-sm font-black text-[#020D16] hover:bg-[#D3F05A]">
-            Play
-          </button>
+        <div className="grid gap-2 sm:min-w-56">
+          <Button onClick={onStartNight} size="lg" className="w-full">
+            <CourtIcon className="h-5 w-5" />
+            Start Tonight
+          </Button>
+          <Button tone="secondary" onClick={onOpenPool} className="w-full">
+            <UsersIcon className="h-5 w-5" />
+            Friend Cards
+          </Button>
         </div>
       </div>
+    </Panel>
+  );
+}
 
+function GroupSnapshot({ players, story, lastNightStory, onOpenPool }) {
+  const topNames = players.slice(0, 3).map((player) => player.name).join(', ');
+
+  return (
+    <Panel>
       {players.length ? (
-        <div className="space-y-2">
-          <div className="grid gap-2 sm:grid-cols-3">
-            <StoryBadge label="Current #1" value={story.leader.title} />
-            <StoryBadge label="Next Threat" value={story.chaser.title} />
-            <StoryBadge label="Rising" value={story.improved.title} />
+        <div>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-base font-black text-club-ink">Snapshot</h3>
           </div>
-          {players.map((player, index) => (
-            <div key={player.id} className="grid grid-cols-[36px_1fr_auto] items-center gap-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0D1823] p-3">
-              <span className={`grid h-9 w-9 place-items-center rounded-2xl text-sm font-black ${index === 0 ? 'bg-[#BEDC45] text-[#020D16]' : 'bg-[#07111B] text-[#8D99A6]'}`}>{index + 1}</span>
-              <div className="min-w-0">
-                <p className="truncate font-black text-[#F7F8F7]">{player.name}</p>
-                <p className="mt-0.5 text-xs font-bold text-[#8D99A6]">
-                  {player.matchesPlayed ? `${player.wins}W ${player.losses}L / ${getPlayerWinRate(player)}%` : 'Fresh player'}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-black text-[#BEDC45]">Level {player.level}</p>
-                <p className="text-sm font-black tabular-nums text-[#F7F8F7]">{player.rating}</p>
-              </div>
-            </div>
-          ))}
+          <div className="space-y-2">
+            <SnapshotLine label="Leader" value={story.leader.title} detail={story.leader.detail} />
+            <SnapshotLine label="Next" value={story.chaser.title} detail={story.chaser.detail} />
+            <SnapshotLine
+              label="Last night"
+              value={lastNightStory ? lastNightStory.championName : 'No result yet'}
+              detail={lastNightStory ? `${lastNightStory.dateLabel} / ${lastNightStory.formatLabel}` : 'Finish a night to save it here.'}
+            />
+            <SnapshotLine
+              label="Top cards"
+              value={topNames}
+              detail={players.length > 3 ? `${players.length - 3} more in Friend Cards` : 'All saved friends are shown.'}
+            />
+          </div>
         </div>
       ) : (
-        <p className="rounded-3xl border border-dashed border-[rgba(190,220,69,0.32)] bg-[#07111B] px-4 py-8 text-center text-sm font-bold text-[#8D99A6]">Add players to start.</p>
+        <EmptyState title="Add players to start." detail="Friend Cards make tonight a two-tap setup." action={<Button onClick={onOpenPool}>Open Friend Cards</Button>} />
       )}
-    </section>
+    </Panel>
   );
 }
 
-function StoryBadge({ label, value }) {
+function SnapshotLine({ label, value, detail }) {
   return (
-    <div className="rounded-2xl bg-[#07111B] px-3 py-2">
-      <p className="truncate text-[0.58rem] font-black uppercase tracking-wide text-[#8D99A6]">{label}</p>
-      <p className="mt-0.5 truncate text-sm font-black text-[#F7F8F7]">{value}</p>
+    <div className="grid grid-cols-[5.5rem_1fr] gap-3 rounded-lg bg-white/[0.035] px-3 py-2.5">
+      <p className="text-xs font-black uppercase tracking-wide text-club-muted">{label}</p>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-black text-club-ink">{value}</p>
+        {detail && <p className="mt-0.5 truncate text-xs font-semibold text-club-muted">{detail}</p>}
+      </div>
     </div>
   );
 }
@@ -234,7 +191,7 @@ function buildSeasonStory(players) {
     hook: chaser ? getChaseHook({ chaser, leader, gap: chaserGap }) : `${leader.name} leads. Add one more rival.`,
     leader: {
       title: leader.name,
-      detail: `${leader.rating} rating / ${getPlayerWinRate(leader)}% win rate`,
+      detail: leader.matchesPlayed ? `${leader.rating} rating / ${getPlayerWinRate(leader)}% win rate` : `${leader.rating} rating / no matches yet`,
     },
     chaser: chaser
       ? {
