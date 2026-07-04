@@ -64,7 +64,7 @@ export default function EditTeamsModal({ tournament, setTournament, onClose, sho
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-club-bg/75 p-3 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-club-border bg-club-surface p-4 shadow-2xl shadow-black/40 sm:p-5">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-club-border bg-club-surface p-4 shadow-2xl shadow-club-shadow/20 sm:p-5">
         <div className="mb-4">
           <p className="text-xs font-black uppercase tracking-wide text-club-muted">Tournament Actions</p>
           <h3 className="mt-1 text-2xl font-black leading-tight text-club-ink">Edit Teams</h3>

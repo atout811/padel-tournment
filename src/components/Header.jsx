@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeftIcon } from './Icons';
+import { ArrowLeftIcon, MoonIcon, SunIcon } from './Icons';
 import { useI18n } from '../i18n/useI18n.js';
 import { useConnectionStatus } from '../hooks/useConnectionStatus.js';
+import { useThemeMode } from '../hooks/useThemeMode.js';
 
 export default function Header({ backLabel, contextLabel = 'Match Day', onBack, user, onSignOut }) {
   const { language, isRtl, t, toggleLanguage } = useI18n();
   const syncStatus = useConnectionStatus();
+  const { isLightMode, toggleThemeMode } = useThemeMode();
   const userLabel = user?.email || user?.user_metadata?.full_name || '';
   const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -70,6 +72,15 @@ export default function Header({ backLabel, contextLabel = 'Match Day', onBack, 
           >
             {language === 'ar-EG' ? 'EN' : 'عربي'}
           </button>
+          <button
+            type="button"
+            onClick={toggleThemeMode}
+            className="grid h-10 w-10 place-items-center rounded-lg border border-club-border bg-club-surface text-club-green transition hover:bg-club-soft"
+            aria-label={isLightMode ? t('theme.switchToDark') : t('theme.switchToLight')}
+            title={isLightMode ? t('theme.switchToDark') : t('theme.switchToLight')}
+          >
+            {isLightMode ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
+          </button>
           {userLabel && (
             <div ref={accountRef} className="relative">
               <button
@@ -84,7 +95,7 @@ export default function Header({ backLabel, contextLabel = 'Match Day', onBack, 
               </button>
 
               {isAccountOpen && (
-                <div className={`absolute top-[calc(100%+0.5rem)] z-50 w-72 rounded-lg border border-club-border bg-club-surface p-3 shadow-2xl shadow-club-greenDeep/40 ${isRtl ? 'left-0 text-right' : 'right-0 text-left'}`}>
+                <div className={`absolute top-[calc(100%+0.5rem)] z-50 w-72 rounded-lg border border-club-border bg-club-surface p-3 shadow-2xl shadow-club-shadow/20 ${isRtl ? 'left-0 text-right' : 'right-0 text-left'}`}>
                   <div className="flex items-center gap-3 rounded-lg bg-club-wash p-3">
                     <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-club-green text-base font-black uppercase text-club-greenDeep">
                       {getInitial(displayName || userLabel)}

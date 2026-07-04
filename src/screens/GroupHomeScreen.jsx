@@ -153,7 +153,7 @@ function GroupSnapshot({ players, story, lastNightStory, onOpenPool }) {
 
 function SnapshotLine({ label, value, detail }) {
   return (
-    <div className="grid grid-cols-[5.5rem_1fr] gap-3 rounded-lg bg-white/[0.035] px-3 py-2.5">
+    <div className="grid grid-cols-[5.5rem_1fr] gap-3 rounded-lg bg-club-wash px-3 py-2.5">
       <p className="text-xs font-black uppercase tracking-wide text-club-muted">{label}</p>
       <div className="min-w-0">
         <p className="truncate text-sm font-black text-club-ink">{value}</p>

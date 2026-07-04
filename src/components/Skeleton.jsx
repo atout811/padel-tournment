@@ -1,7 +1,7 @@
 import React from 'react';
 
 export function SkeletonBlock({ className = '' }) {
-  return <div className={`animate-pulse rounded-lg bg-white/[0.06] ${className}`} aria-hidden="true" />;
+  return <div className={`animate-pulse rounded-lg bg-club-soft ${className}`} aria-hidden="true" />;
 }
 
 export function SkeletonRows({ count = 3, className = '' }) {

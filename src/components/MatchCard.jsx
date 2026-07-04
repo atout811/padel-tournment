@@ -36,7 +36,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent, setActiveHin
         {!isCompleted && onSetCurrent && !isCurrent && (
           <button
             onClick={() => onSetCurrent(match)}
-            className="min-h-10 shrink-0 rounded-md border border-club-border bg-club-soft px-3 py-1.5 text-center text-xs font-black text-club-ink transition hover:border-club-borderStrong hover:bg-white/[0.06]"
+            className="min-h-10 shrink-0 rounded-md border border-club-border bg-club-soft px-3 py-1.5 text-center text-xs font-black text-club-ink transition hover:border-club-borderStrong hover:bg-club-wash"
           >
             <span className="block">{t('match.setActive')}</span>
             {setActiveHint && <span className="mt-0.5 block text-[0.62rem] font-bold uppercase tracking-wide text-club-muted">{setActiveHint}</span>}
@@ -97,7 +97,7 @@ function ScorePill({ active, children }) {
 
 function Badge({ tone, children }) {
   const tones = {
-    cyan: 'bg-white/[0.06] text-club-muted',
+    cyan: 'bg-club-soft text-club-muted',
     emerald: 'bg-club-green/12 text-club-green',
     gold: 'bg-club-soft text-club-green',
     slate: 'bg-club-wash text-club-muted',

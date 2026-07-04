@@ -214,7 +214,7 @@ function PlayerProfileCard({ player, rank, onEdit, onDeactivate, isSaving, t, fo
   return (
     <div>
       <div className="grid grid-cols-[44px_1fr_auto] items-start gap-3">
-        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-club-border bg-white/[0.05] text-sm font-black text-club-ink">
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-club-border bg-club-wash text-sm font-black text-club-ink">
           {getInitials(player.name)}
         </div>
         <div className="min-w-0">
@@ -224,10 +224,10 @@ function PlayerProfileCard({ player, rank, onEdit, onDeactivate, isSaving, t, fo
           </p>
           <p className="mt-1 truncate text-xs font-semibold text-club-muted">{status}</p>
         </div>
-        <span className="rounded-md bg-white/[0.05] px-2 py-1 text-xs font-black text-club-muted">#{rank}</span>
+        <span className="rounded-md bg-club-wash px-2 py-1 text-xs font-black text-club-muted">#{rank}</span>
       </div>
 
-      <details className="mt-3 rounded-lg bg-white/[0.035] px-3 py-2">
+      <details className="mt-3 rounded-lg bg-club-wash px-3 py-2">
         <summary className="cursor-pointer text-xs font-black uppercase tracking-wide text-club-muted">{t('pool.stats')}</summary>
         <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
           <StatLine label={t('pool.record')} value={matchesPlayed ? `${wins}-${losses}` : '0-0'} />

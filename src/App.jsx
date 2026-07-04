@@ -597,7 +597,7 @@ export default function App() {
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-dvh items-center justify-center border-x border-b border-club-border bg-club-bg p-6 shadow-xl shadow-club-greenDeep/5 sm:rounded-b-lg">
+    <div className="flex min-h-dvh items-center justify-center border-x border-b border-club-border bg-club-bg p-6 shadow-xl shadow-club-shadow/5 sm:rounded-b-lg">
       <div className="w-full max-w-sm rounded-lg border border-club-border bg-club-surface p-4">
         <SkeletonBlock className="mx-auto h-12 w-12 rounded-lg bg-club-green/20" />
         <SkeletonBlock className="mx-auto mt-4 h-5 w-40" />
@@ -610,7 +610,7 @@ function LoadingScreen() {
 function BottomNavigation({ items }) {
   const gridClass = items.length === 3 ? 'grid-cols-3' : 'grid-cols-4';
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-club-bg/95 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-2xl shadow-club-greenDeep/30 backdrop-blur sm:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-club-border bg-club-bg/95 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-2xl shadow-club-shadow/20 backdrop-blur sm:hidden">
       <div className={`mx-auto grid max-w-6xl ${gridClass} gap-1`}>
         {items.map((item) => (
           <button

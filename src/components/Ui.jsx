@@ -5,12 +5,12 @@ function cn(...classes) {
 }
 
 const buttonTones = {
-  primary: 'bg-club-green text-club-greenDeep hover:bg-club-greenDark disabled:bg-white/10 disabled:text-club-muted',
-  secondary: 'border border-club-border bg-club-soft text-club-ink hover:border-club-borderStrong hover:bg-white/[0.06]',
+  primary: 'bg-club-green text-club-greenDeep hover:bg-club-greenDark disabled:bg-club-soft disabled:text-club-muted',
+  secondary: 'border border-club-border bg-club-soft text-club-ink hover:border-club-borderStrong hover:bg-club-wash',
   quiet: 'text-club-muted hover:bg-club-soft hover:text-club-ink',
   danger: 'border border-[#DB4145]/35 bg-[#DB4145]/10 text-[#DB4145] hover:bg-[#DB4145]/20',
-  blue: 'border border-club-border bg-club-soft text-club-ink hover:border-club-borderStrong hover:bg-white/[0.06]',
-  whatsapp: 'bg-[#25D366] text-club-greenDeep hover:bg-[#41E37D]',
+  blue: 'border border-club-border bg-club-soft text-club-ink hover:border-club-borderStrong hover:bg-club-wash',
+  whatsapp: 'bg-[#25D366] text-[#062D16] hover:bg-[#41E37D]',
 };
 
 export function ScreenShell({ children, withBottomNav = false, className = '' }) {
@@ -69,10 +69,10 @@ export function SectionHeading({ title, detail, count, actions }) {
 
 export function Pill({ children, tone = 'default', className = '' }) {
   const tones = {
-    default: 'bg-white/[0.05] text-club-muted',
+    default: 'bg-club-soft text-club-muted',
     green: 'bg-club-green/14 text-club-green',
     greenSoft: 'bg-club-green/12 text-club-green',
-    blue: 'bg-white/[0.06] text-club-muted',
+    blue: 'bg-club-soft text-club-muted',
     danger: 'bg-[#DB4145]/10 text-[#DB4145]',
   };
 
@@ -135,7 +135,7 @@ export function MetricGrid({ children, columns = 3, className = '' }) {
 
 export function MetricItem({ label, value, detail, icon }) {
   return (
-    <div className="min-w-0 rounded-lg bg-white/[0.04] px-3 py-2">
+    <div className="min-w-0 rounded-lg bg-club-wash px-3 py-2">
       <div className="flex items-center gap-2">
         {icon && <span className="shrink-0 text-club-muted">{icon}</span>}
         <p className="truncate text-xs font-black uppercase tracking-wide text-club-muted">{label}</p>
@@ -166,20 +166,20 @@ export function ListButton({ icon, title, detail, meta, actionIcon, className = 
       )}
       {...props}
     >
-      <span className="grid h-10 w-10 place-items-center rounded-lg bg-white/[0.05] text-club-muted">{icon}</span>
+      <span className="grid h-10 w-10 place-items-center rounded-lg bg-club-wash text-club-muted">{icon}</span>
       <span className="min-w-0">
         <span className="block truncate text-base font-black text-club-ink">{title}</span>
         {detail && <span className="mt-0.5 block truncate text-sm font-semibold text-club-muted">{detail}</span>}
         {meta && <span className="mt-2 flex flex-wrap gap-1.5">{meta}</span>}
       </span>
-      {actionIcon && <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/[0.06] text-club-ink">{actionIcon}</span>}
+      {actionIcon && <span className="grid h-9 w-9 place-items-center rounded-lg bg-club-wash text-club-ink">{actionIcon}</span>}
     </button>
   );
 }
 
 export function BottomActionBar({ children, className = '' }) {
   return (
-    <div className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-club-wash/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl shadow-black/40 backdrop-blur sm:sticky sm:bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:rounded-lg sm:border', className)}>
+    <div className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-club-border bg-club-wash/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl shadow-club-shadow/20 backdrop-blur sm:sticky sm:bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:rounded-lg sm:border', className)}>
       <div className="mx-auto grid w-full max-w-5xl gap-2">{children}</div>
     </div>
   );

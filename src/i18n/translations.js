@@ -16,6 +16,10 @@ export const translations = {
     language: {
       switch: 'Switch language',
     },
+    theme: {
+      switchToLight: 'Switch to light mode',
+      switchToDark: 'Switch to dark mode',
+    },
     sync: {
       cloud: 'Cloud',
       cloudDetail: 'Scores and group data can sync when Supabase is available.',
@@ -346,6 +350,10 @@ export const translations = {
     },
     language: {
       switch: 'غيّر اللغة',
+    },
+    theme: {
+      switchToLight: 'افتح الوضع الفاتح',
+      switchToDark: 'افتح الوضع الغامق',
     },
     sync: {
       cloud: 'سحابة',

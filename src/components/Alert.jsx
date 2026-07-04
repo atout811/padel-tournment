@@ -23,7 +23,7 @@ export function ToastViewport({ toasts = [], onDismiss }) {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`pointer-events-auto flex items-start justify-between gap-3 rounded-lg border p-3 shadow-2xl shadow-club-greenDeep/30 backdrop-blur ${
+          className={`pointer-events-auto flex items-start justify-between gap-3 rounded-lg border p-3 shadow-2xl shadow-club-shadow/20 backdrop-blur ${
             toast.tone === 'success'
               ? 'border-club-borderStrong bg-club-surface/95'
               : toast.tone === 'danger'

@@ -33,6 +33,7 @@ Accepted direction for the full UI/UX restructure:
 - Put active scoring before secondary actions such as live-share links.
 - Treat Friend Cards, Start Tonight, Past Nights, and Night Result as the preferred friend-group language.
 - Use one calm dark color system: near-black background, subtle surfaces, low-contrast borders, green for primary action/state, and neutral secondary controls.
+- Support a comfortable light mode using the same `club-*` design tokens: off-white background, white surfaces, readable dark ink, soft borders, and the same single green primary action.
 - Keep group and player pages low-density by default: one primary action, one compact status line, and secondary stats behind detail or lower-priority surfaces.
 - Apply the same system to secondary surfaces: auth, install prompts, loaders, edit modals, match log, and exported result assets should not fall back to the old high-chrome style.
 
@@ -82,6 +83,7 @@ Accepted direction for the full UI/UX restructure:
 Accepted Phase 4 implementation:
 
 - Header shows a compact `Cloud`, `Local`, or `Offline` status so players know whether they are in Supabase sync mode, local fallback mode, or offline mode.
+- Header includes a persisted dark/light theme toggle for players who need better daytime visibility.
 - Live tournaments refresh through the existing tournament service when the app regains focus, applying only newer tournament data.
 - PWA shortcuts open quick setup, groups, and history when there is no active night to resume.
 - Install prompts wait for meaningful app use or a long fallback delay, and dismissal cools down for one week.

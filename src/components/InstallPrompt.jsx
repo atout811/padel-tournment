@@ -12,7 +12,7 @@ export default function InstallPrompt() {
 
   return (
     <div className="fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 px-3 sm:bottom-6 sm:px-4">
-      <div className="mx-auto flex max-w-6xl items-start gap-3 rounded-lg border border-club-border bg-club-surface p-4 shadow-2xl shadow-black/40">
+      <div className="mx-auto flex max-w-6xl items-start gap-3 rounded-lg border border-club-border bg-club-surface p-4 shadow-2xl shadow-club-shadow/20">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-black text-club-ink">{t('install.title')}</p>
           <p className="mt-1 text-xs font-semibold leading-relaxed text-club-muted">
