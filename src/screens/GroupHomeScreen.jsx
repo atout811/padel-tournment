@@ -5,8 +5,10 @@ import { Button, EmptyState, PageHeader, Panel, ScreenShell } from '../component
 import { subscribeToGroupPlayers } from '../utils/groupPlayerService';
 import { fetchTournamentHistory } from '../utils/tournamentService';
 import { buildLeaderboard } from '../utils/tournamentRules';
+import { useI18n } from '../i18n/useI18n.js';
 
 export default function GroupHomeScreen({ group, showAlert, setScreen }) {
+  const { t, formatDate } = useI18n();
   const [activePlayers, setActivePlayers] = useState([]);
   const [lastNightStory, setLastNightStory] = useState(null);
 
@@ -19,12 +21,12 @@ export default function GroupHomeScreen({ group, showAlert, setScreen }) {
       })
       .catch((error) => {
         console.error('Error loading group players:', error);
-        showAlert('Error', 'Could not load group players.');
+        showAlert(t('alerts.error'), t('startNight.loadError'));
       });
     return () => {
       active = false;
     };
-  }, [group?.id, showAlert]);
+  }, [group?.id, showAlert, t]);
 
   useEffect(() => {
     if (!group?.id) return undefined;
@@ -41,7 +43,7 @@ export default function GroupHomeScreen({ group, showAlert, setScreen }) {
     fetchTournamentHistory()
       .then((history) => {
         if (!active) return;
-        setLastNightStory(buildLastNightStory(history, group.id));
+        setLastNightStory(buildLastNightStory(history, group.id, t, formatDate));
       })
       .catch((error) => {
         console.error('Error loading group history:', error);
@@ -50,25 +52,25 @@ export default function GroupHomeScreen({ group, showAlert, setScreen }) {
     return () => {
       active = false;
     };
-  }, [group?.id]);
+  }, [formatDate, group?.id, t]);
 
   if (!group) {
     return (
       <ScreenShell>
         <Button onClick={() => setScreen('groups')}>
-          Back to Groups
+          {t('groupHome.backToGroups')}
         </Button>
       </ScreenShell>
     );
   }
 
-  const readiness = getNightReadiness(activePlayers.length);
-  const seasonStory = buildSeasonStory(activePlayers);
+  const readiness = getNightReadiness(activePlayers.length, t);
+  const seasonStory = buildSeasonStory(activePlayers, t);
 
   return (
     <ScreenShell withBottomNav>
       <PageHeader
-        eyebrow="Group Night"
+        eyebrow={t('groupHome.eyebrow')}
         title={group.name}
         detail={readiness.detail}
       />
@@ -78,12 +80,14 @@ export default function GroupHomeScreen({ group, showAlert, setScreen }) {
         playerCount={activePlayers.length}
         onStartNight={() => setScreen('startGroupNight')}
         onOpenPool={() => setScreen('playersPool')}
+        t={t}
       />
       <GroupSnapshot
         players={activePlayers}
         story={seasonStory}
         lastNightStory={lastNightStory}
         onOpenPool={() => setScreen('playersPool')}
+        t={t}
       />
     </ScreenShell>
   );
@@ -93,25 +97,25 @@ function loadGroupRace(groupId) {
   return fetchGroupLeaderboard(groupId);
 }
 
-function StartTonightPanel({ readiness, playerCount, onStartNight, onOpenPool }) {
+function StartTonightPanel({ readiness, playerCount, onStartNight, onOpenPool, t }) {
   return (
     <Panel>
       <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-wide text-club-muted">{readiness.label}</p>
-          <h3 className="mt-1 text-2xl font-black leading-tight text-club-ink">Start Tonight</h3>
+          <h3 className="mt-1 text-2xl font-black leading-tight text-club-ink">{t('groupHome.startTonight')}</h3>
           <p className="mt-1 text-sm font-semibold leading-relaxed text-club-muted">
-            {playerCount} friend{playerCount === 1 ? '' : 's'} saved for this group.
+            {t('groupHome.friendsSaved', { count: playerCount, plural: playerCount === 1 ? '' : 's' })}
           </p>
         </div>
         <div className="grid gap-2 sm:min-w-56">
           <Button onClick={onStartNight} size="lg" className="w-full">
             <CourtIcon className="h-5 w-5" />
-            Start Tonight
+            {t('groupHome.startTonight')}
           </Button>
           <Button tone="secondary" onClick={onOpenPool} className="w-full">
             <UsersIcon className="h-5 w-5" />
-            Friend Cards
+            {t('groupHome.friendCards')}
           </Button>
         </div>
       </div>
@@ -119,7 +123,7 @@ function StartTonightPanel({ readiness, playerCount, onStartNight, onOpenPool })
   );
 }
 
-function GroupSnapshot({ players, story, lastNightStory, onOpenPool }) {
+function GroupSnapshot({ players, story, lastNightStory, onOpenPool, t }) {
   const topNames = players.slice(0, 3).map((player) => player.name).join(', ');
 
   return (
@@ -127,25 +131,25 @@ function GroupSnapshot({ players, story, lastNightStory, onOpenPool }) {
       {players.length ? (
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-base font-black text-club-ink">Snapshot</h3>
+            <h3 className="text-base font-black text-club-ink">{t('groupHome.snapshot')}</h3>
           </div>
           <div className="space-y-2">
-            <SnapshotLine label="Leader" value={story.leader.title} detail={story.leader.detail} />
-            <SnapshotLine label="Next" value={story.chaser.title} detail={story.chaser.detail} />
+            <SnapshotLine label={t('groupHome.leader')} value={story.leader.title} detail={story.leader.detail} />
+            <SnapshotLine label={t('groupHome.next')} value={story.chaser.title} detail={story.chaser.detail} />
             <SnapshotLine
-              label="Last night"
-              value={lastNightStory ? lastNightStory.championName : 'No result yet'}
-              detail={lastNightStory ? `${lastNightStory.dateLabel} / ${lastNightStory.formatLabel}` : 'Finish a night to save it here.'}
+              label={t('groupHome.lastNight')}
+              value={lastNightStory ? lastNightStory.championName : t('groupHome.noResultYet')}
+              detail={lastNightStory ? `${lastNightStory.dateLabel} / ${lastNightStory.formatLabel}` : t('groupHome.finishNightDetail')}
             />
             <SnapshotLine
-              label="Top cards"
+              label={t('groupHome.topCards')}
               value={topNames}
-              detail={players.length > 3 ? `${players.length - 3} more in Friend Cards` : 'All saved friends are shown.'}
+              detail={players.length > 3 ? t('groupHome.moreInFriendCards', { count: players.length - 3 }) : t('groupHome.allFriendsShown')}
             />
           </div>
         </div>
       ) : (
-        <EmptyState title="Add players to start." detail="Friend Cards make tonight a two-tap setup." action={<Button onClick={onOpenPool}>Open Friend Cards</Button>} />
+        <EmptyState title={t('groupHome.addPlayersTitle')} detail={t('groupHome.addPlayersDetail')} action={<Button onClick={onOpenPool}>{t('groupHome.openFriendCards')}</Button>} />
       )}
     </Panel>
   );
@@ -163,13 +167,13 @@ function SnapshotLine({ label, value, detail }) {
   );
 }
 
-function buildSeasonStory(players) {
+function buildSeasonStory(players, t) {
   if (!players.length) {
     return {
-      hook: 'Add players to start the race.',
-      leader: { title: 'Open spot', detail: 'No ranking yet' },
-      chaser: { title: 'Open chase', detail: 'Play once to create a chase' },
-      improved: { title: 'First mover', detail: 'No movement yet' },
+      hook: t('groupHome.addPlayersRace'),
+      leader: { title: t('groupHome.openSpot'), detail: t('groupHome.noRankingYet') },
+      chaser: { title: t('groupHome.openChase'), detail: t('groupHome.playOnce') },
+      improved: { title: t('groupHome.firstMover'), detail: t('groupHome.noMovementYet') },
     };
   }
 
@@ -188,25 +192,25 @@ function buildSeasonStory(players) {
   const improvedDelta = getImprovement(improved);
 
   return {
-    hook: chaser ? getChaseHook({ chaser, leader, gap: chaserGap }) : `${leader.name} leads. Add one more rival.`,
+    hook: chaser ? getChaseHook({ chaser, leader, gap: chaserGap, t }) : t('groupHome.leadsAddRival', { name: leader.name }),
     leader: {
       title: leader.name,
-      detail: leader.matchesPlayed ? `${leader.rating} rating / ${getPlayerWinRate(leader)}% win rate` : `${leader.rating} rating / no matches yet`,
+      detail: leader.matchesPlayed ? t('groupHome.ratingWinRate', { rating: leader.rating, winRate: getPlayerWinRate(leader) }) : t('groupHome.ratingNoMatches', { rating: leader.rating }),
     },
     chaser: chaser
       ? {
           title: chaser.name,
-          detail: chaserGap ? `${chaserGap} pts back` : 'Level on rating',
+          detail: chaserGap ? t('groupHome.pointsBack', { count: chaserGap }) : t('groupHome.levelOnRating'),
         }
-      : { title: 'No rival yet', detail: 'Add another active player' },
+      : { title: t('groupHome.noRivalYet'), detail: t('groupHome.addAnotherPlayer') },
     improved: {
-      title: improved?.name || 'No player yet',
-      detail: improvedDelta > 0 ? `+${improvedDelta} pts` : 'No jump yet',
+      title: improved?.name || t('groupHome.noPlayerYet'),
+      detail: improvedDelta > 0 ? `+${improvedDelta}` : t('groupHome.noJumpYet'),
     },
   };
 }
 
-function buildLastNightStory(history, groupId) {
+function buildLastNightStory(history, groupId, t, formatDateValue) {
   const tournaments = Array.isArray(history) ? history : [];
   const lastTournament = tournaments
     .filter((tournament) => tournament?.groupId === groupId && isFinishedTournament(tournament))
@@ -223,11 +227,11 @@ function buildLastNightStory(history, groupId) {
   const rising = playerMovement.find((player) => player.rankMovement === bestRankMove && bestRankMove > 0) || mvp;
 
   return {
-    dateLabel: formatDate(lastTournament.endedAt || lastTournament.updatedAt || lastTournament.createdAt),
-    formatLabel: lastTournament.format === 'league' ? 'League' : 'Cup',
-    championName: champion ? champion.players.join(' & ') : 'Pending',
-    mvpName: mvp ? `${mvp.name} ${formatSignedNumber(mvp.ratingDelta)}` : 'No MVP',
-    risingName: rising ? `${rising.name} ${formatRankMovement(rising.rankMovement)}` : 'No climber yet',
+    dateLabel: formatDateValue(lastTournament.endedAt || lastTournament.updatedAt || lastTournament.createdAt),
+    formatLabel: lastTournament.format === 'league' ? t('common.league') : t('common.cup'),
+    championName: champion ? champion.players.join(' & ') : t('groupHome.pending'),
+    mvpName: mvp ? `${mvp.name} ${formatSignedNumber(mvp.ratingDelta)}` : t('groupHome.noMvp'),
+    risingName: rising ? `${rising.name} ${formatRankMovement(rising.rankMovement, t)}` : t('groupHome.noClimberYet'),
   };
 }
 
@@ -296,21 +300,16 @@ function buildRankMap(players, ratingKey) {
   );
 }
 
-function formatDate(value) {
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date.getTime()) ? new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(date) : 'No date';
-}
-
 function formatSignedNumber(value) {
   const number = Number(value || 0);
   return `${number > 0 ? '+' : ''}${number}`;
 }
 
-function formatRankMovement(value) {
+function formatRankMovement(value, t) {
   const movement = Number(value || 0);
-  if (movement > 0) return `up ${movement}`;
-  if (movement < 0) return `down ${Math.abs(movement)}`;
-  return 'same';
+  if (movement > 0) return t('groupHome.up', { count: movement });
+  if (movement < 0) return t('groupHome.down', { count: Math.abs(movement) });
+  return t('groupHome.same');
 }
 
 function getImprovement(player) {
@@ -318,21 +317,21 @@ function getImprovement(player) {
   return Number(player?.rating || startingRating) - startingRating;
 }
 
-function getChaseHook({ chaser, leader, gap }) {
-  if (gap <= 0) return `${chaser.name} is level with ${leader.name} on rating.`;
-  return `${chaser.name} is ${gap} pt${gap === 1 ? '' : 's'} from ${leader.name}.`;
+function getChaseHook({ chaser, leader, gap, t }) {
+  if (gap <= 0) return t('groupHome.levelWith', { chaser: chaser.name, leader: leader.name });
+  return t('groupHome.pointsFromLeader', { chaser: chaser.name, leader: leader.name, gap, plural: gap === 1 ? '' : 's' });
 }
 
-function getNightReadiness(playerCount) {
+function getNightReadiness(playerCount, t) {
   if (playerCount >= 8) {
-    return { label: 'Cup Ready', detail: `${playerCount} friends are ready for a full cup night.` };
+    return { label: t('groupHome.cupReady'), detail: t('groupHome.cupReadyDetail', { count: playerCount }) };
   }
   if (playerCount >= 4) {
-    return { label: 'League Ready', detail: `${playerCount} friends are ready for a league night.` };
+    return { label: t('groupHome.leagueReady'), detail: t('groupHome.leagueReadyDetail', { count: playerCount }) };
   }
   const missingPlayers = 4 - playerCount;
   return {
-    label: 'Recruiting',
-    detail: `${missingPlayers} more needed for league.`,
+    label: t('groupHome.recruiting'),
+    detail: t('groupHome.recruitingDetail', { count: missingPlayers }),
   };
 }

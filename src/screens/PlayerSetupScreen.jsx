@@ -8,12 +8,6 @@ import { useNightSetupFlow } from '../hooks/useNightSetupFlow.js';
 import { UsersIcon, XIcon } from '../components/Icons';
 import { useI18n } from '../i18n/useI18n.js';
 
-const stepLabels = {
-  participants: 'Players',
-  format: 'Format',
-  review: 'Start',
-};
-
 export default function PlayerSetupScreen({ showAlert, setTournament, setScreen }) {
   const { t } = useI18n();
   const [players, setPlayers] = useState([]);
@@ -22,11 +16,19 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   const [isSaving, setIsSaving] = useState(false);
   const flow = useNightSetupFlow({ participantCount: players.length });
 
-  const setupStatus = useMemo(() => getSetupStatus(players, flow.format), [players, flow.format]);
+  const setupStatus = useMemo(() => getSetupStatus(players, flow.format, t), [players, flow.format, t]);
   const hasOddPlayer = players.length % 2 !== 0;
+  const stepLabels = useMemo(
+    () => ({
+      participants: t('setup.playersTab'),
+      format: t('setup.formatTab'),
+      review: t('setup.reviewStart'),
+    }),
+    [t]
+  );
 
   const handleAddPlayer = () => {
-    const validation = validatePlayerName(playerName, players);
+    const validation = validatePlayerName(playerName, players, t);
     if (!validation.isValid) {
       setPlayerError(validation.message);
       showAlert(t('setup.checkPlayerTitle'), validation.message);
@@ -44,7 +46,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   };
 
   const handleCreateTournament = async () => {
-    const currentStatus = getSetupStatus(players, flow.format);
+    const currentStatus = getSetupStatus(players, flow.format, t);
     if (!currentStatus.isValid) {
       showAlert(t('setup.notReadyTitle'), currentStatus.message);
       return;
@@ -75,11 +77,15 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
 
   const metrics = [
     { label: t('common.players'), value: players.length, detail: `${setupStatus.minPlayers}+` },
-    { label: t('common.teams'), value: setupStatus.teamCount, detail: hasOddPlayer ? 'sub' : 'paired' },
-    { label: t('common.courts'), value: flow.courtCount, detail: flow.courtCount === 1 ? 'court' : 'courts' },
+    { label: t('common.teams'), value: setupStatus.teamCount, detail: hasOddPlayer ? t('common.sub') : t('common.paired') },
+    { label: t('common.courts'), value: flow.courtCount, detail: flow.courtCount === 1 ? t('common.court') : t('common.courts') },
   ];
   const formatLabel = flow.format === 'cup' ? t('common.cup') : t('common.league');
-  const recommendation = flow.formatTouched ? null : `${formatLabel} is selected automatically for ${players.length || 'your current'} player list.`;
+  const recommendation = flow.formatTouched
+    ? null
+    : players.length
+      ? t('setup.autoFormatRecommendation', { format: formatLabel, count: players.length })
+      : t('setup.autoFormatRecommendationFallback', { format: formatLabel });
 
   return (
     <ScreenShell className="pb-28 sm:pb-5">
@@ -87,7 +93,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
 
       <SetupProgress currentStep={flow.currentStep} onStepChange={flow.setStep} labels={stepLabels} />
 
-      <SetupSummary title={t('setup.createTournament')} setupStatus={setupStatus} metrics={metrics} recommendation={recommendation} />
+      <SetupSummary title={t('setup.createTournament')} setupStatus={setupStatus} metrics={metrics} recommendation={recommendation} t={t} />
 
       {flow.currentStep === 'participants' && (
         <ParticipantsStep

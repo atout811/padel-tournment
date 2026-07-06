@@ -10,12 +10,6 @@ import { useNightSetupFlow } from '../hooks/useNightSetupFlow.js';
 import { CheckIcon, UsersIcon, XIcon } from '../components/Icons';
 import { useI18n } from '../i18n/useI18n.js';
 
-const stepLabels = {
-  participants: 'Players',
-  format: 'Format',
-  review: 'Start',
-};
-
 export default function StartGroupNightScreen({ group, showAlert, setTournament, setScreen }) {
   const { t } = useI18n();
   const [players, setPlayers] = useState([]);
@@ -27,7 +21,15 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
   const selectedPlayers = useMemo(() => players.filter((player) => selectedIds.has(player.id)), [players, selectedIds]);
   const participantNames = useMemo(() => [...selectedPlayers.map((player) => player.name), ...guests.map((guest) => guest.name)], [selectedPlayers, guests]);
   const flow = useNightSetupFlow({ participantCount: participantNames.length });
-  const setupStatus = useMemo(() => getSetupStatus(participantNames, flow.format), [flow.format, participantNames]);
+  const setupStatus = useMemo(() => getSetupStatus(participantNames, flow.format, t), [flow.format, participantNames, t]);
+  const stepLabels = useMemo(
+    () => ({
+      participants: t('setup.playersTab'),
+      format: t('setup.formatTab'),
+      review: t('setup.reviewStart'),
+    }),
+    [t]
+  );
 
   useEffect(() => {
     if (!group?.id) return;
@@ -71,7 +73,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
   };
 
   const handleAddGuest = () => {
-    const validation = validatePlayerName(guestName, participantNames);
+    const validation = validatePlayerName(guestName, participantNames, t);
     if (!validation.isValid) {
       showAlert(t('startNight.checkGuestTitle'), validation.message);
       return;
@@ -142,11 +144,15 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
 
   const metrics = [
     { label: t('common.players'), value: participantNames.length, detail: `${setupStatus.minPlayers}+` },
-    { label: t('common.teams'), value: setupStatus.teamCount, detail: participantNames.length % 2 ? 'sub' : 'paired' },
-    { label: t('common.courts'), value: flow.courtCount, detail: flow.courtCount === 1 ? 'court' : 'courts' },
+    { label: t('common.teams'), value: setupStatus.teamCount, detail: participantNames.length % 2 ? t('common.sub') : t('common.paired') },
+    { label: t('common.courts'), value: flow.courtCount, detail: flow.courtCount === 1 ? t('common.court') : t('common.courts') },
   ];
   const formatLabel = flow.format === 'cup' ? t('common.cup') : t('common.league');
-  const recommendation = flow.formatTouched ? null : `${formatLabel} is selected automatically for ${participantNames.length || 'tonight'} players.`;
+  const recommendation = flow.formatTouched
+    ? null
+    : participantNames.length
+      ? t('setup.autoFormatTonight', { format: formatLabel, count: participantNames.length })
+      : t('setup.autoFormatTonightFallback', { format: formatLabel });
 
   return (
     <ScreenShell className="pb-28 sm:pb-5">
@@ -154,7 +160,7 @@ export default function StartGroupNightScreen({ group, showAlert, setTournament,
 
       <SetupProgress currentStep={flow.currentStep} onStepChange={flow.setStep} labels={stepLabels} />
 
-      <SetupSummary title={t('startNight.groupNight')} setupStatus={setupStatus} metrics={metrics} recommendation={recommendation} />
+      <SetupSummary title={t('startNight.groupNight')} setupStatus={setupStatus} metrics={metrics} recommendation={recommendation} t={t} />
 
       {flow.currentStep === 'participants' && (
         <ParticipantsStep
@@ -202,7 +208,7 @@ function ParticipantsStep({ players, selectedIds, participantCount, guests, gues
         {players.length ? (
           <div className="grid max-h-[46vh] gap-2 overflow-y-auto pr-1 sm:max-h-none sm:grid-cols-2">
             {players.map((player) => (
-              <PlayerSelectRow key={player.id} player={player} selected={selectedIds.has(player.id)} onClick={() => onTogglePlayer(player.id)} />
+              <PlayerSelectRow key={player.id} player={player} selected={selectedIds.has(player.id)} onClick={() => onTogglePlayer(player.id)} t={t} />
             ))}
           </div>
         ) : (
@@ -287,7 +293,7 @@ function SetupActions({ currentStep, setupStatus, isSaving, onBack, onNext, onSt
   );
 }
 
-function PlayerSelectRow({ player, selected, onClick }) {
+function PlayerSelectRow({ player, selected, onClick, t }) {
   return (
     <button
       type="button"
@@ -302,9 +308,11 @@ function PlayerSelectRow({ player, selected, onClick }) {
       </span>
       <span className="min-w-0">
         <span className="block truncate font-black text-club-ink">{player.name}</span>
-        <span className="mt-0.5 block text-xs font-bold text-club-muted">Level {player.level} / Rating {player.rating}</span>
+        <span className="mt-0.5 block text-xs font-bold text-club-muted">
+          {t('common.level')} {player.level} / {t('pool.rating', { rating: player.rating })}
+        </span>
       </span>
-      <span className="text-xs font-black uppercase tracking-wide text-club-muted">{selected ? 'In' : 'Out'}</span>
+      <span className="text-xs font-black uppercase tracking-wide text-club-muted">{selected ? t('common.in') : t('common.out')}</span>
     </button>
   );
 }

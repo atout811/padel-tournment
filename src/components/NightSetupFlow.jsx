@@ -27,19 +27,19 @@ export function SetupProgress({ currentStep, onStepChange, labels }) {
   );
 }
 
-export function SetupSummary({ title, setupStatus, metrics, recommendation }) {
+export function SetupSummary({ title, setupStatus, metrics, recommendation, t }) {
   return (
     <Panel>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-wide text-club-muted">{title}</p>
           <h3 className="mt-1 text-xl font-black leading-tight text-club-ink">
-            {setupStatus.isValid ? 'Ready to play' : 'Build the night'}
+            {setupStatus.isValid ? t('setup.readyToPlay') : t('setup.buildNight')}
           </h3>
           <p className="mt-1 text-sm font-semibold leading-relaxed text-club-muted">{setupStatus.message}</p>
         </div>
         <Pill tone={setupStatus.isValid ? 'greenSoft' : 'default'}>
-          {setupStatus.isValid ? 'Ready' : 'Needs players'}
+          {setupStatus.isValid ? t('common.ready') : t('common.needsPlayers')}
         </Pill>
       </div>
       <p className="mt-3 truncate text-sm font-bold text-club-muted">
@@ -63,6 +63,7 @@ export function SetupOptionsPanel({ flow, setupStatus, showScoring = false, t })
             icon={<ListIcon className="h-5 w-5" />}
             selected={flow.format === 'league'}
             onClick={() => flow.setFormat('league')}
+            t={t}
           />
           <FormatChoice
             title={t('common.cup')}
@@ -71,6 +72,7 @@ export function SetupOptionsPanel({ flow, setupStatus, showScoring = false, t })
             icon={<TrophyIcon className="h-5 w-5" />}
             selected={flow.format === 'cup'}
             onClick={() => flow.setFormat('cup')}
+            t={t}
           />
         </div>
         <InlineNotice tone={setupStatus.isValid ? 'green' : 'info'} className="mt-3">
@@ -105,6 +107,7 @@ export function SetupOptionsPanel({ flow, setupStatus, showScoring = false, t })
                   description={t('setup.classicDescription')}
                   selected={flow.scoringPreset === 'standard'}
                   onClick={() => flow.applyPreset('standard')}
+                  t={t}
                 />
                 <FormatChoice
                   title={t('setup.quick')}
@@ -112,6 +115,7 @@ export function SetupOptionsPanel({ flow, setupStatus, showScoring = false, t })
                   description={t('setup.quickDescription')}
                   selected={flow.scoringPreset === 'fast'}
                   onClick={() => flow.applyPreset('fast')}
+                  t={t}
                 />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -121,9 +125,9 @@ export function SetupOptionsPanel({ flow, setupStatus, showScoring = false, t })
                   value={flow.maxSets}
                   onChange={(event) => flow.setMaxSets(Number(event.target.value))}
                   options={[
-                    { value: 1, label: 'Best of 1 set' },
-                    { value: 3, label: 'Best of 3 sets' },
-                    { value: 5, label: 'Best of 5 sets' },
+                    { value: 1, label: t('setup.bestOf1Set') },
+                    { value: 3, label: t('setup.bestOf3Sets') },
+                    { value: 5, label: t('setup.bestOf5Sets') },
                   ]}
                 />
                 <FieldSelect
@@ -132,8 +136,8 @@ export function SetupOptionsPanel({ flow, setupStatus, showScoring = false, t })
                   value={flow.deuceMode}
                   onChange={(event) => flow.setDeuceMode(event.target.value)}
                   options={[
-                    { value: 'advantage', label: 'Advantage at deuce' },
-                    { value: 'golden', label: 'Golden point at deuce' },
+                    { value: 'advantage', label: t('setup.advantageAtDeuce') },
+                    { value: 'golden', label: t('setup.goldenPointAtDeuce') },
                   ]}
                 />
               </div>
@@ -145,7 +149,7 @@ export function SetupOptionsPanel({ flow, setupStatus, showScoring = false, t })
   );
 }
 
-function FormatChoice({ title, eyebrow, description, icon, selected, onClick }) {
+function FormatChoice({ title, eyebrow, description, icon, selected, onClick, t }) {
   return (
     <button
       type="button"
@@ -156,7 +160,7 @@ function FormatChoice({ title, eyebrow, description, icon, selected, onClick }) 
       }`}
     >
       <div className="flex items-center justify-between gap-3">
-        <Pill tone={selected ? 'green' : 'default'}>{selected ? 'Selected' : eyebrow}</Pill>
+        <Pill tone={selected ? 'green' : 'default'}>{selected ? t('setup.selected') : eyebrow}</Pill>
         {icon && <span className={selected ? 'text-club-green' : 'text-club-muted'}>{icon}</span>}
       </div>
       <span className="mt-3 block text-lg font-black text-club-ink">{title}</span>

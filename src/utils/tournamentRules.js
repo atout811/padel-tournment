@@ -8,30 +8,32 @@ export const getGeneratedTeamCount = (playerCount) => Math.ceil(Number(playerCou
 
 export const normalizePlayerName = (name) => String(name || '').trim().replace(/\s+/g, ' ');
 
-export const validatePlayerName = (name, players) => {
+const translate = (t, key, fallback, params = {}) => (typeof t === 'function' ? t(key, params) : fallback);
+
+export const validatePlayerName = (name, players, t) => {
   const normalizedName = normalizePlayerName(name);
 
   if (!normalizedName) {
-    return { isValid: false, name: normalizedName, message: 'Enter a player name first.' };
+    return { isValid: false, name: normalizedName, message: translate(t, 'setup.playerNameRequired', 'Enter a player name first.') };
   }
 
   if (normalizedName.length > MAX_PLAYER_NAME_LENGTH) {
     return {
       isValid: false,
       name: normalizedName,
-      message: `Keep player names under ${MAX_PLAYER_NAME_LENGTH} characters.`,
+      message: translate(t, 'setup.playerNameTooLong', `Keep player names under ${MAX_PLAYER_NAME_LENGTH} characters.`, { count: MAX_PLAYER_NAME_LENGTH }),
     };
   }
 
   const alreadyExists = players.some((player) => player.toLowerCase() === normalizedName.toLowerCase());
   if (alreadyExists) {
-    return { isValid: false, name: normalizedName, message: 'That player is already on the list.' };
+    return { isValid: false, name: normalizedName, message: translate(t, 'setup.playerNameDuplicate', 'That player is already on the list.') };
   }
 
   return { isValid: true, name: normalizedName, message: '' };
 };
 
-export const getSetupStatus = (players, format) => {
+export const getSetupStatus = (players, format, t) => {
   const playerCount = players.length;
   const teamCount = getGeneratedTeamCount(playerCount);
 
@@ -44,8 +46,11 @@ export const getSetupStatus = (players, format) => {
       minPlayers: MIN_CUP_PLAYERS,
       message:
         missingPlayers === 0
-          ? 'Cup is ready: group stage, semifinals, then a final.'
-          : `Cup needs at least 4 teams, so add ${missingPlayers} more player${missingPlayers === 1 ? '' : 's'} or choose League.`,
+          ? translate(t, 'setup.cupReadyMessage', 'Cup is ready: group stage, semifinals, then a final.')
+          : translate(t, 'setup.cupNeedsMessage', `Cup needs at least 4 teams, so add ${missingPlayers} more player${missingPlayers === 1 ? '' : 's'} or choose League.`, {
+              count: missingPlayers,
+              plural: missingPlayers === 1 ? '' : 's',
+            }),
     };
   }
 
@@ -57,8 +62,11 @@ export const getSetupStatus = (players, format) => {
     minPlayers: MIN_LEAGUE_PLAYERS,
     message:
       missingPlayers === 0
-        ? 'League is ready: every team plays across two rounds.'
-        : `League needs ${missingPlayers} more player${missingPlayers === 1 ? '' : 's'} to start.`,
+        ? translate(t, 'setup.leagueReadyMessage', 'League is ready: every team plays across two rounds.')
+        : translate(t, 'setup.leagueNeedsMessage', `League needs ${missingPlayers} more player${missingPlayers === 1 ? '' : 's'} to start.`, {
+            count: missingPlayers,
+            plural: missingPlayers === 1 ? '' : 's',
+          }),
   };
 };
 
