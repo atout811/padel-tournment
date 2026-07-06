@@ -6,15 +6,17 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  actions: read
+  contents: read
   pages: write
+  id-token: write
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
     env:
       VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
@@ -35,45 +37,24 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Publish dist to gh-pages
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
+      - name: Add Pages marker
+        run: touch dist/.nojekyll
 
-          rm -rf /tmp/padel-pages
-          mkdir -p /tmp/padel-pages
-          cp -R dist/. /tmp/padel-pages/
-          touch /tmp/padel-pages/.nojekyll
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch --orphan gh-pages
-          git rm -rf . || true
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -R /tmp/padel-pages/. .
-          git add -A
-          git commit -m "Deploy ${GITHUB_SHA}"
-          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: "./dist"
 
-      - name: Configure Pages source
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          cat > /tmp/pages-source.json <<'JSON'
-          {"build_type":"legacy","source":{"branch":"gh-pages","path":"/"}}
-          JSON
-
-          gh api --method PUT "/repos/${GITHUB_REPOSITORY}/pages" --input /tmp/pages-source.json || {
-            gh api --method POST "/repos/${GITHUB_REPOSITORY}/pages" --input /tmp/pages-source.json || {
-              echo "::warning::Could not switch Pages source automatically. In repository Settings > Pages, set Source to 'Deploy from a branch' and Branch to 'gh-pages / root'."
-            }
-          }
-
-      - name: Request Pages build
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh api --method POST "/repos/${GITHUB_REPOSITORY}/pages/builds" || {
-            echo "::warning::Could not manually request a Pages build. The gh-pages branch was still updated and GitHub should build it from the configured source."
-          }
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
