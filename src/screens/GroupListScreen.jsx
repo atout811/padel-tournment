@@ -74,7 +74,7 @@ export default function GroupListScreen({ showAlert, setScreen, setSelectedGroup
       <PageHeader
         eyebrow={t('groups.eyebrow')}
         title={t('groups.title')}
-        detail={hasGroups ? `${groups.length} group${groups.length === 1 ? '' : 's'} saved.` : t('groups.detail')}
+        detail={hasGroups ? t('groups.savedCount', { count: groups.length, plural: groups.length === 1 ? '' : 's' }) : t('groups.detail')}
         actions={hasGroups ? <Button tone="secondary" size="sm" onClick={() => setIsCreateOpen((current) => !current)}>{isCreateOpen ? t('common.hide') : t('groups.createTitle')}</Button> : null}
       />
 

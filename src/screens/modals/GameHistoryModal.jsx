@@ -3,16 +3,18 @@ import { updateTournamentRecord } from '../../utils/tournamentService';
 import { summarizePadelScore } from '../../utils/padelScoring';
 import { reconcileCupProgression, reconcileTournamentCourts, syncTeamPointsFromMatches } from '../../utils/tournamentRules';
 import { Button, EmptyState, Pill } from '../../components/Ui.jsx';
+import { useI18n } from '../../i18n/useI18n.js';
 
 const getTeamName = (team) => team.players.join(' & ');
 
 export default function GameHistoryModal({ tournament, courtAssignments = [], setTournament, onClose, showAlert, showToast, readOnly = false }) {
+  const { t } = useI18n();
   const completedMatches = tournament.matches.filter((m) => m.status === 'completed');
   const [updatingMatchId, setUpdatingMatchId] = useState(null);
 
   const handleWinnerChange = async (match, newWinnerId) => {
     if (readOnly) {
-      showAlert('Tournament Closed', 'Reopen this tournament before changing results.');
+      showAlert(t('tournament.closedTitle'), t('tournament.closedResults'));
       return;
     }
 
@@ -51,13 +53,13 @@ export default function GameHistoryModal({ tournament, courtAssignments = [], se
       const savedTournament = await updateTournamentRecord(reconciledTournament);
       setTournament(savedTournament);
       if (showToast) {
-        showToast('Result updated', '', 'success');
+        showToast(t('modals.resultUpdated'), '', 'success');
       } else {
-        showAlert('Success', 'Result updated.');
+        showAlert(t('modals.success'), t('modals.resultUpdatedMessage'));
       }
     } catch (error) {
       console.error('Error updating match result:', error);
-      showAlert('Error', 'Could not update match result. Please try again.');
+      showAlert(t('alerts.error'), t('modals.updateResultError'));
     } finally {
       setUpdatingMatchId(null);
     }
@@ -68,17 +70,17 @@ export default function GameHistoryModal({ tournament, courtAssignments = [], se
       <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-club-border bg-club-surface p-4 shadow-2xl shadow-club-shadow/20 sm:p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-wide text-club-muted">Tournament Actions</p>
-            <h3 className="mt-1 text-2xl font-black leading-tight text-club-ink">Match Log</h3>
-            <p className="mt-1 text-sm font-semibold text-club-muted">{completedMatches.length} completed match{completedMatches.length === 1 ? '' : 'es'}</p>
+            <p className="text-xs font-black uppercase tracking-wide text-club-muted">{t('modals.tournamentActions')}</p>
+            <h3 className="mt-1 text-2xl font-black leading-tight text-club-ink">{t('modals.matchLog')}</h3>
+            <p className="mt-1 text-sm font-semibold text-club-muted">{t('modals.completedMatches', { count: completedMatches.length, plural: completedMatches.length === 1 ? '' : 'es' })}</p>
           </div>
           <Button tone="secondary" size="sm" onClick={onClose}>
-            Close
+            {t('common.close')}
           </Button>
         </div>
 
         {completedMatches.length === 0 ? (
-          <EmptyState title="No completed matches yet." />
+          <EmptyState title={t('modals.noCompletedMatches')} />
         ) : (
           <div className="space-y-2">
             {completedMatches.map((match) => {
@@ -104,24 +106,24 @@ export default function GameHistoryModal({ tournament, courtAssignments = [], se
                           <span className="rounded-md bg-club-wash px-3 py-1 text-lg font-black tabular-nums text-club-ink">{match.score.teamB}</span>
                         </>
                       ) : (
-                        <span className="text-xs font-bold text-club-muted">No score</span>
+                        <span className="text-xs font-bold text-club-muted">{t('modals.noScore')}</span>
                       )}
                     </div>
                   </div>
                   {readOnly ? (
                     <div className="border-t border-club-border pt-3">
-                      <Pill tone="greenSoft">Winner: {getWinnerName(match)}</Pill>
+                      <Pill tone="greenSoft">{t('match.winner', { team: getWinnerName(match, t) })}</Pill>
                     </div>
                   ) : (
                     <div className="border-t border-club-border pt-3">
-                      <label className="mb-2 block text-sm font-black text-club-muted">Change Winner</label>
+                      <label className="mb-2 block text-sm font-black text-club-muted">{t('modals.changeWinner')}</label>
                       <select
                         value={match.winnerId || ''}
                         onChange={(e) => handleWinnerChange(match, e.target.value)}
                         disabled={updatingMatchId === match.id}
                         className="min-h-12 w-full rounded-lg border border-club-border bg-club-wash p-2 font-bold text-club-ink outline-none focus:border-club-green focus:ring-4 focus:ring-club-green/20 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <option value="">No Winner</option>
+                        <option value="">{t('modals.noWinner')}</option>
                         <option value={match.teamA.id}>{getTeamName(match.teamA)}</option>
                         <option value={match.teamB.id}>{getTeamName(match.teamB)}</option>
                       </select>
@@ -137,8 +139,8 @@ export default function GameHistoryModal({ tournament, courtAssignments = [], se
   );
 }
 
-function getWinnerName(match) {
+function getWinnerName(match, t) {
   if (match.winnerId === match.teamA.id) return getTeamName(match.teamA);
   if (match.winnerId === match.teamB.id) return getTeamName(match.teamB);
-  return 'No winner';
+  return t('modals.noWinner');
 }

@@ -102,7 +102,7 @@ export default function PlayersPoolScreen({ group, showAlert, setScreen }) {
     <ScreenShell withBottomNav>
       <PageHeader
         eyebrow={t('pool.tag')}
-        title={group?.name || 'Group'}
+        title={group?.name || t('nav.group')}
         detail={t('pool.detail')}
       />
 

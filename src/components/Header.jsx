@@ -4,7 +4,7 @@ import { useI18n } from '../i18n/useI18n.js';
 import { useConnectionStatus } from '../hooks/useConnectionStatus.js';
 import { useThemeMode } from '../hooks/useThemeMode.js';
 
-export default function Header({ backLabel, contextLabel = 'Match Day', onBack, user, onSignOut }) {
+export default function Header({ backLabel, contextLabel, onBack, user, onSignOut }) {
   const { language, isRtl, t, toggleLanguage } = useI18n();
   const syncStatus = useConnectionStatus();
   const { isLightMode, toggleThemeMode } = useThemeMode();
@@ -51,7 +51,7 @@ export default function Header({ backLabel, contextLabel = 'Match Day', onBack, 
           <div className="min-w-0">
             <h1 className="truncate text-lg font-black text-club-ink sm:text-2xl">{t('app.name')}</h1>
             <p className="mt-0.5 flex min-w-0 items-center gap-2 text-xs font-bold text-club-muted sm:text-sm">
-              <span className="truncate">{contextLabel}</span>
+              <span className="truncate">{contextLabel || t('nav.matchDay')}</span>
               <span className={getSyncIndicatorClass(syncStatus.tone)} title={t(syncStatus.detailKey)}>
                 <span className={getSyncDotClass(syncStatus.tone)} />
                 {t(syncStatus.labelKey)}
@@ -61,7 +61,7 @@ export default function Header({ backLabel, contextLabel = 'Match Day', onBack, 
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className="hidden max-w-44 truncate rounded-md bg-club-green/12 px-3 py-2 text-xs font-black uppercase tracking-wide text-club-green sm:inline-flex">
-            {contextLabel}
+            {contextLabel || t('nav.matchDay')}
           </span>
           <button
             type="button"
@@ -87,7 +87,7 @@ export default function Header({ backLabel, contextLabel = 'Match Day', onBack, 
                 type="button"
                 onClick={() => setIsAccountOpen((open) => !open)}
                 className="grid h-10 w-10 place-items-center rounded-lg border border-club-border bg-club-surface text-sm font-black uppercase text-club-green transition hover:bg-club-soft"
-                aria-label="Open account menu"
+                aria-label={t('auth.openAccountMenu')}
                 aria-expanded={isAccountOpen}
                 title={userLabel}
               >

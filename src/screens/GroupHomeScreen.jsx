@@ -220,7 +220,7 @@ function buildLastNightStory(history, groupId, t, formatDateValue) {
 
   const { leaderboard } = buildLeaderboard(lastTournament);
   const champion = getChampion(lastTournament, leaderboard);
-  const playerMovement = buildPlayerMovement(lastTournament);
+  const playerMovement = buildPlayerMovement(lastTournament, t);
   const bestRatingDelta = playerMovement.length ? Math.max(...playerMovement.map((player) => player.ratingDelta)) : 0;
   const bestRankMove = playerMovement.length ? Math.max(...playerMovement.map((player) => player.rankMovement)) : 0;
   const mvp = playerMovement.find((player) => player.ratingDelta === bestRatingDelta && bestRatingDelta > 0);
@@ -251,13 +251,13 @@ function getChampion(tournament, leaderboard) {
   return finalMatch ? tournament.teams.find((team) => team.id === finalMatch.winnerId) || null : leaderboard[0] || null;
 }
 
-function buildPlayerMovement(tournament) {
+function buildPlayerMovement(tournament, t) {
   const participantMeta = Array.isArray(tournament?.participantMeta) ? tournament.participantMeta : [];
   const groupParticipants = participantMeta
     .filter((participant) => participant?.groupPlayerId && participant.source !== 'guest')
     .map((participant) => ({
       id: participant.groupPlayerId,
-      name: String(participant.name || 'Player'),
+      name: String(participant.name || t('common.player')),
       previousRating: Math.max(0, Number(participant.rating || 0)),
     }));
 

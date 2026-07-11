@@ -1,30 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import MatchCard from '../components/MatchCard';
 import { ConfirmationModal } from '../components/Alert';
-import { CheckIcon, ListIcon, ShareIcon, TrophyIcon } from '../components/Icons';
-import { Button, MetricGrid, MetricItem, PageHeader, Panel, Pill, ScreenShell, SectionHeading } from '../components/Ui.jsx';
+import { CheckIcon, ListIcon, ShareIcon } from '../components/Icons';
+import { Button, MetricGrid, MetricItem, PageHeader, Panel, Pill, ScreenShell } from '../components/Ui.jsx';
 import { fetchGroups } from '../utils/groupService';
 import { calculatePlayerMatchDeltas } from '../utils/playerProgressionService';
 import { reopenTournamentRecord } from '../utils/tournamentService';
 import { buildLeaderboard, emptyTeamStats } from '../utils/tournamentRules';
 import { useI18n } from '../i18n/useI18n.js';
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-});
-
 const getTeamName = (team) => team.players.join(' & ');
 
-function useResultSharing({ buildPayload, showAlert }) {
+function useResultSharing({ buildPayload, showAlert, t }) {
   const [isSharingResult, setIsSharingResult] = useState(false);
   const [isDownloadingPng, setIsDownloadingPng] = useState(false);
   const [shareFeedback, setShareFeedback] = useState('');
 
   const handleShareWhatsApp = async () => {
     const payload = buildPayload();
-    const shareText = buildResultShareText(payload);
+    const shareText = buildResultShareText(payload, t);
 
     try {
       setIsSharingResult(true);
@@ -35,9 +29,9 @@ function useResultSharing({ buildPayload, showAlert }) {
         ? new File([imageBlob], `${slugify(payload.title)}-tournament-summary.png`, { type: 'image/png' })
         : null;
 
-      if (file && navigator.canShare?.({ files: [file], title: `${payload.title} tournament summary`, text: shareText })) {
-        await navigator.share({ files: [file], title: `${payload.title} tournament summary`, text: shareText });
-        setShareFeedback('Shared');
+      if (file && navigator.canShare?.({ files: [file], title: `${payload.title} ${t('tournament.share')}`, text: shareText })) {
+        await navigator.share({ files: [file], title: `${payload.title} ${t('tournament.share')}`, text: shareText });
+        setShareFeedback(t('tournament.shared'));
         return;
       }
 
@@ -45,11 +39,11 @@ function useResultSharing({ buildPayload, showAlert }) {
         downloadBlob(imageBlob, `${slugify(payload.title)}-tournament-summary.png`);
       }
       openWhatsAppShare(shareText);
-      setShareFeedback(imageBlob ? 'PNG downloaded' : 'WhatsApp opened');
+      setShareFeedback(imageBlob ? t('tournament.pngDownloaded') : t('tournament.whatsappOpened'));
     } catch (error) {
       if (error?.name !== 'AbortError') {
         console.error('Error sharing WhatsApp summary:', error);
-        showAlert('WhatsApp Share Failed', 'Could not prepare the tournament summary for WhatsApp.');
+        showAlert(t('tournament.whatsappShareFailedTitle'), t('tournament.whatsappShareFailedMessage'));
       }
     } finally {
       setIsSharingResult(false);
@@ -64,14 +58,14 @@ function useResultSharing({ buildPayload, showAlert }) {
       setIsDownloadingPng(true);
       const imageBlob = await createResultCardBlob(payload);
       if (!imageBlob) {
-        showAlert('Download Unavailable', 'Your browser could not generate the tournament summary image.');
+        showAlert(t('tournament.downloadUnavailableTitle'), t('tournament.downloadUnavailableMessage'));
         return;
       }
       downloadBlob(imageBlob, `${slugify(payload.title)}-tournament-summary.png`);
-      setShareFeedback('PNG downloaded');
+      setShareFeedback(t('tournament.pngDownloaded'));
     } catch (error) {
       console.error('Error downloading tournament summary:', error);
-      showAlert('Download Failed', 'Could not download the tournament summary image.');
+      showAlert(t('tournament.downloadFailedTitle'), t('tournament.downloadFailedMessage'));
     } finally {
       setIsDownloadingPng(false);
       setTimeout(() => setShareFeedback(''), 2200);
@@ -88,7 +82,7 @@ function useResultSharing({ buildPayload, showAlert }) {
 }
 
 export default function TournamentResultScreen({ tournament, showAlert, showToast, onResumeTournament, canManageTournament = false }) {
-  const { language } = useI18n();
+  const { language, t, formatDate } = useI18n();
   const [groupName, setGroupName] = useState('');
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
@@ -100,10 +94,10 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
   const pendingMatches = useMemo(() => tournament.matches.filter((match) => match.status !== 'completed'), [tournament.matches]);
   const isEnded = tournament.status === 'ended';
   const isComplete = tournament.matches.length > 0 && completedMatches.length === tournament.matches.length;
-  const formatLabel = tournament.format === 'league' ? 'League' : 'Cup';
-  const title = groupName || (tournament.groupId ? 'Group night' : `Quick ${formatLabel} night`);
-  const dateLabel = formatDate(tournament.endedAt || tournament.createdAt || tournament.updatedAt);
-  const statusLabel = isEnded ? 'Ended' : isComplete ? 'Complete' : 'Live';
+  const formatLabel = tournament.format === 'league' ? t('common.league') : t('common.cup');
+  const title = groupName || (tournament.groupId ? t('format.groupNight') : tournament.format === 'league' ? t('format.quickLeagueNight') : t('format.quickCupNight'));
+  const dateLabel = formatDate(tournament.endedAt || tournament.createdAt || tournament.updatedAt, { day: 'numeric', month: 'short', year: 'numeric' });
+  const statusLabel = isEnded ? t('history.ended') : isComplete ? t('history.complete') : t('history.live');
   const champion = getChampion(tournament, leaderboard);
 
   useEffect(() => {
@@ -135,13 +129,13 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
       setShowReopenConfirm(false);
       onResumeTournament(savedTournament);
       if (showToast) {
-        showToast('Tournament reopened', 'Scores and teams can be edited.', 'success');
+        showToast(t('tournament.reopenedToast'), t('tournament.reopenedToastDetail'), 'success');
       } else {
-        showAlert('Tournament Reopened', 'Scores and teams can be edited.');
+        showAlert(t('tournament.resultReopenedTitle'), t('tournament.reopenedToastDetail'));
       }
     } catch (error) {
       console.error('Error reopening tournament:', error);
-      showAlert('Error', 'Could not reopen tournament.');
+      showAlert(t('alerts.error'), t('tournament.resultReopenError'));
     } finally {
       setIsReopening(false);
     }
@@ -159,17 +153,19 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
       pendingMatches,
       tournament,
       language,
+      t,
     });
   const { isSharingResult, isDownloadingPng, shareFeedback, handleShareWhatsApp, handleDownloadResultPng } = useResultSharing({
     buildPayload: buildCurrentResultPayload,
     showAlert,
+    t,
   });
 
   return (
     <ScreenShell className="pb-24 sm:pb-5">
       <PageHeader
-        eyebrow="Night Result"
-        title={champion ? getTeamName(champion) : 'Pending'}
+        eyebrow={t('nav.result')}
+        title={champion ? getTeamName(champion) : t('groupHome.pending')}
         detail={title}
         meta={
           <>
@@ -180,18 +176,18 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
         }
         actions={
           !isEnded ? (
-            <Button onClick={() => onResumeTournament(tournament)}>Resume</Button>
+            <Button onClick={() => onResumeTournament(tournament)}>{t('tournament.resume')}</Button>
           ) : canManageTournament ? (
-            <Button onClick={() => setShowReopenConfirm(true)} disabled={isReopening}>Reopen</Button>
+            <Button onClick={() => setShowReopenConfirm(true)} disabled={isReopening}>{t('tournament.reopen')}</Button>
           ) : null
         }
       />
 
       <MetricGrid columns={4}>
-        <MetricItem label="Teams" value={tournament.teams.length} />
-        <MetricItem label="Done" value={completedMatches.length} />
-        <MetricItem label="Waiting" value={pendingMatches.length} />
-        <MetricItem label="Courts" value={Math.max(1, Number(tournament.courtCount || 1))} />
+        <MetricItem label={t('common.teams')} value={tournament.teams.length} />
+        <MetricItem label={t('common.done')} value={completedMatches.length} />
+        <MetricItem label={t('common.waiting')} value={pendingMatches.length} />
+        <MetricItem label={t('common.courts')} value={Math.max(1, Number(tournament.courtCount || 1))} />
       </MetricGrid>
 
       <ShareResultCard
@@ -209,14 +205,17 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
         feedback={shareFeedback}
         onShareWhatsApp={handleShareWhatsApp}
         onDownloadPng={handleDownloadResultPng}
+        language={language}
+        t={t}
       />
 
       <DetailSection
         icon={<ListIcon className="h-5 w-5 text-club-muted" />}
-        title="Final Ranking"
+        title={t('tournament.finalRanking')}
         count={leaderboard.length}
         open={showStandings}
         onToggle={() => setShowStandings((current) => !current)}
+        hideLabel={t('common.hide')}
       >
         <div className="space-y-2">
           {leaderboard.map((team, index) => {
@@ -228,10 +227,11 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
 
       <DetailSection
         icon={<CheckIcon className="h-5 w-5 text-club-muted" />}
-        title="Matches"
+        title={t('tournament.matches')}
         count={tournament.matches.length}
         open={showMatches}
         onToggle={() => setShowMatches((current) => !current)}
+        hideLabel={t('common.hide')}
       >
         <div className="space-y-2">
           {tournament.matches.map((match) => (
@@ -242,8 +242,8 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
 
       {showReopenConfirm && (
         <ConfirmationModal
-          title="Reopen Tournament?"
-          message="This opens the live tournament screen and makes editing available again."
+          title={t('tournament.reopenTitle')}
+          message={t('tournament.resultReopenMessage')}
           onConfirm={confirmReopenTournament}
           onCancel={() => setShowReopenConfirm(false)}
         />
@@ -252,7 +252,7 @@ export default function TournamentResultScreen({ tournament, showAlert, showToas
   );
 }
 
-function DetailSection({ icon, title, count, open, onToggle, children }) {
+function DetailSection({ icon, title, count, open, onToggle, hideLabel, children }) {
   return (
     <Panel>
       <button type="button" onClick={onToggle} className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-1 text-left">
@@ -261,7 +261,7 @@ function DetailSection({ icon, title, count, open, onToggle, children }) {
           <span className="truncate text-sm font-black uppercase tracking-wide text-club-ink">{title}</span>
         </span>
         <span className="shrink-0 rounded-md bg-club-wash px-3 py-1 text-xs font-black tabular-nums text-club-green">
-          {open ? 'Hide' : count}
+          {open ? hideLabel : count}
         </span>
       </button>
       {open && <div className="mt-3">{children}</div>}
@@ -284,6 +284,8 @@ function ShareResultCard({
   feedback,
   onShareWhatsApp,
   onDownloadPng,
+  language = 'en',
+  t,
 }) {
   const payload = buildResultSharePayload({
     title,
@@ -295,6 +297,8 @@ function ShareResultCard({
     completedMatches,
     pendingMatches,
     tournament,
+    language,
+    t,
   });
 
   return (
@@ -302,8 +306,8 @@ function ShareResultCard({
       <div className="border-b border-club-border bg-club-soft p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-black uppercase tracking-wide text-club-muted">Share</p>
-            <h3 className="mt-1 text-2xl font-black text-club-ink">Share the Night</h3>
+            <p className="text-sm font-black uppercase tracking-wide text-club-muted">{t('tournament.share')}</p>
+            <h3 className="mt-1 text-2xl font-black text-club-ink">{t('tournament.shareNight')}</h3>
           </div>
           <div className="grid gap-2 sm:grid-cols-[auto_auto]">
             <Button
@@ -312,14 +316,14 @@ function ShareResultCard({
               disabled={isSharing || isDownloading}
             >
               <ShareIcon className="h-5 w-5" />
-              {isSharing ? 'Preparing...' : feedback || 'WhatsApp PNG'}
+              {isSharing ? t('tournament.preparing') : feedback || t('tournament.whatsappPng')}
             </Button>
             <Button
               tone="secondary"
               onClick={onDownloadPng}
               disabled={isSharing || isDownloading}
             >
-              {isDownloading ? 'Preparing...' : 'Download PNG'}
+              {isDownloading ? t('tournament.preparing') : t('tournament.downloadPng')}
             </Button>
           </div>
         </div>
@@ -328,21 +332,21 @@ function ShareResultCard({
       <div className="p-4">
         <div className="rounded-lg border border-club-border bg-club-bg p-5">
           <div className="flex flex-wrap items-center gap-2">
-            <Pill tone="green">Padel Night</Pill>
+            <Pill tone="green">{t('app.name')}</Pill>
             <Pill>{formatLabel}</Pill>
             <span className="text-xs font-bold text-club-muted">{dateLabel}</span>
           </div>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
             <div className="min-w-0">
-              <p className="text-sm font-black uppercase tracking-wide text-club-muted">Champions of the Night</p>
+              <p className="text-sm font-black uppercase tracking-wide text-club-muted">{t('tournament.championsOfNight')}</p>
               <h4 className="mt-1 break-words text-3xl font-black leading-tight text-club-ink">{payload.championName}</h4>
               <p className="mt-2 text-sm font-bold text-club-muted">{title}</p>
             </div>
             <MetricGrid columns={3} className="sm:min-w-72">
-              <MetricItem label="Matches" value={payload.matchesPlayed} />
-              <MetricItem label="Teams" value={payload.teamCount} />
-              <MetricItem label="Courts" value={payload.courtCount} />
+              <MetricItem label={t('common.matches')} value={payload.matchesPlayed} />
+              <MetricItem label={t('common.teams')} value={payload.teamCount} />
+              <MetricItem label={t('common.courts')} value={payload.courtCount} />
             </MetricGrid>
           </div>
 
@@ -356,7 +360,7 @@ function ShareResultCard({
 
           {payload.topTeams.length > 1 && (
             <div className="mt-5 rounded-lg bg-club-surface p-3">
-              <p className="text-[0.62rem] font-black uppercase tracking-wide text-club-muted">Runner Up</p>
+              <p className="text-[0.62rem] font-black uppercase tracking-wide text-club-muted">{t('tournament.runnerUp')}</p>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {payload.topTeams.slice(1, 3).map((team) => (
                   <div key={`${team.rank}-${team.name}`} className="flex min-w-0 items-center gap-2 rounded-lg bg-club-wash px-3 py-2">
@@ -395,7 +399,7 @@ export function TournamentSummaryShareCard({
   tournament,
   showAlert,
 }) {
-  const { language } = useI18n();
+  const { language, t } = useI18n();
 
   const buildCurrentResultPayload = () =>
     buildResultSharePayload({
@@ -409,10 +413,12 @@ export function TournamentSummaryShareCard({
       pendingMatches,
       tournament,
       language,
+      t,
     });
   const { isSharingResult, isDownloadingPng, shareFeedback, handleShareWhatsApp, handleDownloadResultPng } = useResultSharing({
     buildPayload: buildCurrentResultPayload,
     showAlert,
+    t,
   });
 
   return (
@@ -431,6 +437,8 @@ export function TournamentSummaryShareCard({
       feedback={shareFeedback}
       onShareWhatsApp={handleShareWhatsApp}
       onDownloadPng={handleDownloadResultPng}
+      language={language}
+      t={t}
     />
   );
 }
@@ -457,12 +465,7 @@ function getChampion(tournament, leaderboard) {
   return finalMatch ? tournament.teams.find((team) => team.id === finalMatch.winnerId) || null : leaderboard[0] || null;
 }
 
-function formatDate(value) {
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date.getTime()) ? dateFormatter.format(date) : 'No date';
-}
-
-function buildResultSharePayload({ title, dateLabel, formatLabel, champion, leaderboard, teamStats, completedMatches, pendingMatches, tournament, language = 'en' }) {
+function buildResultSharePayload({ title, dateLabel, formatLabel, champion, leaderboard, teamStats, completedMatches, pendingMatches, tournament, language = 'en', t }) {
   const topTeams = leaderboard.slice(0, 3).map((team, index) => {
     const stats = teamStats.get(team.id) || emptyTeamStats();
     return {
@@ -474,21 +477,23 @@ function buildResultSharePayload({ title, dateLabel, formatLabel, champion, lead
       diff: stats.diff,
     };
   });
-  const playerMovement = buildPlayerMovement(tournament);
+  const playerMovement = buildPlayerMovement(tournament, t);
   const mvpRatingDelta = playerMovement.length ? Math.max(...playerMovement.map((player) => player.ratingDelta)) : 0;
   const mvps = playerMovement.filter((player) => player.ratingDelta === mvpRatingDelta && mvpRatingDelta > 0);
   const biggestRankMove = playerMovement.length ? Math.max(...playerMovement.map((player) => player.rankMovement)) : 0;
   const biggestClimbers = playerMovement.filter((player) => player.rankMovement === biggestRankMove && biggestRankMove > 0);
-  const streakBreaker = buildStreakBreakerAward(tournament);
-  const tightestWin = buildTightestWinAward(tournament);
+  const streakBreaker = buildStreakBreakerAward(tournament, t);
+  const tightestWin = buildTightestWinAward(tournament, t);
+  const championName = champion ? getTeamName(champion) : t('groupHome.pending');
   const awards = buildAwards({
-    championName: champion ? getTeamName(champion) : 'Pending',
+    championName,
     mvps,
     mvpRatingDelta,
     biggestClimbers,
     biggestRankMove,
     streakBreaker,
     tightestWin,
+    t,
   });
 
   return {
@@ -496,11 +501,11 @@ function buildResultSharePayload({ title, dateLabel, formatLabel, champion, lead
     language,
     dateLabel,
     formatLabel,
-    championName: champion ? getTeamName(champion) : 'Pending',
+    championName,
     topTeams,
     playerMovement,
     mvps,
-    mvpNames: mvps.length ? mvps.map((player) => player.name) : ['No MVP yet'],
+    mvpNames: mvps.length ? mvps.map((player) => player.name) : [t('tournament.noMvpYet')],
     mvpRatingDelta,
     biggestClimbers,
     biggestRankMove,
@@ -514,65 +519,70 @@ function buildResultSharePayload({ title, dateLabel, formatLabel, champion, lead
   };
 }
 
-function buildResultShareText(payload) {
+function buildResultShareText(payload, t) {
   const rankingText = payload.topTeams
-    .map((team) => `${team.rank}. ${team.name} - ${team.points} pts (${team.wins}-${team.losses}, ${team.diff > 0 ? '+' : ''}${team.diff})`)
+    .map((team) => `${team.rank}. ${team.name} - ${team.points} ${t('tournament.pointsShort')} (${team.wins}-${team.losses}, ${team.diff > 0 ? '+' : ''}${team.diff})`)
     .join('\n');
   const awardsText = payload.awards
     .map((award) => `${award.label}: ${award.value}${award.detail ? ` (${award.detail})` : ''}`)
     .join('\n');
 
   return [
-    `${payload.title} ${payload.formatLabel} night`,
+    t('tournament.shareTextTitle', { title: payload.title, format: payload.formatLabel }),
     payload.dateLabel,
-    `Champions: ${payload.championName}`,
+    t('tournament.shareTextChampion', { champion: payload.championName }),
     awardsText,
     '',
     rankingText,
     '',
-    `${payload.matchesPlayed} matches played, ${payload.teamCount} teams, ${payload.courtCount} court${payload.courtCount === 1 ? '' : 's'}.`,
+    t('tournament.shareTextSummary', {
+      matches: payload.matchesPlayed,
+      teams: payload.teamCount,
+      courts: payload.courtCount,
+      plural: payload.courtCount === 1 ? '' : 's',
+    }),
   ]
     .filter(Boolean)
     .join('\n');
 }
 
-function buildAwards({ championName, mvps, mvpRatingDelta, biggestClimbers, biggestRankMove, streakBreaker, tightestWin }) {
-  const awards = [{ label: 'Champions', value: championName, detail: 'night winners' }];
+function buildAwards({ championName, mvps, mvpRatingDelta, biggestClimbers, biggestRankMove, streakBreaker, tightestWin, t }) {
+  const awards = [{ label: t('tournament.awards.champions'), value: championName, detail: t('tournament.nightWinners') }];
 
   if (mvps.length) {
     awards.push({
-      label: 'MVP',
+      label: t('tournament.awards.mvp'),
       value: mvps.map((player) => player.name).join(', '),
-      detail: `${formatSignedNumber(mvpRatingDelta)} rating pts`,
+      detail: `${formatSignedNumber(mvpRatingDelta)} ${t('tournament.ratingPoints')}`,
     });
   }
 
   if (biggestClimbers.length) {
     awards.push({
-      label: 'Most Improved',
+      label: t('tournament.awards.mostImproved'),
       value: biggestClimbers.map((player) => player.name).join(', '),
-      detail: formatRankMovement(biggestRankMove),
+      detail: formatRankMovement(biggestRankMove, t),
     });
   }
 
   if (streakBreaker) {
     awards.push({
-      label: 'Streak Breaker',
+      label: t('tournament.awards.streakBreaker'),
       value: streakBreaker.teamName,
-      detail: `stopped ${streakBreaker.streak}-win run`,
+      detail: t('tournament.awards.stoppedRun', { count: streakBreaker.streak }),
     });
   } else if (tightestWin) {
     awards.push({
-      label: 'Tightest Win',
+      label: t('tournament.awards.tightestWin'),
       value: tightestWin.teamName,
-      detail: `won by ${tightestWin.margin}`,
+      detail: t('tournament.awards.wonBy', { count: tightestWin.margin }),
     });
   }
 
   return awards.slice(0, 4);
 }
 
-function buildStreakBreakerAward(tournament) {
+function buildStreakBreakerAward(tournament, t) {
   const participantByName = buildParticipantLookup(tournament);
   let bestAward = null;
 
@@ -591,7 +601,7 @@ function buildStreakBreakerAward(tournament) {
           const streak = Number(participant?.currentStreak || 0);
           if (streak >= 2 && (!bestAward || streak > bestAward.streak)) {
             bestAward = {
-              teamName: winnerTeam ? getTeamName(winnerTeam) : 'Winning team',
+              teamName: winnerTeam ? getTeamName(winnerTeam) : t('common.winner'),
               brokenPlayerName: playerName,
               streak,
             };
@@ -603,7 +613,7 @@ function buildStreakBreakerAward(tournament) {
   return bestAward;
 }
 
-function buildTightestWinAward(tournament) {
+function buildTightestWinAward(tournament, t) {
   let tightest = null;
 
   (tournament.matches || [])
@@ -617,7 +627,7 @@ function buildTightestWinAward(tournament) {
       if (!tightest || margin < tightest.margin) {
         const team = (tournament.teams || []).find((item) => item.id === match.winnerId);
         tightest = {
-          teamName: team ? getTeamName(team) : 'Winning team',
+          teamName: team ? getTeamName(team) : t('common.winner'),
           margin,
         };
       }
@@ -635,13 +645,13 @@ function normalizeName(value) {
   return String(value || '').trim().toLowerCase();
 }
 
-function buildPlayerMovement(tournament) {
+function buildPlayerMovement(tournament, t) {
   const participantMeta = Array.isArray(tournament?.participantMeta) ? tournament.participantMeta : [];
   const groupParticipants = participantMeta
     .filter((participant) => participant?.groupPlayerId && participant.source !== 'guest')
     .map((participant) => ({
       id: participant.groupPlayerId,
-      name: String(participant.name || 'Player'),
+      name: String(participant.name || t('common.player')),
       previousRating: Math.max(0, Number(participant.rating || 0)),
     }));
 
@@ -690,11 +700,11 @@ function formatSignedNumber(value) {
   return `${number > 0 ? '+' : ''}${number}`;
 }
 
-function formatRankMovement(value) {
+function formatRankMovement(value, t) {
   const movement = Number(value || 0);
-  if (movement > 0) return `up ${movement}`;
-  if (movement < 0) return `down ${Math.abs(movement)}`;
-  return 'same';
+  if (movement > 0) return t('tournament.awards.up', { count: movement });
+  if (movement < 0) return t('tournament.awards.down', { count: Math.abs(movement) });
+  return t('tournament.awards.same');
 }
 
 function createResultCardBlob(payload) {
@@ -957,7 +967,7 @@ function drawEnglishResultCanvas(ctx, payload, width, height) {
 }
 
 function getArabicFormatLabel(value) {
-  return value === 'League' ? 'دوري' : 'كأس';
+  return value === 'League' || value === 'دوري' ? 'دوري' : 'كأس';
 }
 
 function getArabicAwardLabel(label) {

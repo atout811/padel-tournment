@@ -13,16 +13,10 @@ import { CheckIcon, CourtIcon, ShareIcon, TrashIcon, TrophyIcon, UsersIcon } fro
 import { BottomActionBar, Button, EmptyState, Panel, Pill, ScreenShell, SectionHeading } from '../components/Ui.jsx';
 import { useI18n } from '../i18n/useI18n.js';
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-});
-
 const getTeamName = (team) => team.players.join(' & ');
 
 export default function TournamentScreen({ tournament, setTournament, showAlert, showToast, setScreen, shareLink, onTournamentEnded, canManageTournament = true, isReadOnly = false }) {
-  const { t } = useI18n();
+  const { t, formatDate } = useI18n();
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [showEditTeams, setShowEditTeams] = useState(false);
@@ -76,9 +70,9 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       : finalMatch
         ? tournament.teams.find((team) => team.id === finalMatch.winnerId)
         : null;
-  const resultFormatLabel = tournament.format === 'league' ? 'League' : 'Cup';
-  const resultTitle = tournament.groupId ? 'Group night' : `Quick ${resultFormatLabel} night`;
-  const resultDateLabel = formatDate(tournament.endedAt || tournament.createdAt || tournament.updatedAt);
+  const resultFormatLabel = tournament.format === 'league' ? t('common.league') : t('common.cup');
+  const resultTitle = tournament.groupId ? t('format.groupNight') : tournament.format === 'league' ? t('format.quickLeagueNight') : t('format.quickCupNight');
+  const resultDateLabel = formatDate(tournament.endedAt || tournament.createdAt || tournament.updatedAt, { day: 'numeric', month: 'short', year: 'numeric' });
 
   const completedInRound = currentRoundMatches.filter((match) => match.status === 'completed').length;
   const roundProgress = currentRoundMatches.length ? Math.round((completedInRound / currentRoundMatches.length) * 100) : 0;
@@ -358,7 +352,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       showToast?.(t('tournament.reopenedToast'), t('tournament.reopenedToastDetail'), 'success');
     } catch (error) {
       console.error('Error reopening tournament:', error);
-      showAlert(t('alerts.error'), 'Could not reopen tournament.');
+      showAlert(t('alerts.error'), t('tournament.resultReopenError'));
     }
   };
 
@@ -381,7 +375,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       {(isTournamentFinished || isReadOnly) && (
         <>
           <FinishedSummary
-            title={isReadOnly && !isTournamentFinished ? 'Tournament Ended' : 'Tournament Finished'}
+            title={isReadOnly && !isTournamentFinished ? t('tournament.closedTitle') : t('history.complete')}
             champion={champion}
             leaderboard={leaderboard}
             teamStats={teamStats}
@@ -452,7 +446,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
               const isTop4 = index < 4 && tournament.currentRound === 1 && tournament.format !== 'league';
               const isChampion = champion?.id === team.id && isTournamentFinished;
               return (
-                <StandingRow key={team.id} rank={index + 1} team={team} stats={stats} highlighted={isLeader || isTop4 || isChampion} label={getStandingLabel({ isLeader, isTop4, isChampion, format: tournament.format })} />
+                <StandingRow key={team.id} rank={index + 1} team={team} stats={stats} highlighted={isLeader || isTop4 || isChampion} label={getStandingLabel({ isLeader, isTop4, isChampion, format: tournament.format, t })} />
               );
             })}
           </div>
@@ -571,16 +565,16 @@ function getStageTitle(tournament, t) {
   return t('tournament.stageCupRound', { round: tournament.currentRound });
 }
 
-function getMatchLabel(match) {
-  if (match.matchType === 'final') return 'Championship Final';
-  if (match.matchType === 'semifinal') return 'Semifinal';
-  return 'Group Match';
+function getMatchLabel(match, t) {
+  if (match.matchType === 'final') return t('match.championshipFinal');
+  if (match.matchType === 'semifinal') return t('match.semifinal');
+  return t('match.groupMatch');
 }
 
-function getStandingLabel({ isLeader, isTop4, isChampion, format }) {
-  if (isChampion) return 'Champion';
-  if (format === 'league' && isLeader) return 'Leader';
-  if (isTop4) return 'Top 4';
+function getStandingLabel({ isLeader, isTop4, isChampion, format, t }) {
+  if (isChampion) return t('common.champion');
+  if (format === 'league' && isLeader) return t('common.leader');
+  if (isTop4) return t('common.top4');
   return '';
 }
 
@@ -660,7 +654,7 @@ function CourtCard({ courtNumber, match, onDeclareWinner, disabled, t }) {
     return (
       <div className="rounded-lg border border-dashed border-club-borderStrong bg-club-soft p-3 text-center">
         <div className="flex min-h-28 flex-col items-center justify-center">
-          <Pill tone="blue">Court {courtNumber}</Pill>
+          <Pill tone="blue">{t('common.court')} {courtNumber}</Pill>
           <h3 className="mt-2 text-base font-black text-club-ink">{t('common.waiting')}</h3>
           <p className="mt-1 max-w-xs text-xs font-semibold text-club-muted">{t('tournament.noSafeMatch')}</p>
         </div>
@@ -673,9 +667,9 @@ function CourtCard({ courtNumber, match, onDeclareWinner, disabled, t }) {
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-club-muted">
           <CourtIcon className="h-3.5 w-3.5" />
-          Court {courtNumber}
+          {t('common.court')} {courtNumber}
         </p>
-        <Pill>{getMatchLabel(match)}</Pill>
+        <Pill>{getMatchLabel(match, t)}</Pill>
       </div>
       <CurrentMatchCard match={match} onDeclareWinner={onDeclareWinner} disabled={disabled} />
     </div>
@@ -712,10 +706,10 @@ function FinishedSummary({ title, champion, leaderboard, teamStats, completedMat
         </span>
         <p className="mt-4 text-xs font-black uppercase tracking-wide text-club-green">{title}</p>
         <h2 className="mt-2 text-3xl font-black text-club-ink">{champion ? t('tournament.championMoment') : t('tournament.resultsLocked')}</h2>
-        <p className="mt-2 text-xl font-black text-club-green">{champion ? getTeamName(champion) : 'Champion pending'}</p>
+        <p className="mt-2 text-xl font-black text-club-green">{champion ? getTeamName(champion) : t('tournament.championPending')}</p>
         {finalMatch && (
           <p className="mt-2 text-sm font-bold text-club-muted">
-            Final: {getTeamName(finalMatch.teamA)} vs {getTeamName(finalMatch.teamB)}
+            {t('match.final')}: {getTeamName(finalMatch.teamA)} {t('match.vs')} {getTeamName(finalMatch.teamB)}
           </p>
         )}
       </div>
@@ -740,7 +734,7 @@ function FinishedSummary({ title, champion, leaderboard, teamStats, completedMat
                     {index + 1}
                   </span>
                   <span className="mt-2 block min-w-0 break-words font-black leading-tight text-club-ink">{getTeamName(team)}</span>
-                  <span className="mt-1 block text-sm font-black text-club-muted">{stats.points} pts</span>
+                  <span className="mt-1 block text-sm font-black text-club-muted">{stats.points} {t('tournament.pointsShort')}</span>
                 </div>
               );
             })}
@@ -752,21 +746,16 @@ function FinishedSummary({ title, champion, leaderboard, teamStats, completedMat
           <p className="text-sm font-bold text-club-muted">{t('tournament.matchesPlayed')}</p>
           {onEndTournament && (
             <Button onClick={onEndTournament} className="mt-4 w-full">
-              End Tournament
+              {t('tournament.endTournament')}
             </Button>
           )}
           {onReopenTournament && (
             <Button onClick={onReopenTournament} className="mt-4 w-full">
-              Reopen Tournament
+              {t('tournament.reopen')}
             </Button>
           )}
         </div>
       </div>
     </Panel>
   );
-}
-
-function formatDate(value) {
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date.getTime()) ? dateFormatter.format(date) : 'No date';
 }
