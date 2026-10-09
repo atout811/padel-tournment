@@ -116,6 +116,7 @@ export const deleteTournamentData = () => {
 };
 
 export const SAVED_PLAYER_NAMES_KEY = 'padel-saved-player-names';
+export const FORGOTTEN_PLAYER_NAMES_KEY = 'padel-forgotten-player-names';
 export const WELCOME_LAST_SHOWN_KEY = 'padel-welcome-last-shown';
 export const WELCOME_COOLDOWN_MS = 60 * 60 * 1000;
 
@@ -151,7 +152,9 @@ export const loadSavedPlayerNames = () => {
   try {
     const stored = JSON.parse(localStorage.getItem(SAVED_PLAYER_NAMES_KEY) || '[]');
     const pastPlayers = [loadTournamentData(), ...loadTournamentHistory()].flatMap((item) => Array.isArray(item?.players) ? item.players : []);
-    return cleanPlayerNames([...(Array.isArray(stored) ? stored : []), ...pastPlayers]);
+    const forgotten = JSON.parse(localStorage.getItem(FORGOTTEN_PLAYER_NAMES_KEY) || '[]');
+    const excluded = new Set(Array.isArray(forgotten) ? forgotten : []);
+    return cleanPlayerNames([...(Array.isArray(stored) ? stored : []), ...pastPlayers]).filter((name) => !excluded.has(name.toLowerCase()));
   } catch {
     return [];
   }
@@ -159,7 +162,23 @@ export const loadSavedPlayerNames = () => {
 
 export const rememberPlayerNames = (names) => {
   const next = cleanPlayerNames([...names, ...loadSavedPlayerNames()]);
-  try { localStorage.setItem(SAVED_PLAYER_NAMES_KEY, JSON.stringify(next)); }
+  try {
+    const forgotten = JSON.parse(localStorage.getItem(FORGOTTEN_PLAYER_NAMES_KEY) || '[]');
+    const added = new Set(cleanPlayerNames(names).map((name) => name.toLowerCase()));
+    localStorage.setItem(FORGOTTEN_PLAYER_NAMES_KEY, JSON.stringify((Array.isArray(forgotten) ? forgotten : []).filter((name) => !added.has(name))));
+    localStorage.setItem(SAVED_PLAYER_NAMES_KEY, JSON.stringify(next));
+  }
   catch { /* Keep setup usable when browser storage is unavailable. */ }
+  return next;
+};
+
+export const forgetPlayerName = (name) => {
+  const key = name.toLowerCase();
+  const next = loadSavedPlayerNames().filter((item) => item.toLowerCase() !== key);
+  try {
+    const forgotten = JSON.parse(localStorage.getItem(FORGOTTEN_PLAYER_NAMES_KEY) || '[]');
+    localStorage.setItem(FORGOTTEN_PLAYER_NAMES_KEY, JSON.stringify([...new Set([...(Array.isArray(forgotten) ? forgotten : []), key])]));
+    localStorage.setItem(SAVED_PLAYER_NAMES_KEY, JSON.stringify(next));
+  } catch { /* Keep setup usable when browser storage is unavailable. */ }
   return next;
 };

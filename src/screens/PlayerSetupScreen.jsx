@@ -6,9 +6,10 @@ import { Button, TextInput } from '../components/Ui.jsx';
 import { SetupOptionsPanel } from '../components/NightSetupFlow.jsx';
 import { DEFAULT_SCORING_SETTINGS } from '../utils/padelScoring';
 import { useNightSetupFlow } from '../hooks/useNightSetupFlow.js';
-import { loadSavedPlayerNames, rememberPlayerNames } from '../utils/storage';
+import { forgetPlayerName, loadSavedPlayerNames, rememberPlayerNames } from '../utils/storage';
 import { useI18n } from '../i18n/useI18n.js';
 import PadelArtwork from '../components/PadelArtwork.jsx';
+import SavedPlayerNames from '../components/SavedPlayerNames.jsx';
 
 export default function PlayerSetupScreen({ showAlert, setTournament, setScreen }) {
   const { t, isRtl } = useI18n();
@@ -30,7 +31,6 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
   const start = async () => {
     if (isSaving || !setupStatus.isValid) return;
     setIsSaving(true);
-    rememberPlayerNames(players);
     try {
       const created = await createTournamentRecord(buildTournament({ players, format: flow.format, scoringPreset: 'standard', maxSets: DEFAULT_SCORING_SETTINGS.maxSets, deuceMode: DEFAULT_SCORING_SETTINGS.deuceMode, courtCount: flow.courtCount }));
       setTournament(created); setScreen('tournament');
@@ -57,10 +57,7 @@ export default function PlayerSetupScreen({ showAlert, setTournament, setScreen 
         <Button type="submit" disabled={isSaving} aria-label={t('common.add')} className="shrink-0">+</Button>
       </form>
       {playerError && <p role="alert" className="mt-2 text-sm text-red-600">{playerError}</p>}
-      {savedNames.length > 0 && <div className="remembered-players"><p className="field-caption">{copy('صحاب الملعب', 'FAMILIAR FACES')} <span>{copy('دوس على اللي نازل', 'Tap to add')}</span></p><div className="flex flex-wrap gap-2">{savedNames.map((name) => {
-        const selected = players.some((player) => player.toLowerCase() === name.toLowerCase());
-        return <button key={name} type="button" aria-pressed={selected} disabled={isSaving} onClick={() => togglePlayer(name)} className={`name-pill ${selected ? 'is-selected' : ''}`}><span className="pill-avatar" aria-hidden="true">{selected ? '✓' : name.charAt(0).toUpperCase()}</span>{name}<span className="pill-add" aria-hidden="true">{selected ? '−' : '+'}</span></button>;
-      })}</div></div>}
+      <SavedPlayerNames names={savedNames} players={players} disabled={isSaving} onToggle={togglePlayer} onForget={(name) => setSavedNames(forgetPlayerName(name))} />
       <div className="today-lineup"><div className="field-caption">{copy('شلة النهارده', 'THE LINEUP')}<span className="lineup-count">{players.length} {t('common.players')}</span></div>
         {players.length ? <div className="lineup-list">{players.map((name,index) => <div className="lineup-row" key={name}><span className="player-number">{String(index + 1).padStart(2,'0')}</span><span className="player-label">{name}</span><button type="button" disabled={isSaving} aria-label={copy(`شيل ${name}`, `Remove ${name}`)} onClick={() => togglePlayer(name)}>×</button></div>)}</div> : <div className="lineup-empty"><div aria-hidden="true">＋ ＋ ＋ ＋</div><p>{copy('لسه مستنيين الشلة!', 'Save a spot for your friends.')}</p><span>{copy('هات ٤ لاعيبة على الأقل، ويلا بينا.', 'Add at least 4 players to get started.')}</span></div>}
       </div>

@@ -17,6 +17,8 @@ A player can go from opening the app to the first match in under one minute, wit
 - The home screen is tournament setup.
 - Names previously entered on this browser appear as selectable pills.
 - Selecting a pill adds a player; selecting it again removes them from today's lineup.
+- Show up to 15 remembered names; Show more opens all names in a mobile dialog.
+- Hold a name to confirm forgetting it without changing the current lineup or past tournaments.
 - Remembering names does not create accounts, groups, or player profiles.
 - Format and court count are visible from the first screen in compact segmented controls.
 - New tournaments use Classic scoring only: standard preset, best of three sets, advantage at deuce.
@@ -28,6 +30,7 @@ A player can go from opening the app to the first match in under one minute, wit
 - Remembered names live in localStorage under padel-saved-player-names.
 - Names are trimmed and deduplicated without regard to case.
 - Existing locally cached tournament names seed the remembered list.
+- Forgotten names stay excluded from history seeding until explicitly added again.
 - Storage failures must not block play.
 - Tournament persistence retains its existing local fallback and optional Supabase behavior.
 
