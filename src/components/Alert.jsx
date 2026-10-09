@@ -17,13 +17,14 @@ export function CustomAlert({ title, message, onClose }) {
 }
 
 export function ToastViewport({ toasts = [], onDismiss }) {
-  const { isRtl } = useI18n();
+  const { isRtl, t } = useI18n();
   const popup = (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[max(5.25rem,calc(env(safe-area-inset-bottom)+1rem))] z-[120] mx-auto flex w-full max-w-md flex-col gap-2 px-3 sm:bottom-6">
-      {toasts.map((toast) => (
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-[120] mx-auto w-full max-w-md px-3">
+      {toasts.slice(-1).map((toast) => (
         <div
           key={toast.id}
-          className={`pointer-events-auto flex items-start justify-between gap-3 rounded-lg border p-3 shadow-2xl shadow-club-shadow/20 backdrop-blur ${
+          role={toast.tone === 'danger' ? 'alert' : 'status'}
+          className={`${toast.tone === 'win' ? 'toast-win' : 'toast-arrival'} pointer-events-auto flex items-center justify-between gap-3 rounded-2xl border p-3 shadow-2xl shadow-club-shadow/20 backdrop-blur ${
             toast.tone === 'success'
               ? 'border-club-borderStrong bg-club-surface/95'
               : toast.tone === 'danger'
@@ -31,17 +32,18 @@ export function ToastViewport({ toasts = [], onDismiss }) {
                 : 'border-club-border bg-club-surface/95'
           }`}
         >
-          <div className={`min-w-0 ${isRtl ? 'text-right' : ''}`}>
-            <p className={`truncate text-sm font-black ${toast.tone === 'danger' ? 'text-[#DB4145]' : 'text-club-ink'}`}>{toast.title}</p>
-            {toast.message && <p className="mt-0.5 line-clamp-2 text-xs font-semibold text-club-muted">{toast.message}</p>}
+          {toast.tone === 'win' && <span className="toast-win-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m5 12 4 4L19 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span>}
+          <div className={`min-w-0 flex-1 ${isRtl ? 'text-right' : ''}`}>
+            <p className={`toast-title break-words text-sm font-black ${toast.tone === 'danger' ? 'text-[#DB4145]' : 'text-club-ink'}`}>{toast.title}</p>
+            {toast.message && <p className="toast-message mt-0.5 line-clamp-2 text-xs font-semibold text-club-muted">{toast.message}</p>}
           </div>
           <button
             type="button"
             onClick={() => onDismiss?.(toast.id)}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-sm font-black text-club-muted hover:bg-club-wash hover:text-club-ink"
-            aria-label="Dismiss notification"
+            className="toast-close grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-black text-club-muted hover:bg-club-wash hover:text-club-ink"
+            aria-label={t('common.close')}
           >
-            x
+            ×
           </button>
         </div>
       ))}

@@ -32,8 +32,8 @@ export default function CurrentMatchCard({ match, onDeclareWinner, disabled = fa
   };
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg bg-club-wash px-3 py-2">
+    <div className="match-entry space-y-4" aria-busy={isSaving}>
+      <div className="match-court grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-2xl bg-club-wash px-3 py-4">
         <TeamName name={getTeamName(match.teamA)} align="right" />
         <span className="rounded-md bg-club-surface px-2 py-1 text-[0.65rem] font-black text-club-muted">{t('match.vs')}</span>
         <TeamName name={getTeamName(match.teamB)} />
@@ -67,7 +67,7 @@ export default function CurrentMatchCard({ match, onDeclareWinner, disabled = fa
 
 function TeamName({ name, align = 'left' }) {
   return (
-    <span className={`min-w-0 truncate text-sm font-black text-club-ink ${align === 'right' ? 'text-right' : ''}`} title={name}>
+    <span className={`min-w-0 break-words text-base font-black text-club-ink ${align === 'right' ? 'text-right' : ''}`} title={name}>
       {name}
     </span>
   );
@@ -79,12 +79,12 @@ function WinnerButton({ label, name, isWinner, onChoose, disabled }) {
       type="button"
       onClick={onChoose}
       disabled={disabled}
-      className={`min-h-12 rounded-lg border px-2 py-2 text-center shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80 ${
-        isWinner ? 'motion-score-save border-club-green bg-club-green text-club-greenDeep' : 'border-club-borderStrong bg-club-green/12 text-club-green hover:border-club-borderStrong hover:bg-club-wash'
+      className={`winner-choice min-h-20 rounded-2xl border px-3 py-4 text-center shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80 ${
+        isWinner ? 'border-club-green bg-club-green text-club-greenDeep' : 'border-club-borderStrong bg-club-green/12 text-club-green hover:border-club-borderStrong hover:bg-club-wash'
       }`}
     >
-      <span className="block truncate text-xs font-black uppercase tracking-wide">{label}</span>
-      <span className="mt-0.5 block truncate text-[0.68rem] font-bold opacity-80">{name}</span>
+      <span className="block whitespace-normal text-xs font-black uppercase tracking-wide">{label}</span>
+      <span className="mt-0.5 block break-words text-xs font-bold opacity-80">{name}</span>
     </button>
   );
 }

@@ -198,7 +198,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         updatedCompletedInRound === updatedRoundMatches.length
           ? t('tournament.stageComplete', { stage: getStageTitle(savedTournament, t) })
           : t('tournament.matchesLeft', { count: updatedRoundMatches.length - updatedCompletedInRound, plural: updatedRoundMatches.length - updatedCompletedInRound === 1 ? '' : 'es' }),
-        'success'
+        'win'
       );
 
       if (updatedCompletedInRound === updatedRoundMatches.length && savedTournament.currentRound === 1) {
@@ -357,7 +357,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
   };
 
   return (
-    <ScreenShell className="pb-24 sm:pb-5">
+    <ScreenShell className="pb-28">
       <StageBar
         tournament={tournament}
         activeCourtAssignments={resolvedCourtAssignments}
@@ -375,6 +375,7 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       {(isTournamentFinished || isReadOnly) && (
         <>
           <FinishedSummary
+            celebrate={isTournamentFinished}
             title={isReadOnly && !isTournamentFinished ? t('tournament.closedTitle') : t('history.complete')}
             champion={champion}
             leaderboard={leaderboard}
@@ -401,13 +402,13 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
       )}
 
       {!isTournamentFinished && !isReadOnly && (
-        <Panel>
+        <Panel className="active-courts-panel">
           <SectionHeading
             title={t('tournament.activeCourts')}
             detail={t('tournament.playing', { active: activeMatches.length, total: courtCount })}
             actions={<Pill>{t('tournament.waiting', { count: waitingMatchesCount })}</Pill>}
           />
-          <div className="grid gap-2 md:grid-cols-2">
+          <div className="grid gap-4">
             {courtSlots.map((match, index) => (
               <CourtCard key={match?.id || `empty-court-${index}`} courtNumber={index + 1} match={match} onDeclareWinner={handleDeclareWinner} disabled={isSavingResult || !canUpdateScores} t={t} />
             ))}
@@ -415,15 +416,6 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         </Panel>
       )}
 
-      {shareLink && !isReadOnly && !isTournamentFinished && (
-        <LiveShareStrip
-          shareLink={shareLink}
-          isCopyingLink={isCopyingLink}
-          copyFeedback={copyFeedback}
-          onCopy={handleCopyShareLink}
-          t={t}
-        />
-      )}
 
       <Panel>
         <div className="grid grid-cols-3 gap-1 rounded-lg bg-club-wash p-1">
@@ -480,18 +472,15 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         )}
       </Panel>
 
-      <section className={`hidden gap-3 sm:grid ${canEditTeams ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}>
-        {canEditTeams && (
-          <Button tone="secondary" onClick={() => setShowEditTeams(true)}>
-            <UsersIcon className="h-5 w-5" />
-            {t('tournament.editTeams')}
-          </Button>
-        )}
-        <Button tone="secondary" onClick={() => setShowGameHistory(true)}>
-          <CheckIcon className="h-5 w-5" />
-          {t('tournament.matchHistory')}
-        </Button>
-      </section>
+      {shareLink && !isReadOnly && !isTournamentFinished && (
+        <LiveShareStrip
+          shareLink={shareLink}
+          isCopyingLink={isCopyingLink}
+          copyFeedback={copyFeedback}
+          onCopy={handleCopyShareLink}
+          t={t}
+        />
+      )}
 
       {canEndTournament && !isTournamentFinished && !isReadOnly && (
         <Button tone="danger" onClick={() => setShowEndConfirm(true)} className="w-full">
@@ -500,8 +489,8 @@ export default function TournamentScreen({ tournament, setTournament, showAlert,
         </Button>
       )}
 
-      <BottomActionBar className="sm:hidden">
-        <div className={`mx-auto grid max-w-6xl gap-2 ${canEditTeams ? 'grid-cols-[1fr_1fr_auto]' : 'grid-cols-1'}`}>
+      <BottomActionBar className="match-tools-bar">
+        <div className={`mx-auto grid max-w-6xl gap-2 ${canEditTeams ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {canEditTeams && (
             <Button tone="secondary" onClick={() => setShowEditTeams(true)}>
               <UsersIcon className="h-4 w-4" />
@@ -578,13 +567,13 @@ function getStandingLabel({ isLeader, isTop4, isChampion, format, t }) {
   return '';
 }
 
-function LiveShareStrip({ shareLink, isCopyingLink, copyFeedback, onCopy, t }) {
+function LiveShareStrip({ isCopyingLink, copyFeedback, onCopy, t }) {
   return (
-    <Panel className="bg-club-soft">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <Panel className="live-share-panel">
+      <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-black text-club-ink">{t('tournament.shareTitle')}</p>
-          <p className="mt-0.5 truncate text-xs font-semibold text-club-muted">{shareLink}</p>
+
         </div>
         <Button tone="blue" onClick={onCopy} disabled={isCopyingLink} className="shrink-0">
           <ShareIcon className="h-5 w-5" />
@@ -602,7 +591,7 @@ function StageBar({ tournament, activeCourtAssignments, isFinished, isEnded, com
   const waitingCount = pendingMatches.filter((match) => !activeCourtIds.has(match.id)).length;
 
   return (
-    <Panel>
+    <Panel className="stage-scoreboard">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-wide text-club-muted">{stageLabel}</p>
@@ -618,8 +607,8 @@ function StageBar({ tournament, activeCourtAssignments, isFinished, isEnded, com
         <div className="h-full rounded-full bg-club-green transition-all" style={{ width: `${roundProgress}%` }} />
       </div>
 
-      <p className="mt-3 truncate text-sm font-bold text-club-muted">
-        {tournament.teams.length} {t('common.teams').toLowerCase()} / {courtCount} {t('common.courts').toLowerCase()} / {waitingCount} {t('common.waiting').toLowerCase()} / {completedMatches.length} {t('common.done').toLowerCase()}
+      <p className="mt-3 flex flex-wrap text-xs font-bold leading-relaxed text-club-muted">
+        {tournament.teams.length} {t('common.teams').toLowerCase()} / {courtCount} {t(courtCount === 1 ? 'common.court' : 'common.courts').toLowerCase()} / {waitingCount} {t('common.waiting').toLowerCase()} / {completedMatches.length} {t('common.done').toLowerCase()}
       </p>
     </Panel>
   );
@@ -663,7 +652,8 @@ function CourtCard({ courtNumber, match, onDeclareWinner, disabled, t }) {
   }
 
   return (
-    <div className="rounded-lg border border-club-border bg-club-surface p-3 shadow-sm">
+    <div className="court-arrival rounded-2xl border border-club-teal-border bg-club-surface p-4 shadow-sm">
+      <div className="court-live-label"><span aria-hidden="true" />{t('tournament.liveNow')}</div>
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-club-muted">
           <CourtIcon className="h-3.5 w-3.5" />
@@ -695,13 +685,13 @@ function StandingRow({ rank, team, stats, highlighted, label }) {
   );
 }
 
-function FinishedSummary({ title, champion, leaderboard, teamStats, completedMatches, finalMatch, onEndTournament, onReopenTournament, t }) {
+function FinishedSummary({ title, champion, celebrate, leaderboard, teamStats, completedMatches, finalMatch, onEndTournament, onReopenTournament, t }) {
   const topTeams = leaderboard.slice(0, 3);
 
   return (
-    <Panel className="border-club-green/50 bg-club-soft">
+    <Panel className={`border-club-green/50 bg-club-soft ${champion && celebrate ? 'champion-finale' : ''}`}>
       <div>
-        <span className="grid h-14 w-14 place-items-center rounded-lg bg-club-green text-club-greenDeep">
+        <span className="champion-cup grid h-14 w-14 place-items-center rounded-lg bg-club-green text-club-greenDeep">
           <TrophyIcon className="h-9 w-9" />
         </span>
         <p className="mt-4 text-xs font-black uppercase tracking-wide text-club-green">{title}</p>

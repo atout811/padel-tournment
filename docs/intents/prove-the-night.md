@@ -18,6 +18,7 @@ Results are clear, trusted, and easy to share.
 - Completed matches should be reviewable.
 - Reopening/editing should be controlled.
 - Results should be preserved in history.
+- Celebrate a newly saved win with brief visual feedback; never celebrate an unconfirmed save. Keep the existing scoring and progression rules independent of presentation effects.
 
 ## Feature Backlog
 

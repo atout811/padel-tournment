@@ -7,28 +7,18 @@
   "scope": "/padel-tournment/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#050607",
-  "theme_color": "#050607",
-  "categories": ["sports", "productivity"],
+  "background_color": "#F6F3EC",
+  "theme_color": "#F6F3EC",
+  "categories": [
+    "sports",
+    "productivity"
+  ],
   "shortcuts": [
     {
       "name": "Start Night",
       "short_name": "Start",
       "description": "Open quick night setup.",
       "url": "/padel-tournment/?shortcut=start",
-      "icons": [
-        {
-          "src": "/padel-tournment/pwa-icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Groups",
-      "short_name": "Groups",
-      "description": "Open your padel groups.",
-      "url": "/padel-tournment/?shortcut=groups",
       "icons": [
         {
           "src": "/padel-tournment/pwa-icon-192.png",

@@ -1,12 +1,10 @@
-import SegmentedControl from './SegmentedControl.jsx';
-import { Button, InlineNotice, Panel, Pill, SectionHeading } from './Ui.jsx';
-import { ListIcon, TrophyIcon } from './Icons.jsx';
+import { Panel, Pill } from './Ui.jsx';
 
 const steps = ['participants', 'format', 'review'];
 
 export function SetupProgress({ currentStep, onStepChange, labels }) {
   return (
-    <div className="grid grid-cols-3 gap-1 rounded-lg bg-club-wash p-1" role="tablist" aria-label="Setup steps">
+    <div className="grid grid-cols-3 gap-1 rounded-2xl bg-club-wash p-1" role="tablist" aria-label="Setup steps">
       {steps.map((step, index) => {
         const active = currentStep === step;
         return (
@@ -14,7 +12,7 @@ export function SetupProgress({ currentStep, onStepChange, labels }) {
             key={step}
             type="button"
             onClick={() => onStepChange(step)}
-            className={`min-h-10 rounded-md px-2 text-sm font-black transition ${
+            className={`min-h-10 rounded-xl px-2 text-sm font-black transition ${
               active ? 'motion-soft-pop bg-club-green text-club-greenDeep' : 'text-club-muted hover:bg-club-soft hover:text-club-ink'
             }`}
           >
@@ -50,143 +48,14 @@ export function SetupSummary({ title, setupStatus, metrics, recommendation, t })
   );
 }
 
-export function SetupOptionsPanel({ flow, setupStatus, showScoring = false, t }) {
-  return (
-    <div className="space-y-3">
-      <Panel>
-        <SectionHeading title={t('setup.tournamentFormat')} detail={t('setup.formatHint')} />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <FormatChoice
-            title={t('common.league')}
-            eyebrow={t('setup.leagueEyebrow')}
-            description={t('setup.leagueDescription')}
-            icon={<ListIcon className="h-5 w-5" />}
-            selected={flow.format === 'league'}
-            onClick={() => flow.setFormat('league')}
-            t={t}
-          />
-          <FormatChoice
-            title={t('common.cup')}
-            eyebrow={t('setup.cupEyebrow')}
-            description={t('setup.cupDescription')}
-            icon={<TrophyIcon className="h-5 w-5" />}
-            selected={flow.format === 'cup'}
-            onClick={() => flow.setFormat('cup')}
-            t={t}
-          />
-        </div>
-        <InlineNotice tone={setupStatus.isValid ? 'green' : 'info'} className="mt-3">
-          {setupStatus.message}
-        </InlineNotice>
-      </Panel>
-
-      <SegmentedControl
-        label={t('setup.courtsAvailable')}
-        value={flow.courtCount}
-        onChange={flow.setCourtCount}
-        columns="grid-cols-3"
-        options={[
-          { value: 1, label: '1' },
-          { value: 2, label: '2' },
-          { value: 3, label: '3' },
-        ]}
-      />
-
-      {showScoring && (
-        <Panel>
-          <Button tone="secondary" className="w-full justify-between" onClick={flow.toggleAdvanced}>
-            {flow.showAdvanced ? t('setup.hideScoringOptions') : t('setup.scoringOptions')}
-          </Button>
-
-          {flow.showAdvanced && (
-            <div className="mt-3 space-y-3">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <FormatChoice
-                  title={t('setup.classic')}
-                  eyebrow={t('setup.classicEyebrow')}
-                  description={t('setup.classicDescription')}
-                  selected={flow.scoringPreset === 'standard'}
-                  onClick={() => flow.applyPreset('standard')}
-                  t={t}
-                />
-                <FormatChoice
-                  title={t('setup.quick')}
-                  eyebrow={t('setup.quickEyebrow')}
-                  description={t('setup.quickDescription')}
-                  selected={flow.scoringPreset === 'fast'}
-                  onClick={() => flow.applyPreset('fast')}
-                  t={t}
-                />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <FieldSelect
-                  id="maxSets"
-                  label={t('setup.matchLength')}
-                  value={flow.maxSets}
-                  onChange={(event) => flow.setMaxSets(Number(event.target.value))}
-                  options={[
-                    { value: 1, label: t('setup.bestOf1Set') },
-                    { value: 3, label: t('setup.bestOf3Sets') },
-                    { value: 5, label: t('setup.bestOf5Sets') },
-                  ]}
-                />
-                <FieldSelect
-                  id="deuceMode"
-                  label={t('setup.deuceRule')}
-                  value={flow.deuceMode}
-                  onChange={(event) => flow.setDeuceMode(event.target.value)}
-                  options={[
-                    { value: 'advantage', label: t('setup.advantageAtDeuce') },
-                    { value: 'golden', label: t('setup.goldenPointAtDeuce') },
-                  ]}
-                />
-              </div>
-            </div>
-          )}
-        </Panel>
-      )}
-    </div>
-  );
-}
-
-function FormatChoice({ title, eyebrow, description, icon, selected, onClick, t }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`min-h-24 rounded-lg border p-3 text-left transition active:scale-[0.99] ${
-        selected ? 'border-club-green bg-club-green/12' : 'border-club-border bg-club-soft hover:border-club-borderStrong hover:bg-club-wash'
-      }`}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <Pill tone={selected ? 'green' : 'default'}>{selected ? t('setup.selected') : eyebrow}</Pill>
-        {icon && <span className={selected ? 'text-club-green' : 'text-club-muted'}>{icon}</span>}
-      </div>
-      <span className="mt-3 block text-lg font-black text-club-ink">{title}</span>
-      <span className="mt-1 block text-sm font-semibold leading-relaxed text-club-muted">{description}</span>
-    </button>
-  );
-}
-
-function FieldSelect({ id, label, value, onChange, options }) {
-  return (
-    <div>
-      <label htmlFor={id} className="mb-2 block text-xs font-black uppercase tracking-wide text-club-muted">
-        {label}
-      </label>
-      <select
-        id={id}
-        value={value}
-        onChange={onChange}
-        className="min-h-12 w-full rounded-lg border border-club-border bg-club-wash px-3 text-base font-bold text-club-ink outline-none focus:border-club-green focus:ring-4 focus:ring-club-green/20"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
+export function SetupOptionsPanel({ flow, setupStatus, t }) {
+  return <div className="compact-settings">
+    <div className="settings-field"><span className="field-caption">{t('common.format')}</span><div className="settings-segments" role="group" aria-label={t('common.format')}>
+      {['league', 'cup'].map((format) => <button type="button" key={format} aria-pressed={flow.format === format} onClick={() => flow.setFormat(format)}>{t('common.' + format)}</button>)}
+    </div></div>
+    <div className="settings-field"><span className="field-caption">{t('common.courts')}</span><div className="settings-segments" role="group" aria-label={t('common.courts')}>
+      {[1,2,3].map((count) => <button type="button" key={count} aria-pressed={flow.courtCount === count} onClick={() => flow.setCourtCount(count)}>{count}</button>)}
+    </div></div>
+    <p className="settings-hint">{flow.format === 'cup' ? t('setup.cupEyebrow') : t('setup.leagueEyebrow')} · {setupStatus.minPlayers}+ {t('common.players')} · {t('setup.classic')}</p>
+  </div>;
 }

@@ -19,7 +19,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent, setActiveHin
 
   return (
     <div
-      className={`w-full rounded-lg border p-3 text-left shadow-sm ${
+      className={`w-full rounded-2xl border p-3 text-left shadow-sm ${
         isCompleted
           ? 'motion-complete-glow border-club-green bg-club-green/12'
           : isCurrent
@@ -36,7 +36,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent, setActiveHin
         {!isCompleted && onSetCurrent && !isCurrent && (
           <button
             onClick={() => onSetCurrent(match)}
-            className="min-h-10 shrink-0 rounded-md border border-club-border bg-club-soft px-3 py-1.5 text-center text-xs font-black text-club-ink transition hover:border-club-borderStrong hover:bg-club-wash"
+            className="min-h-11 shrink-0 rounded-xl border border-club-border bg-club-soft px-3 py-1.5 text-center text-xs font-black text-club-ink transition hover:border-club-borderStrong hover:bg-club-wash"
           >
             <span className="block">{t('match.setActive')}</span>
             {setActiveHint && <span className="mt-0.5 block text-[0.62rem] font-bold uppercase tracking-wide text-club-muted">{setActiveHint}</span>}
@@ -50,7 +50,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent, setActiveHin
         </div>
         <div className="grid min-w-12 content-center gap-1 text-center">
           {padelScoreSummary ? (
-            <span className="max-w-24 rounded-md bg-club-surface px-2 py-1 text-[0.65rem] font-black leading-relaxed text-club-ink shadow-sm sm:max-w-40">
+            <span className="max-w-24 rounded-xl bg-club-surface px-2 py-1 text-[0.65rem] font-black leading-relaxed text-club-ink shadow-sm sm:max-w-40">
               {padelScoreSummary}
             </span>
           ) : hasScore ? (
@@ -59,7 +59,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent, setActiveHin
               <ScorePill active={teamBWon}>{match.score.teamB}</ScorePill>
             </>
           ) : (
-            <span className="self-center rounded-md bg-club-wash px-2 py-1 text-[0.65rem] font-black text-club-muted">{t('match.vs')}</span>
+            <span className="self-center rounded-xl bg-club-wash px-2 py-1 text-[0.65rem] font-black text-club-muted">{t('match.vs')}</span>
           )}
         </div>
         <div className="min-w-0">
@@ -68,7 +68,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent, setActiveHin
       </div>
 
       {isCompleted && (
-        <p className="mt-2 rounded-md bg-club-surface p-2 text-center text-xs font-black text-club-green">
+        <p className="mt-2 rounded-xl bg-club-surface p-2 text-center text-xs font-black text-club-green">
           {t('match.winner', { team: teamAWon ? getTeamName(match.teamA) : getTeamName(match.teamB) })}
         </p>
       )}
@@ -79,7 +79,7 @@ export default function MatchCard({ match, onSetCurrent, isCurrent, setActiveHin
 function TeamLine({ name, won, align = 'left', t }) {
   return (
     <div className={`min-w-0 ${align === 'right' ? 'text-right' : ''}`}>
-      <p className={`truncate text-sm font-black leading-tight ${won ? 'text-club-green' : 'text-club-ink'}`} title={name}>
+      <p className={`break-words text-sm font-black leading-snug ${won ? 'text-club-green' : 'text-club-ink'}`} title={name}>
         {name}
       </p>
       {won && <p className="mt-0.5 text-[0.62rem] font-black uppercase tracking-wide text-club-green">{t('common.winner')}</p>}
@@ -89,7 +89,7 @@ function TeamLine({ name, won, align = 'left', t }) {
 
 function ScorePill({ active, children }) {
   return (
-    <span className={`rounded-md px-2 py-1 text-sm font-black tabular-nums ${active ? 'bg-club-green text-club-greenDeep' : 'bg-club-wash text-club-muted'}`}>
+    <span className={`rounded-xl px-2 py-1 text-sm font-black tabular-nums ${active ? 'bg-club-green text-club-greenDeep' : 'bg-club-wash text-club-muted'}`}>
       {children}
     </span>
   );
@@ -103,5 +103,5 @@ function Badge({ tone, children }) {
     slate: 'bg-club-wash text-club-muted',
   };
 
-  return <span className={`rounded-md px-2.5 py-1 text-xs font-black uppercase tracking-wide ${tones[tone] || tones.slate}`}>{children}</span>;
+  return <span className={`rounded-xl px-2.5 py-1 text-xs font-black uppercase tracking-wide ${tones[tone] || tones.slate}`}>{children}</span>;
 }

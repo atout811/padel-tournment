@@ -14,17 +14,17 @@
     <meta name="description" content="Organize and manage your padel tournaments with ease. Create teams, track matches, and crown champions!" />
     <meta name="keywords" content="padel, tournament, sports, matches, teams, competition, racket sport" />
     <meta name="author" content="Padel Night" />
-    <meta name="theme-color" content="#050607" />
+    <meta name="theme-color" content="#161F21" />
     <script>
       (() => {
         try {
-          const theme = localStorage.getItem('padel-night-theme') === 'light' ? 'light' : 'dark';
+          const theme = localStorage.getItem('padel-night-theme') === 'dark' ? 'dark' : 'light';
           document.documentElement.dataset.theme = theme;
           document.documentElement.style.colorScheme = theme;
-          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#F4F7F3' : '#050607');
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#F6F3EC' : '#161F21');
           document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.setAttribute('content', theme === 'light' ? 'default' : 'black-translucent');
         } catch {
-          document.documentElement.dataset.theme = 'dark';
+          document.documentElement.dataset.theme = 'light';
         }
       })();
     </script>

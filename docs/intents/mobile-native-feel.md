@@ -21,7 +21,31 @@ Players can open the app, start a night, update scores, and share results with t
 - Make sync state visible without making the UI noisy.
 - Add motion only when it improves perceived responsiveness.
 
-## Clean Dark Refactor Direction
+## Current Visual Direction
+
+The October redesign replaces the dark club dashboard with a warm paper and clay visual identity. Light mode is the default for new browsers; existing theme preferences remain respected. Forest court graphics, large editorial headings, a distinct player setup sheet, and numbered lineups make the app feel like a casual sports companion. Shared components carry the palette and softer geometry through matches, history, results, and modals. Maintain 44px touch targets, keyboard focus, Arabic layout, and reduced-motion support.
+
+## Mobile-only Refinement
+
+- Keep one mobile column, capped at 512px, even on wide screens.
+- Replace the introductory court poster with a compact text heading.
+- Keep format and courts visible above the player input using compact controls; remove scoring configuration.
+- Keep active courts before standings and secondary sharing, with readable player names and large winner buttons.
+- Preserve all scheduling, score updates, round progression, and result reopening logic.
+
+## Match-night Identity And Welcome
+
+- Arabic voice is conversational Egyptian: the Arabic brand is `يلا بادل`. Use short, natural match-day phrases, clear action labels, and straightforward error messages. Avoid literal English translations and infrastructure terms in visible copy.
+- Active matches use brief team entrances, a live indicator, and tactile winner controls. Saved wins use one bottom toast with a short entrance, checkmark, and exit. No upper celebration or confetti is shown. New notifications replace the previous notification instead of stacking or reappearing after dismissal. Reduced-motion users get a static acknowledgement.
+
+- Add a compact forest-green banner, local racket illustrations, tennis-ball accents, player initials, and tactile cards. Keep the mobile column and visible settings.
+- A welcome animation appears on first app load, including shared tournament URLs, for at most 2.8 seconds. It can be skipped immediately or with Escape.
+- Remember the time it appeared in `padel-welcome-last-shown` in localStorage, with a sessionStorage fallback. Show it again only on a new page load at least one hour later; ordinary visits do not extend the cooldown. Never interrupt an ongoing game when the hour expires.
+- Initialize the app behind the welcome while blocking interaction with covered content. Keep all tournament routing and score logic unchanged.
+- Respect reduced-motion preferences with a static, shorter welcome. Use local SVG/CSS assets with no remote requests or animation dependencies.
+- Verify first visit, repeat reload, one-hour boundary, invalid timestamps, blocked storage, skip, and narrow-screen layout.
+
+## Previous Clean Dark Refactor Direction (Historical)
 
 Accepted direction for the full UI/UX restructure:
 

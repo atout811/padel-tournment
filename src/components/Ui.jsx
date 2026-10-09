@@ -17,12 +17,12 @@ export function ScreenShell({ children, withBottomNav = false, className = '' })
   return (
     <div
       className={cn(
-        'min-h-[calc(100dvh-4rem)] bg-club-bg px-4 py-4 sm:px-6 sm:py-5',
+        'screen-shell min-h-[calc(100dvh-4rem)] px-4 py-5',
         withBottomNav ? 'pb-24 sm:pb-5' : '',
         className
       )}
     >
-      <div className="mx-auto w-full max-w-5xl space-y-4">{children}</div>
+      <div className="mx-auto w-full max-w-lg space-y-4">{children}</div>
     </div>
   );
 }
@@ -33,7 +33,7 @@ export function PageHeader({ eyebrow, title, detail, meta, actions, className = 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           {eyebrow && <p className="text-xs font-black uppercase tracking-wide text-club-muted">{eyebrow}</p>}
-          <h2 className="mt-1 break-words text-2xl font-black leading-tight text-club-ink sm:text-3xl">{title}</h2>
+          <h2 className="mt-1 break-words text-2xl font-black leading-tight text-club-ink sm:text-4xl">{title}</h2>
           {detail && <p className="mt-1 max-w-2xl text-sm font-semibold leading-relaxed text-club-muted">{detail}</p>}
           {meta && <div className="mt-3 flex flex-wrap gap-2">{meta}</div>}
         </div>
@@ -46,7 +46,7 @@ export function PageHeader({ eyebrow, title, detail, meta, actions, className = 
 export function Panel({ children, className = '', as = 'section' }) {
   const Tag = as;
   return (
-    <Tag className={cn('rounded-lg border border-club-border bg-club-surface p-4', className)}>
+    <Tag className={cn('club-panel rounded-2xl border border-club-border bg-club-surface p-5 shadow-sm shadow-club-shadow/5', className)}>
       {children}
     </Tag>
   );
@@ -77,7 +77,7 @@ export function Pill({ children, tone = 'default', className = '' }) {
   };
 
   return (
-    <span className={cn('inline-flex min-h-7 max-w-full items-center rounded-md px-2.5 text-xs font-black uppercase tracking-wide', tones[tone], className)}>
+    <span className={cn('inline-flex min-h-7 max-w-full items-center rounded-full px-2.5 text-xs font-black uppercase tracking-wide', tones[tone], className)}>
       <span className="truncate">{children}</span>
     </span>
   );
@@ -94,7 +94,7 @@ export function Button({ children, tone = 'primary', size = 'md', className = ''
     <button
       type="button"
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70',
+        'inline-flex items-center justify-center gap-2 rounded-2xl font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70',
         buttonTones[tone] || buttonTones.primary,
         sizes[size],
         className
@@ -110,7 +110,7 @@ export function TextInput({ className = '', invalid = false, ...props }) {
   return (
     <input
       className={cn(
-        'min-h-12 w-full rounded-lg border bg-club-wash px-3 text-base font-semibold text-club-ink outline-none transition placeholder:text-club-muted focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60',
+        'min-h-12 w-full rounded-2xl border bg-club-surface px-4 text-base font-semibold text-club-ink outline-none transition placeholder:text-club-muted focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60',
         invalid ? 'border-[#DB4145]/50 focus:border-[#DB4145] focus:ring-[#DB4145]/20' : 'border-club-border focus:border-club-green focus:ring-club-green/20',
         className
       )}
@@ -135,7 +135,7 @@ export function MetricGrid({ children, columns = 3, className = '' }) {
 
 export function MetricItem({ label, value, detail, icon }) {
   return (
-    <div className="min-w-0 rounded-lg bg-club-wash px-3 py-2">
+    <div className="min-w-0 rounded-2xl bg-club-wash px-3 py-2">
       <div className="flex items-center gap-2">
         {icon && <span className="shrink-0 text-club-muted">{icon}</span>}
         <p className="truncate text-xs font-black uppercase tracking-wide text-club-muted">{label}</p>
@@ -148,7 +148,7 @@ export function MetricItem({ label, value, detail, icon }) {
 
 export function EmptyState({ title, detail, action, className = '' }) {
   return (
-    <div className={cn('rounded-lg border border-dashed border-club-borderStrong bg-club-wash px-4 py-7 text-center', className)}>
+    <div className={cn('rounded-2xl border border-dashed border-club-borderStrong bg-club-wash px-4 py-7 text-center', className)}>
       <p className="text-base font-black text-club-ink">{title}</p>
       {detail && <p className="mx-auto mt-1 max-w-sm text-sm font-semibold leading-relaxed text-club-muted">{detail}</p>}
       {action && <div className="mt-4 flex justify-center">{action}</div>}
@@ -161,25 +161,25 @@ export function ListButton({ icon, title, detail, meta, actionIcon, className = 
     <button
       type="button"
       className={cn(
-        'grid min-h-16 w-full grid-cols-[40px_1fr_auto] items-center gap-3 rounded-lg border border-club-border bg-club-surface p-3 text-left transition hover:border-club-borderStrong hover:bg-club-soft active:scale-[0.99]',
+        'grid min-h-16 w-full grid-cols-[40px_1fr_auto] items-center gap-3 rounded-2xl border border-club-border bg-club-surface p-3 text-left transition hover:border-club-borderStrong hover:bg-club-soft active:scale-[0.99]',
         className
       )}
       {...props}
     >
-      <span className="grid h-10 w-10 place-items-center rounded-lg bg-club-wash text-club-muted">{icon}</span>
+      <span className="grid h-10 w-10 place-items-center rounded-2xl bg-club-wash text-club-muted">{icon}</span>
       <span className="min-w-0">
         <span className="block truncate text-base font-black text-club-ink">{title}</span>
         {detail && <span className="mt-0.5 block truncate text-sm font-semibold text-club-muted">{detail}</span>}
         {meta && <span className="mt-2 flex flex-wrap gap-1.5">{meta}</span>}
       </span>
-      {actionIcon && <span className="grid h-9 w-9 place-items-center rounded-lg bg-club-wash text-club-ink">{actionIcon}</span>}
+      {actionIcon && <span className="grid h-9 w-9 place-items-center rounded-2xl bg-club-wash text-club-ink">{actionIcon}</span>}
     </button>
   );
 }
 
 export function BottomActionBar({ children, className = '' }) {
   return (
-    <div className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-club-border bg-club-wash/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl shadow-club-shadow/20 backdrop-blur sm:sticky sm:bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:rounded-lg sm:border', className)}>
+    <div className={cn('fixed inset-x-0 bottom-0 z-40 border-t border-club-border bg-club-wash/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl shadow-club-shadow/20 backdrop-blur sm:sticky sm:bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:rounded-2xl sm:border', className)}>
       <div className="mx-auto grid w-full max-w-5xl gap-2">{children}</div>
     </div>
   );
@@ -193,5 +193,5 @@ export function InlineNotice({ children, tone = 'info', className = '' }) {
     danger: 'border-[#DB4145]/35 bg-[#DB4145]/10 text-[#DB4145]',
   };
 
-  return <p className={cn('rounded-lg border px-3 py-2 text-sm font-bold leading-relaxed', tones[tone], className)}>{children}</p>;
+  return <p className={cn('rounded-2xl border px-3 py-2 text-sm font-bold leading-relaxed', tones[tone], className)}>{children}</p>;
 }

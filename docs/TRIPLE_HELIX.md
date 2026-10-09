@@ -4,6 +4,12 @@ This app is not only a tournament tracker. The product goal is to become the wee
 
 Use this framework before building new features. Every meaningful feature should map to at least one helix pillar and one user intent.
 
+## Current Product Direction
+
+The current priority is quick, individual tournament setup: enter names, optionally pick remembered names from this browser, and start playing. Groups, player pools, invitations, and seasons are retired from the primary interface. Existing group data and services remain available for compatibility; they are not part of the entry experience.
+
+The primary pillar is Organizers And Clubs and the primary intent is start-tonight. The older group roadmap below is historical context, not the active build order.
+
 ## The Three Helix Pillars
 
 ### 1. Players And Friends

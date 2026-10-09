@@ -4,18 +4,12 @@ import InstallPrompt from './components/InstallPrompt.jsx';
 import { CustomAlert, ToastViewport } from './components/Alert.jsx';
 import { SkeletonBlock } from './components/Skeleton.jsx';
 import AuthScreen from './screens/AuthScreen.jsx';
-import GroupHomeScreen from './screens/GroupHomeScreen.jsx';
-import GroupListScreen from './screens/GroupListScreen.jsx';
-import HomeScreen from './screens/HomeScreen.jsx';
 import PlayerSetupScreen from './screens/PlayerSetupScreen.jsx';
-import PlayersPoolScreen from './screens/PlayersPoolScreen.jsx';
-import StartGroupNightScreen from './screens/StartGroupNightScreen.jsx';
 import TournamentHistoryScreen from './screens/TournamentHistoryScreen.jsx';
 import TournamentResultScreen from './screens/TournamentResultScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
-import { HomeIcon, ListIcon, UsersIcon } from './components/Icons.jsx';
+import { HomeIcon, ListIcon } from './components/Icons.jsx';
 import { claimLegacyOwnerData, getAuthSession, isAuthAvailable, onAuthStateChanged, signOut } from './utils/authService';
-import { fetchGroups } from './utils/groupService';
 import { getOrCreateUserId, loadActiveTournamentId, loadTournamentData, saveActiveTournamentId } from './utils/storage';
 import { buildTournamentShareUrl, fetchTournamentById, subscribeToTournament } from './utils/tournamentService';
 import { useI18n } from './i18n/useI18n.js';
@@ -27,7 +21,7 @@ const getTimestamp = (value) => {
 
 const getShortcutScreen = (shortcut) => {
   if (shortcut === 'start') return 'setup';
-  if (shortcut === 'groups') return 'groups';
+  if (shortcut === 'groups') return 'home';
   if (shortcut === 'history') return 'history';
   return null;
 };
@@ -57,7 +51,7 @@ export default function App() {
     (title, message = '', tone = 'info') => {
       toastIdRef.current += 1;
       const id = `toast-${Date.now()}-${toastIdRef.current}`;
-      setToasts((current) => [...current.slice(-2), { id, title, message, tone }]);
+      setToasts([{ id, title, message, tone }]);
       if (typeof window !== 'undefined') {
         window.setTimeout(() => dismissToast(id), 2600);
       }
@@ -139,7 +133,7 @@ export default function App() {
     if (group !== undefined) {
       setSelectedGroup(group);
     }
-    setScreen(nextScreen);
+    setScreen(['groups', 'groupHome', 'playersPool', 'startGroupNight'].includes(nextScreen) ? 'home' : nextScreen);
 
     if (!historyReady.current) {
       return;
@@ -299,44 +293,14 @@ export default function App() {
         return;
       }
       setSelectedGroup(event.state.selectedGroup || null);
-      setScreen(nextScreen);
+      setScreen(['groups', 'groupHome', 'playersPool', 'startGroupNight'].includes(nextScreen) ? 'home' : nextScreen);
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const findGroupForTournament = useCallback(
-    async (tournamentData) => {
-      const groupId = tournamentData?.groupId;
-      if (!groupId) return null;
-      if (selectedGroup?.id === groupId) return selectedGroup;
-
-      try {
-        const groups = await fetchGroups();
-        return groups.find((group) => group.id === groupId) || null;
-      } catch (error) {
-        console.error('Error resolving tournament group:', error);
-        return null;
-      }
-    },
-    [selectedGroup]
-  );
-
-  const leaveTournamentView = useCallback(
-    async (tournamentData = tournament, options = {}) => {
-      const group = await findGroupForTournament(tournamentData);
-      setTournament(null);
-
-      if (tournamentData?.groupId) {
-        navigateToScreen(group ? 'groupHome' : 'groups', { group, replace: options.replace ?? true });
-        return;
-      }
-
-      navigateToScreen('home', { replace: options.replace ?? true });
-    },
-    [findGroupForTournament, navigateToScreen, tournament]
-  );
+  const leaveTournamentView = useCallback(() => { setTournament(null); navigateToScreen('home', { replace: true, group: null }); }, [navigateToScreen]);
 
   const resumeTournament = useCallback(
     (tournamentData) => {
@@ -457,7 +421,7 @@ export default function App() {
     if (tournament) {
       const formatLabel = tournament.format === 'league' ? t('nav.leagueNight') : t('nav.cupNight');
       return {
-        label: tournament.groupId ? t('nav.group') : t('nav.home'),
+        label: t('nav.home'),
         contextLabel: tournament.status === 'ended' ? t('nav.ended', { format: formatLabel }) : formatLabel,
         onBack: () => leaveTournamentView(tournament),
       };
@@ -483,13 +447,7 @@ export default function App() {
 
   const renderScreen = () => {
     if (screen === 'loading') return <LoadingScreen />;
-    if (screen === 'home' && !tournament)
-      return <HomeScreen setScreen={navigateToScreen} selectedGroup={selectedGroup} onResumeTournament={resumeTournament} showAlert={showAlert} />;
-    if (screen === 'groups' && !tournament) return <GroupListScreen showAlert={showAlert} setScreen={navigateToScreen} setSelectedGroup={setSelectedGroup} />;
-    if (screen === 'groupHome' && !tournament)
-      return <GroupHomeScreen group={selectedGroup} showAlert={showAlert} setScreen={navigateToScreen} />;
-    if (screen === 'playersPool' && !tournament)
-      return <PlayersPoolScreen group={selectedGroup} showAlert={showAlert} setScreen={navigateToScreen} />;
+    if (screen === 'home' && !tournament) return <PlayerSetupScreen showAlert={showAlert} setTournament={setTournament} setScreen={navigateToScreen} />;
     if (screen === 'history' && !tournament)
       return <TournamentHistoryScreen showAlert={showAlert} onOpenTournamentResult={openTournamentResult} />;
     if (screen === 'tournamentResult' && !tournament) {
@@ -505,15 +463,6 @@ export default function App() {
         <TournamentHistoryScreen showAlert={showAlert} onOpenTournamentResult={openTournamentResult} />
       );
     }
-    if (screen === 'startGroupNight' && !tournament)
-      return (
-        <StartGroupNightScreen
-          group={selectedGroup}
-          showAlert={showAlert}
-          setTournament={setTournament}
-          setScreen={navigateToScreen}
-        />
-      );
     if (screen === 'setup' || !tournament)
       return <PlayerSetupScreen showAlert={showAlert} setTournament={setTournament} setScreen={navigateToScreen} />;
     if (tournament)
@@ -533,7 +482,7 @@ export default function App() {
     return <LoadingScreen />;
   };
 
-  const showBottomNav = !tournament && ['home', 'groups', 'groupHome', 'playersPool', 'history'].includes(screen);
+  const showBottomNav = !tournament && screen === 'history';
   const bottomNavItems = [
     {
       id: 'home',
@@ -541,13 +490,6 @@ export default function App() {
       icon: <HomeIcon className="h-5 w-5" />,
       active: screen === 'home',
       onClick: () => navigateToScreen('home', { group: selectedGroup }),
-    },
-    {
-      id: 'groups',
-      label: t('nav.groups'),
-      icon: <UsersIcon className="h-5 w-5" />,
-      active: screen === 'groups' || screen === 'groupHome',
-      onClick: () => navigateToScreen('groups', { group: null }),
     },
     {
       id: 'history',
@@ -568,8 +510,8 @@ export default function App() {
       ) : shouldShowAuth ? (
         <AuthScreen showAlert={showAlert} />
       ) : (
-    <div className="min-h-dvh bg-club-bg text-club-ink font-sans">
-      <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-0 sm:px-4 sm:py-5">
+    <div className="app-canvas min-h-dvh bg-club-bg text-club-ink font-sans">
+      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-0">
         <Header
           backLabel={navigation?.label}
           contextLabel={navigation?.contextLabel}
@@ -608,7 +550,7 @@ function LoadingScreen() {
 }
 
 function BottomNavigation({ items }) {
-  const gridClass = items.length === 3 ? 'grid-cols-3' : 'grid-cols-4';
+  const gridClass = items.length === 3 ? 'grid-cols-3' : 'grid-cols-2';
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-club-border bg-club-bg/95 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-2xl shadow-club-shadow/20 backdrop-blur sm:hidden">
       <div className={`mx-auto grid max-w-6xl ${gridClass} gap-1`}>

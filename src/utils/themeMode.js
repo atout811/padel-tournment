@@ -5,19 +5,19 @@ export const THEME_MODES = {
 };
 
 const THEME_COLORS = {
-  dark: '#050607',
-  light: '#F4F7F3',
+  dark: '#161F21',
+  light: '#F6F3EC',
 };
 
 export const normalizeThemeMode = (themeMode) => (themeMode === THEME_MODES.light ? THEME_MODES.light : THEME_MODES.dark);
 
 export const getStoredThemeMode = () => {
-  if (typeof window === 'undefined') return THEME_MODES.dark;
+  if (typeof window === 'undefined') return THEME_MODES.light;
 
   try {
-    return normalizeThemeMode(window.localStorage.getItem(THEME_STORAGE_KEY));
+    return normalizeThemeMode(window.localStorage.getItem(THEME_STORAGE_KEY) || THEME_MODES.light);
   } catch {
-    return THEME_MODES.dark;
+    return THEME_MODES.light;
   }
 };
 

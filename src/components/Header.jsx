@@ -32,24 +32,25 @@ export default function Header({ backLabel, contextLabel, onBack, user, onSignOu
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-club-border bg-club-bg/95 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur sm:static sm:rounded-t-lg sm:border sm:px-6 sm:py-4">
+    <header className="sticky top-0 z-30 border-b border-club-border bg-club-bg/95 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur ">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {onBack && (
             <button
               type="button"
               onClick={onBack}
+              aria-label={backLabel || t('nav.back')}
               className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-club-border bg-club-surface px-3 font-black text-club-ink transition hover:bg-club-soft sm:px-4"
             >
               <ArrowLeftIcon className={`h-5 w-5 text-club-green ${isRtl ? 'rotate-180' : ''}`} />
-              <span className="hidden sm:inline">{backLabel || t('nav.back')}</span>
+              <span className="hidden">{backLabel || t('nav.back')}</span>
             </button>
           )}
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-club-green text-base font-black text-club-greenDeep">
-            P
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-club-teal text-base font-black text-white">
+            <svg viewBox="0 0 32 32" fill="none" className="h-7 w-7" aria-hidden="true"><rect x="7" y="4" width="18" height="24" rx="2" stroke="currentColor" strokeWidth="1.5" /><path d="M7 16H25M7 10H25M7 22H25M16 4V10M16 22V28" stroke="currentColor" strokeWidth="1.5" /></svg>
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-black text-club-ink sm:text-2xl">{t('app.name')}</h1>
+            <h1 className="truncate text-base font-black tracking-tight text-club-ink sm:text-xl">{t('app.name')}</h1>
             <p className="mt-0.5 flex min-w-0 items-center gap-2 text-xs font-bold text-club-muted sm:text-sm">
               <span className="truncate">{contextLabel || t('nav.matchDay')}</span>
               <span className={getSyncIndicatorClass(syncStatus.tone)} title={t(syncStatus.detailKey)}>
@@ -60,7 +61,7 @@ export default function Header({ backLabel, contextLabel, onBack, user, onSignOu
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="hidden max-w-44 truncate rounded-md bg-club-green/12 px-3 py-2 text-xs font-black uppercase tracking-wide text-club-green sm:inline-flex">
+          <span className="hidden max-w-44 truncate rounded-full bg-club-green/12 px-3 py-2 text-xs font-black uppercase tracking-wide text-club-green hidden">
             {contextLabel || t('nav.matchDay')}
           </span>
           <button
